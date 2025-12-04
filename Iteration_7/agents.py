@@ -135,7 +135,7 @@ OUTPUT CONTRACT (emit EXACTLY ONE of the branches below):
 
 1) Request a tool:
 {
-  "compute_tool_request": {
+  "tool_request": {
     "tool_name": "compute",
     "args": {
       "op": "ADD" | "SUB" | "MUL",

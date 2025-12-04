@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, TypeVar, Generic
+from typing import Literal, TypeVar, Generic, Any
 from pydantic import BaseModel, Field, model_validator
 from .protocols import ToolArgs, ToolOutput
 
@@ -21,7 +21,6 @@ class Result(BaseModel):
 
 
 T = TypeVar("T", bound=BaseModel)
-
 
 class ToolRequest(BaseModel, Generic[T]):
     """A side-effect request to invoke a registered tool."""
@@ -76,7 +75,7 @@ Compute = Task
 
 class WorkerOutput(BaseModel):
     result: Result | None = None
-    compute_tool_request: ToolRequest[Compute] | None = None
+    tool_request: ToolRequest[Compute] | None = None
 
     @model_validator(mode="after")
     def exactly_one_branch(self) -> WorkerOutput:
@@ -85,7 +84,7 @@ class WorkerOutput(BaseModel):
         Prevents ambiguous payloads and mirrors the prompt contract.
         """
         has_result = self.result is not None
-        has_tool = self.compute_tool_request is not None
+        has_tool = self.tool_request is not None
         if has_result == has_tool:
             raise ValueError("Provide exactly one of result or tool_request")
         return self

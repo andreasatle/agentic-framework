@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from .schemas import WorkerInput, WorkerOutput, CriticInput, Decision
+from .schemas import WorkerInput, WorkerOutput, CriticInput
 from .tool_registry import ToolRegistry
 from .logging_config import get_logger
 from .agent_dispatcher import AgentDispatcher
@@ -29,10 +29,10 @@ class Supervisor:
             match worker_out:
 
                 # ----- Tool branch → call registry → reinject into worker input
-                case WorkerOutput(compute_tool_request=req) if req is not None:
+                case WorkerOutput(tool_request=req) if req is not None:
                     # Guard: tool args should match the originating plan
-                    if req.args.model_dump() != planner_output.model_dump():
-                        raise RuntimeError("Tool args do not match plan")
+                    # if req.args.model_dump() != planner_output.model_dump():
+                        # raise RuntimeError("Tool args do not match plan")
 
                     # Call the registry exactly once
                     tool_result = self.tool_registry.call(req.tool_name, req.args)

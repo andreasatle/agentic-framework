@@ -24,6 +24,7 @@ def run_demo(runs: int = 3) -> None:
     critic = make_critic(client, model="gpt-4.1-mini")
 
     dispatcher = AgentDispatcher(
+        max_retries=3,
         planner=planner,
         worker=worker,
         critic=critic,

@@ -13,11 +13,9 @@ from .logging_config import get_logger
 
 logger = get_logger("agentic.dispatcher")
 
-@dataclass
-class AgentDispatcher:
-    planner: AgentProtocol[PlannerInput, PlannerOutput]
-    worker: AgentProtocol[WorkerInput, WorkerOutput]
-    critic: AgentProtocol[CriticInput, CriticOutput]
+@dataclass(kw_only=True)
+class AgentDispatcherBase:
+    """Shared retry/validation logic for agent calls."""
     max_retries: int = 3
 
     def _call(self, agent: AgentProtocol[InputSchema, OutputSchema], input: InputSchema) -> OutputSchema:
@@ -35,9 +33,17 @@ class AgentDispatcher:
             except Exception as e:
                 last_err = e
         raise RuntimeError(
-            f"Agent '{agent.name}' failed after retries. "
+            f"Agent '{agent.name}' failed after {self.max_retries} retries. "
             f"Last error: {last_err}. Last raw payload: {last_raw}"
         )
+
+
+@dataclass(kw_only=True)
+class AgentDispatcher(AgentDispatcherBase):
+    planner: AgentProtocol[PlannerInput, PlannerOutput]
+    worker: AgentProtocol[WorkerInput, WorkerOutput]
+    critic: AgentProtocol[CriticInput, CriticOutput]
+    # inherits max_retries from base
 
     def plan(self) -> PlannerOutput:
         return self._call(self.planner, PlannerInput())
