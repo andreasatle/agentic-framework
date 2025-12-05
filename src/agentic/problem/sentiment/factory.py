@@ -1,10 +1,10 @@
 from openai import OpenAI
 
-from ...tool_registry import ToolRegistry
-from .types import SentimentDispatcher
-from .planner import make_planner
-from .worker import make_worker
-from .critic import make_critic
+from agentic.tool_registry import ToolRegistry
+from agentic.problem.sentiment.types import SentimentDispatcher
+from agentic.problem.sentiment.planner import make_planner
+from agentic.problem.sentiment.worker import make_worker
+from agentic.problem.sentiment.critic import make_critic
 
 
 def make_agent_dispatcher(

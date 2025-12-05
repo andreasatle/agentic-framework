@@ -1,7 +1,7 @@
 from openai import OpenAI
 
-from ...agents import Agent
-from .types import SentimentPlannerInput, SentimentPlannerOutput
+from agentic.agents import Agent
+from agentic.problem.sentiment.types import SentimentPlannerInput, SentimentPlannerOutput
 
 
 def make_planner(client: OpenAI, model: str) -> Agent[SentimentPlannerInput, SentimentPlannerOutput]:

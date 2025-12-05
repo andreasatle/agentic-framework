@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .types import Task, Result
+from agentic.problem.arithmetic.types import Task, Result
 
 def compute(args: Task) -> Result:
     """

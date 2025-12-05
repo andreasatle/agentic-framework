@@ -1,6 +1,6 @@
 from openai import OpenAI
-from ...agents import Agent
-from .types import ArithmeticWorkerInput, ArithmeticWorkerOutput
+from agentic.agents import Agent
+from agentic.problem.arithmetic.types import ArithmeticWorkerInput, ArithmeticWorkerOutput
 
 def make_worker(client: OpenAI, model: str) -> Agent[ArithmeticWorkerInput, ArithmeticWorkerOutput]:
     """

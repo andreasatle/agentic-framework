@@ -1,7 +1,7 @@
 from openai import OpenAI
 
-from ...agents import Agent
-from .types import SentimentWorkerInput, SentimentWorkerOutput
+from agentic.agents import Agent
+from agentic.problem.sentiment.types import SentimentWorkerInput, SentimentWorkerOutput
 
 
 def make_worker(client: OpenAI, model: str) -> Agent[SentimentWorkerInput, SentimentWorkerOutput]:

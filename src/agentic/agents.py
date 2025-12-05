@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Generic
 from openai import OpenAI
 
-from .protocols import InputSchema, OutputSchema
+from agentic.protocols import InputSchema, OutputSchema
 
 
 # ============================================================

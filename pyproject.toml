@@ -1,5 +1,5 @@
 [project]
-name = "agenticroadmap"
+name = "agentic"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -10,3 +10,14 @@ dependencies = [
     "pytest>=9.0.1",
     "python-dotenv>=1.2.1",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["agentic*"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+agentic = "agentic.main:main"

@@ -1,16 +1,16 @@
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
-from .schemas import (
+from agentic.schemas import (
     PlannerInput,
     PlannerOutput,
     WorkerInput,
     WorkerOutput,
     CriticInput,
 )
-from .protocols import AgentProtocol, InputSchema, OutputSchema
+from agentic.protocols import AgentProtocol, InputSchema, OutputSchema
 from pydantic import ValidationError
-from .logging_config import get_logger
+from agentic.logging_config import get_logger
 
 logger = get_logger("agentic.dispatcher")
 

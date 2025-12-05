@@ -1,6 +1,6 @@
 from openai import OpenAI
-from ...agents import Agent
-from .types import ArithmeticCriticInput, ArithmeticCriticOutput
+from agentic.agents import Agent
+from agentic.problem.arithmetic.types import ArithmeticCriticInput, ArithmeticCriticOutput
 
 def make_critic(client: OpenAI, model: str) -> Agent[ArithmeticCriticInput, ArithmeticCriticOutput]:
     prompt = """

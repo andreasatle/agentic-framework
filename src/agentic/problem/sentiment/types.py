@@ -2,8 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from ...agent_dispatcher import AgentDispatcher
-from ...schemas import (
+from agentic.agent_dispatcher import AgentDispatcher
+from agentic.schemas import (
     Decision,
     PlannerInput,
     PlannerOutput,

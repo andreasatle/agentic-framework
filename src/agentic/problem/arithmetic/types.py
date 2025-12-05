@@ -1,7 +1,7 @@
 from typing import Literal
 from pydantic import BaseModel, Field
 
-from ...schemas import (
+from agentic.schemas import (
     Decision,
     PlannerInput,
     PlannerOutput,
@@ -9,7 +9,7 @@ from ...schemas import (
     WorkerOutput,
     CriticInput,
 )
-from ...agent_dispatcher import AgentDispatcher
+from agentic.agent_dispatcher import AgentDispatcher
 
 class Task(BaseModel):
     """A well-bounded arithmetic task."""

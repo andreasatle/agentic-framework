@@ -1,11 +1,11 @@
 from openai import OpenAI
 
-from ...tool_registry import ToolRegistry
-from .types import ArithmeticDispatcher, Task
-from .planner import make_planner
-from .worker import make_worker
-from .critic import make_critic
-from .tools import compute
+from agentic.tool_registry import ToolRegistry
+from agentic.problem.arithmetic.types import ArithmeticDispatcher, Task
+from agentic.problem.arithmetic.planner import make_planner
+from agentic.problem.arithmetic.worker import make_worker
+from agentic.problem.arithmetic.critic import make_critic
+from agentic.problem.arithmetic.tools import compute
 
 
 def make_agent_dispatcher(

@@ -1,4 +1,4 @@
-from .types import (
+from agentic.problem.arithmetic.types import (
     Task,
     Result,
     ArithmeticPlannerInput,
@@ -9,10 +9,10 @@ from .types import (
     ArithmeticCriticOutput,
     ArithmeticDispatcher,
 )
-from .planner import make_planner
-from .worker import make_worker
-from .critic import make_critic
-from .factory import make_agent_dispatcher, make_tool_registry
+from agentic.problem.arithmetic.planner import make_planner
+from agentic.problem.arithmetic.worker import make_worker
+from agentic.problem.arithmetic.critic import make_critic
+from agentic.problem.arithmetic.factory import make_agent_dispatcher, make_tool_registry
 
 __all__ = [
     "Task",

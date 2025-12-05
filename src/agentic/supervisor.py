@@ -1,10 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from .schemas import WorkerInput, WorkerOutput, CriticInput
-from .tool_registry import ToolRegistry
-from .logging_config import get_logger
-from .agent_dispatcher import AgentDispatcher
+from agentic.schemas import WorkerInput, WorkerOutput, CriticInput
+from agentic.tool_registry import ToolRegistry
+from agentic.logging_config import get_logger
+from agentic.agent_dispatcher import AgentDispatcher
 
 logger = get_logger("agentic.supervisor")
 

@@ -1,6 +1,6 @@
 from openai import OpenAI
-from ...agents import Agent
-from .types import ArithmeticPlannerInput, ArithmeticPlannerOutput
+from agentic.agents import Agent
+from agentic.problem.arithmetic.types import ArithmeticPlannerInput, ArithmeticPlannerOutput
 
 def make_planner(client: OpenAI, model: str) -> Agent[ArithmeticPlannerInput, ArithmeticPlannerOutput]:
     """

@@ -1,7 +1,7 @@
 from openai import OpenAI
 
-from ...agents import Agent
-from .types import SentimentCriticInput, SentimentCriticOutput
+from agentic.agents import Agent
+from agentic.problem.sentiment.types import SentimentCriticInput, SentimentCriticOutput
 
 
 def make_critic(client: OpenAI, model: str) -> Agent[SentimentCriticInput, SentimentCriticOutput]:

@@ -1,4 +1,4 @@
-from .types import (
+from agentic.problem.sentiment.types import (
     Task,
     Result,
     SentimentPlannerInput,
@@ -9,10 +9,10 @@ from .types import (
     SentimentCriticOutput,
     SentimentDispatcher,
 )
-from .planner import make_planner
-from .worker import make_worker
-from .critic import make_critic
-from .factory import make_agent_dispatcher, make_tool_registry
+from agentic.problem.sentiment.planner import make_planner
+from agentic.problem.sentiment.worker import make_worker
+from agentic.problem.sentiment.critic import make_critic
+from agentic.problem.sentiment.factory import make_agent_dispatcher, make_tool_registry
 
 
 __all__ = [
