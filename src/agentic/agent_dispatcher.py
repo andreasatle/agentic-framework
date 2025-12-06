@@ -7,6 +7,7 @@ from agentic.schemas import (
     WorkerInput,
     WorkerOutput,
     CriticInput,
+    AgentCallResult
 )
 from agentic.protocols import AgentProtocol, InputSchema, OutputSchema
 from pydantic import ValidationError
@@ -67,12 +68,14 @@ class AgentDispatcher(Generic[T, R, D], AgentDispatcherBase):
 
     # inherits max_retries and _call from base
 
-    def plan(self) -> PlannerOutput[T]:
-        # Empty PlannerInput for now; you decided planner is stateless
-        return self._call(self.planner, PlannerInput[T, R]())
+    def plan(self) -> AgentCallResult[PlannerOutput[T]]:
+        output: PlannerOutput[T] = self._call(self.planner, PlannerInput[T, R]())
+        return AgentCallResult(agent_id=self.planner.id, output=output)
 
-    def work(self, args: WorkerInput[T, R]) -> WorkerOutput[R, T]:
-        return self._call(self.worker, args)
+    def work(self, args: WorkerInput[T, R]) -> AgentCallResult[WorkerOutput[R, T]]:
+        output: WorkerOutput[R, T] = self._call(self.worker, args)
+        return AgentCallResult(agent_id=self.worker.id, output=output)
 
-    def critique(self, args: CriticInput[T, R]) -> D:
-        return self._call(self.critic, args)
+    def critique(self, args: CriticInput[T, R]) -> AgentCallResult[D]:
+        output: D = self._call(self.critic, args)
+        return AgentCallResult(agent_id=self.critic.id, output=output)

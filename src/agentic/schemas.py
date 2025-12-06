@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from typing import Literal, TypeVar, Generic
+from typing import Literal, TypeVar, Generic, Final
 from pydantic import BaseModel, Field, model_validator
+from dataclasses import dataclass, field
+from uuid import uuid4
 
 # ---------------------------------------------------------
 # Core atomic semantic types
@@ -82,3 +84,16 @@ class CriticInput(BaseModel, Generic[T, R]):
 class CriticOutput(BaseModel, Generic[D]):
     """Critic output wrapper for decision payloads."""
     decision: D
+
+
+AgentOutput = TypeVar("AgentOutput")  # Output type (PlannerOutput, WorkerOutput, Decision, etc.)
+
+@dataclass(frozen=True)
+class AgentCallResult(Generic[AgentOutput]):
+    """
+    Wraps the output of an agent call together with the agent's identity.
+    Frozen to prevent accidental mutation.
+    """
+    output: AgentOutput
+    agent_id: str
+    call_id: Final[str] = field(default_factory=lambda: str(uuid4()))

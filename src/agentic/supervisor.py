@@ -17,16 +17,17 @@ class Supervisor:
 
     def __call__(self) -> dict:
         """Planner → Worker → Critic loop, bounded, scalable."""
-        planner_output = self.dispatcher.plan()
-        plan_task = planner_output.task
+        planner_response = self.dispatcher.plan()
+        print(f"Planner ID: {planner_response.agent_id}")
+        plan_task = planner_response.output.task
 
         # Initial WorkerInput
         worker_input = WorkerInput(task=plan_task)
         for iter in range(1, self.max_loops + 1):
-            worker_output = self.dispatcher.work(worker_input)
+            worker_response = self.dispatcher.work(worker_input)
 
             # Route on exactly one active branch
-            match worker_output:
+            match worker_response.output:
 
                 # ----- Tool branch → call registry → reinject into worker input
                 case WorkerOutput(tool_request=request) if request is not None:
@@ -47,25 +48,25 @@ class Supervisor:
                 # ----- Result branch → send Worker result to critic
                 case WorkerOutput(result=result) if result is not None:
                     critic_input = CriticInput(plan=plan_task, worker_answer=result)
-                    critic_output = self.dispatcher.critique(critic_input)
+                    critic_response = self.dispatcher.critique(critic_input)
 
                     # Act on critic signal
-                    match critic_output.decision:
+                    match critic_response.output.decision:
                         case "ACCEPT":
                             logger.info(f"[supervisor] ACCEPT on {iter}")
                             return {
                                 "plan": plan_task,
                                 "result": result,
-                                "decision": critic_output,
+                                "decision": critic_response.output,
                                 "loops_used": iter,
                             }
                         case "REJECT":
                             logger.info(f"[supervisor] REJECT on {iter}")
                             # Reinject feedback into next worker input, keep tool_result if present
                             worker_input = WorkerInput(
-                                task=planner_output,
+                                task=planner_response.output,
                                 previous_result=result,
-                                feedback=critic_output.feedback,
+                                feedback=critic_response.output.feedback,
                                 tool_result=worker_input.tool_result,
                             )
                 # ----- Safety fallback

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Generic
+from dataclasses import dataclass, field
+from typing import Generic, Final
+from uuid import uuid4
 from openai import OpenAI
 
 from agentic.protocols import InputSchema, OutputSchema
@@ -27,6 +28,7 @@ class Agent(Generic[InputSchema, OutputSchema]):
     input_schema: type[InputSchema]
     output_schema: type[OutputSchema]
     temperature: float = 0.0
+    id: Final[str] = field(default_factory=lambda: str(uuid4()))
 
     def __call__(self, user_input: str) -> str:
         """
