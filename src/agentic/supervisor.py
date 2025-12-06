@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from typing import Callable
 
 from agentic.schemas import WorkerInput, CriticInput
 from agentic.tool_registry import ToolRegistry
@@ -15,6 +16,14 @@ class Supervisor:
     tool_registry: ToolRegistry
     max_loops: int = 5
 
+    def __post_init__(self) -> None:
+        self._handlers: dict[State, Callable[[SupervisorContext], State]] = {
+            State.PLAN: self._handle_plan,
+            State.WORK: self._handle_work,
+            State.TOOL: self._handle_tool,
+            State.CRITIC: self._handle_critic,
+        }
+
     def __call__(self) -> dict:
         """
         Explicit FSM over PLAN → WORK → TOOL/CRITIC → END.
@@ -23,18 +32,12 @@ class Supervisor:
         context = SupervisorContext(trace=[])
         state = State.PLAN
 
-        while state != State.END and context.loops_used <= self.max_loops:
-            context.loops_used += 1
-            if state is State.PLAN:
-                state = self._handle_plan(context)
-            elif state is State.WORK:
-                state = self._handle_work(context)
-            elif state is State.TOOL:
-                state = self._handle_tool(context)
-            elif state is State.CRITIC:
-                state = self._handle_critic(context)
-            else:
+        while state != State.END and context.loops_used < self.max_loops:
+            handler = self._handlers.get(state)
+            if handler is None:
                 raise RuntimeError(f"Unknown supervisor state: {state}")
+            context.loops_used += 1
+            state = handler(context)
 
         if state != State.END:
             raise RuntimeError("Supervisor exited without reaching END state.")
