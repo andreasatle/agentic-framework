@@ -1,4 +1,9 @@
 from enum import Enum, auto
+from dataclasses import dataclass
+from typing import Any
+
+from agentic.schemas import WorkerInput, WorkerOutput, CriticInput
+
 
 class SupervisorState(Enum):
     PLAN = auto()
@@ -7,17 +12,19 @@ class SupervisorState(Enum):
     CRITIC = auto()
     END = auto()
 
-class ContextKey(Enum):
-    PLAN = auto()
-    WORKER_INPUT = auto()
-    WORKER_RESULT = auto()
-    WORKER_OUTPUT = auto()
-    TOOL_REQUEST = auto()
-    TOOL_RESULT = auto()
-    CRITIC_INPUT = auto()
-    DECISION = auto()
-    FEEDBACK = auto()
-    LOOPS_USED = auto()
-    FINAL_RESULT = auto()
-    FINAL_OUTPUT = auto()
-    TRACE = auto()
+
+@dataclass
+class SupervisorContext:
+    plan: Any | None = None
+    worker_input: WorkerInput | None = None
+    worker_output: WorkerOutput | None = None
+    worker_result: Any | None = None
+    final_output: WorkerOutput | None = None
+    tool_request: Any | None = None
+    tool_result: Any | None = None
+    critic_input: CriticInput | None = None
+    decision: Any | None = None
+    feedback: Any | None = None
+    final_result: Any | None = None
+    loops_used: int = 0
+    trace: list[Any] | None = None
