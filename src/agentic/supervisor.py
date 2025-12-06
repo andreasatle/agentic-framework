@@ -55,7 +55,28 @@ class Supervisor:
         }
 
     def _handle_plan(self, context: SupervisorContext) -> State:
-        planner_response = self.dispatcher.plan()
+        try:
+            planner_response = self.dispatcher.plan()
+        except RuntimeError as e:
+            # Planner failed (e.g., invalid worker routing). Route through critic.
+            context.feedback = str(e)
+            context.plan = None
+            context.worker_id = None
+            context.worker_input = None
+            context.trace.append(
+                {
+                    "state": State.PLAN,
+                    "agent_id": "Planner",
+                    "call_id": None,
+                    "tool_name": None,
+                    "input": None,
+                    "output": None,
+                    "error": str(e),
+                }
+            )
+            context.critic_input = CriticInput(plan={}, worker_answer=None)  # minimal critic input
+            return State.CRITIC
+
         logger.debug(f"[supervisor] PLAN call_id={planner_response.call_id}")
         context.plan = planner_response.output.task
         context.worker_id = planner_response.output.worker_id
@@ -167,7 +188,9 @@ class Supervisor:
             context.feedback = decision.feedback
             prev_worker_input = context.worker_input
             if prev_worker_input is None:
-                raise RuntimeError("Missing worker_input on REJECT transition.")
+                # Planner failed, retry planning
+                logger.info(f"[supervisor] REJECT after {context.loops_used} transitions (replanning)")
+                return State.PLAN
             context.worker_input = WorkerInput(
                 task=prev_worker_input.task,
                 previous_result=prev_worker_input.previous_result,
