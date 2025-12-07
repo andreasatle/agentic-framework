@@ -2,12 +2,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from agentic.schemas import WorkerInput, Decision, ArithmeticTask
+from agentic.schemas import WorkerInput, Decision
 from agentic.tool_registry import ToolRegistry
 from agentic.logging_config import get_logger
 from agentic.agent_dispatcher import AgentDispatcher
 from agentic.supervisor_types import SupervisorState as State, SupervisorContext
-from agentic.problem.arithmetic.types import WORKER_CAPABILITIES
 logger = get_logger("agentic.supervisor")
 
 
@@ -131,20 +130,17 @@ class Supervisor:
 
         task = context.plan
         worker_id = context.worker_id
-        if isinstance(task, ArithmeticTask):
-            spec = WORKER_CAPABILITIES.get(worker_id)
-
-            if spec is None or task.op not in spec.supported_ops:
-                context.critic_input = self._build_critic_input(
-                    plan=task,
-                    worker_answer=None,
-                    worker_id=worker_id,
-                )
-                context.decision = Decision(
-                    decision="REJECT",
-                    feedback=f"Worker '{worker_id}' does not support op '{task.op}'",
-                )
-                return State.CRITIC
+        if not self.dispatcher.validate_worker_routing(task, worker_id):
+            context.critic_input = self._build_critic_input(
+                plan=task,
+                worker_answer=None,
+                worker_id=worker_id,
+            )
+            context.decision = Decision(
+                decision="REJECT",
+                feedback=f"Worker '{worker_id}' is not valid for the proposed plan",
+            )
+            return State.CRITIC
 
         worker_response = self.dispatcher.work(context.worker_id, context.worker_input)
         worker_output = worker_response.output
@@ -256,9 +252,9 @@ class Supervisor:
     def _build_critic_input(self, plan, worker_answer, worker_id):
         critic_input_cls = self.dispatcher.critic.input_schema
         critic_kwargs = {"plan": plan, "worker_answer": worker_answer}
-        model_fields = getattr(critic_input_cls, "model_fields", {})
-        if "worker_id" in model_fields:
+        fields = critic_input_cls.model_fields
+        if "worker_id" in fields:
             critic_kwargs["worker_id"] = worker_id or ""
-        if "project_description" in model_fields:
+        if "project_description" in fields:
             critic_kwargs["project_description"] = self.planner_defaults.get("project_description", "")
         return critic_input_cls(**critic_kwargs)

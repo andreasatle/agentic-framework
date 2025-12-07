@@ -99,3 +99,6 @@ class AgentDispatcher(Generic[T, R, D], AgentDispatcherBase):
     def critique(self, args: CriticInput[T, R]) -> AgentCallResult[D]:
         output: D = self._call(self.critic, args)
         return AgentCallResult(agent_id=self.critic.id, output=output)
+
+    def validate_worker_routing(self, task: T, worker_id: str) -> bool:
+        return True

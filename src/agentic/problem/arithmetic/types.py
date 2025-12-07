@@ -59,10 +59,12 @@ class ArithmeticWorkerOutput(WorkerOutput[ArithmeticResult]):
 
 class ArithmeticCriticInput(CriticInput[ArithmeticTask, ArithmeticResult]):
     worker_id: str
-    worker_answer: ArithmeticResult | None = None
+    worker_answer: ArithmeticResult | None
 
 
 ArithmeticCriticOutput = Decision
 
-# Dispatcher binding for this domain
-ArithmeticDispatcher = AgentDispatcher[ArithmeticTask, ArithmeticResult, Decision]
+class ArithmeticDispatcher(AgentDispatcher[ArithmeticTask, ArithmeticResult, Decision]):
+    def validate_worker_routing(self, task: ArithmeticTask, worker_id: str) -> bool:
+        spec = WORKER_CAPABILITIES.get(worker_id)
+        return bool(spec and task.op in spec.supported_ops)
