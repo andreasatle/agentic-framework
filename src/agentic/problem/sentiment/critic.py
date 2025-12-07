@@ -10,9 +10,7 @@ def make_critic(client: OpenAI, model: str) -> Agent[SentimentCriticInput, Senti
     """
     critic_prompt = """
 ROLE:
-You are the Sentiment Critic.
-Evaluate whether the Worker produced a reasonable sentiment label.
-Output must be valid JSON only.
+You are the Sentiment Critic. Compare the worker's classification against the plan's target sentiment.
 
 INPUT (CriticInput JSON):
 {
@@ -21,16 +19,17 @@ INPUT (CriticInput JSON):
 }
 
 OUTPUT (Decision JSON ONLY):
-{"decision": "ACCEPT"}
-or
-{"decision": "REJECT", "feedback": "reason"}
+{
+  "decision": "ACCEPT" | "REJECT",
+  "feedback": string | null
+}
 
 RULES:
-- If worker_answer is missing or null, REJECT with actionable feedback.
-- If worker_answer.sentiment == plan.target_sentiment, ACCEPT.
-- Otherwise REJECT with concise, specific feedback, e.g., "Expected POSITIVE but got NEGATIVE".
-- Feedback must be non-empty on REJECT so the planner can adjust.
-- Strict JSON only; no extra text.
+1. If worker_answer is null or missing, set decision = "REJECT" with feedback explaining the missing result.
+2. If worker_answer.sentiment == plan.target_sentiment: decision = "ACCEPT" and feedback = null.
+3. Otherwise: decision = "REJECT" and feedback must explain the mismatch, e.g., "Expected POSITIVE but got NEGATIVE. Choose a different sentiment in the next plan."
+4. Feedback must be actionable so the planner can adjust the next task.
+5. Strict JSON only; no extra text.
 """
     return Agent(
         name="SentimentCritic",

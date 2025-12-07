@@ -13,7 +13,7 @@ from agentic.schemas import (
 )
 
 
-class Task(BaseModel):
+class SentimentTask(BaseModel):
     """Sentiment classification task."""
     text: str = Field(..., max_length=280)
     target_sentiment: Literal["POSITIVE", "NEGATIVE", "NEUTRAL"]
@@ -24,13 +24,19 @@ class Result(BaseModel):
     sentiment: Literal["POSITIVE", "NEGATIVE", "NEUTRAL"]
 
 
+class SentimentPlannerInput(PlannerInput[SentimentTask, Result]):
+    """Planner context for sentiment tasks."""
+    previous_task: SentimentTask | None = None
+    feedback: str | None = None
+    random_seed: int | str | None = None
+
+
 # Bind generics to domain
-SentimentPlannerInput = PlannerInput[Task, Result]
-SentimentPlannerOutput = PlannerOutput[Task]
-SentimentWorkerInput = WorkerInput[Task, Result]
+SentimentPlannerOutput = PlannerOutput[SentimentTask]
+SentimentWorkerInput = WorkerInput[SentimentTask, Result]
 SentimentWorkerOutput = WorkerOutput[Result]
-SentimentCriticInput = CriticInput[Task, Result]
+SentimentCriticInput = CriticInput[SentimentTask, Result]
 SentimentCriticOutput = Decision
 
 # Dispatcher binding for this domain
-SentimentDispatcher = AgentDispatcher[Task, Result, Decision]
+SentimentDispatcher = AgentDispatcher[SentimentTask, Result, Decision]

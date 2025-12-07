@@ -1,5 +1,5 @@
 from agentic.problem.sentiment.types import (
-    Task,
+    SentimentTask,
     Result,
     SentimentPlannerInput,
     SentimentPlannerOutput,
@@ -16,7 +16,7 @@ from agentic.problem.sentiment.factory import make_agent_dispatcher, make_tool_r
 
 
 __all__ = [
-    "Task",
+    "SentimentTask",
     "Result",
     "SentimentPlannerInput",
     "SentimentPlannerOutput",

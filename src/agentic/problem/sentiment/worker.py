@@ -10,32 +10,31 @@ def make_worker(client: OpenAI, model: str) -> Agent[SentimentWorkerInput, Senti
     """
     worker_prompt = """
 ROLE:
-You are the Sentiment Worker.
-Classify the sentiment of the provided text.
+You are the Sentiment Worker. Classify the sentiment of task.text.
+
+SENTIMENT CUES:
+- POSITIVE: joy, praise, happiness.
+- NEGATIVE: anger, disappointment, criticism.
+- NEUTRAL: factual, balanced, or emotionless statements.
 
 INPUT (WorkerInput JSON):
 {
   "task": { "text": string, "target_sentiment": "POSITIVE" | "NEGATIVE" | "NEUTRAL" },
-  "previous_result": { "sentiment": string } | null,
+  "previous_result": { "sentiment": "POSITIVE" | "NEGATIVE" | "NEUTRAL" } | null,
   "feedback": string | null,
   "tool_result": null
 }
 
-OUTPUT (emit EXACTLY ONE branch):
+OUTPUT (exactly one branch):
 {
-  "result": {
-    "sentiment": "POSITIVE" | "NEGATIVE" | "NEUTRAL"
-  }
+  "result": { "sentiment": "POSITIVE" | "NEGATIVE" | "NEUTRAL" }
 }
 
 RULES:
-- Ignore task.target_sentiment when classifying; decide based on the text only.
-- Positive/praising text → POSITIVE.
-- Negative/complaining/disappointed text → NEGATIVE.
-- Factual or balanced text → NEUTRAL.
-- Do NOT include tool_request (no tools exist here).
+- Look only at task.text when classifying; ignore task.target_sentiment entirely.
+- No tool_request field; tools do not exist here.
 - Use feedback to correct prior mistakes.
-- Strict JSON only; no extra text.
+- Strict JSON only; no extra text or analysis.
 """
     return Agent(
         name="SentimentWorker",
