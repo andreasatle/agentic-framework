@@ -1,19 +1,42 @@
-from pydantic import model_validator
-from agentic.schemas import (
-    Decision,
-    ArithmeticTask,
-    ArithmeticResult,
-    AddArgs,
-    SubArgs,
-    MulArgs,
-    WorkerSpec,
-    PlannerInput,
-    PlannerOutput,
-    WorkerInput,
-    WorkerOutput,
-    CriticInput,
-)
+from typing import Literal, Union
+
+from pydantic import BaseModel, model_validator
+from agentic.schemas import Decision, PlannerInput, PlannerOutput, WorkerInput, WorkerOutput, CriticInput
 from agentic.agent_dispatcher import AgentDispatcher
+
+
+class ArithmeticTask(BaseModel):
+    """Domain task schema shared by planner/worker/critic."""
+    op: Literal["ADD", "SUB", "MUL"]
+    a: int
+    b: int
+
+
+class AddArgs(BaseModel):
+    a: int
+    b: int
+
+
+class SubArgs(BaseModel):
+    a: int
+    b: int
+
+
+class MulArgs(BaseModel):
+    a: int
+    b: int
+
+
+class ArithmeticResult(BaseModel):
+    value: int
+
+
+class WorkerSpec(BaseModel):
+    worker_id: str
+    supported_ops: set[Literal["ADD", "SUB", "MUL"]]
+
+
+ArithmeticArgs = Union[AddArgs, SubArgs, MulArgs]
 
 
 WORKER_CAPABILITIES: dict[str, WorkerSpec] = {

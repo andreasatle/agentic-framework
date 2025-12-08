@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, TypeVar, Generic, Final, Union, Any
+from typing import Literal, TypeVar, Generic, Final, Any
 from pydantic import BaseModel, Field, model_validator
 from dataclasses import dataclass, field
 from uuid import uuid4
@@ -25,40 +25,6 @@ class Decision(BaseModel):
             if not (self.feedback and self.feedback.strip()):
                 raise ValueError("feedback is required when decision == 'REJECT'")
         return self
-
-
-class ArithmeticTask(BaseModel):
-    """Domain task schema shared by planner/worker/critic."""
-    op: Literal["ADD", "SUB", "MUL"]
-    a: int
-    b: int
-
-
-class AddArgs(BaseModel):
-    a: int
-    b: int
-
-
-class SubArgs(BaseModel):
-    a: int
-    b: int
-
-
-class MulArgs(BaseModel):
-    a: int
-    b: int
-
-
-class ArithmeticResult(BaseModel):
-    value: int
-
-
-class WorkerSpec(BaseModel):
-    worker_id: str
-    supported_ops: set[Literal["ADD", "SUB", "MUL"]]
-
-ArithmeticArgs = Union[AddArgs, SubArgs, MulArgs]
-
 
 # ---------------------------------------------------------
 # Agent input/output contracts
