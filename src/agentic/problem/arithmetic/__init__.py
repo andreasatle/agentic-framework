@@ -16,7 +16,7 @@ from agentic.problem.arithmetic.types import (
 from agentic.problem.arithmetic.planner import make_planner
 from agentic.problem.arithmetic.worker import make_worker
 from agentic.problem.arithmetic.critic import make_critic
-from agentic.problem.arithmetic.factory import make_agent_dispatcher, make_tool_registry
+from agentic.problem.arithmetic.factory import make_agent_dispatcher, make_tool_registry, problem_state_cls
 
 __all__ = [
     "ArithmeticTask",
@@ -37,4 +37,5 @@ __all__ = [
     "make_worker",
     "make_critic",
     "make_tool_registry",
+    "problem_state_cls",
 ]

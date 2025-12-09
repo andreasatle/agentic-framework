@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from agentic.schemas import WorkerInput, Decision, ProjectState, HistoryEntry
+from agentic.schemas import WorkerInput, WorkerOutput, Decision, ProjectState, HistoryEntry
 from agentic.tool_registry import ToolRegistry
 from agentic.logging_config import get_logger
 from agentic.agent_dispatcher import AgentDispatcher
@@ -14,6 +14,7 @@ logger = get_logger("agentic.supervisor")
 class Supervisor:
     dispatcher: AgentDispatcher
     tool_registry: ToolRegistry
+    problem_state_cls: type
     max_loops: int = 5
     planner_defaults: dict[str, Any] = field(default_factory=dict)
 
@@ -32,6 +33,9 @@ class Supervisor:
         """
         context = SupervisorContext(trace=[])
         context.project_state = ProjectState()
+        domain = self.dispatcher.domain_name
+        if domain not in context.project_state.domain_state:
+            context.project_state.domain_state[domain] = self.problem_state_cls()
         self._current_project_state = context.project_state
         state = State.PLAN
 
@@ -185,8 +189,6 @@ class Supervisor:
 
         worker_response = self.dispatcher.work(context.worker_id, context.worker_input)
         worker_output = worker_response.output
-        if getattr(worker_output, "new_state", None) is not None:
-            context.project_state.domain_state[self.dispatcher.domain_name] = worker_output.new_state
         context.worker_output = worker_output
         context.last_stage = "work"
         context.trace.append(
@@ -313,6 +315,12 @@ class Supervisor:
         if decision.decision == "ACCEPT":
             context.final_result = context.worker_result
             context.final_output = context.worker_output
+            domain = self.dispatcher.domain_name
+            prev_state = context.project_state.domain_state.get(domain)
+            if prev_state is None:
+                prev_state = self.problem_state_cls()
+            new_state = prev_state.update(context.worker_output)
+            context.project_state.domain_state[domain] = new_state
             logger.info(f"[supervisor] ACCEPT after {context.loops_used} transitions")
             return State.END
 

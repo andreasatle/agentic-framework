@@ -9,6 +9,7 @@ from agentic.problem.arithmetic import (
     ArithmeticPlannerInput,
     make_agent_dispatcher,
     make_tool_registry,
+    problem_state_cls,
 )
 from agentic.supervisor import Supervisor
 
@@ -43,6 +44,7 @@ def main() -> None:
         tool_registry=tool_registry,
         max_loops=5,
         planner_defaults=initial_planner_input.model_dump(),
+        problem_state_cls=problem_state_cls,
     )
     run = supervisor()
     _pretty_print_run(run)

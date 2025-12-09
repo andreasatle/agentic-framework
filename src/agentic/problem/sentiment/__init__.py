@@ -12,7 +12,7 @@ from agentic.problem.sentiment.types import (
 from agentic.problem.sentiment.planner import make_planner
 from agentic.problem.sentiment.worker import make_worker
 from agentic.problem.sentiment.critic import make_critic
-from agentic.problem.sentiment.factory import make_agent_dispatcher, make_tool_registry
+from agentic.problem.sentiment.factory import make_agent_dispatcher, make_tool_registry, problem_state_cls
 
 
 __all__ = [
@@ -30,4 +30,5 @@ __all__ = [
     "make_worker",
     "make_critic",
     "make_tool_registry",
+    "problem_state_cls",
 ]

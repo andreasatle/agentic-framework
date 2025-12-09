@@ -1,9 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
 from agentic.schemas import ProjectState, WorkerOutput
-
-
-class WriterState(BaseModel):
-    sections: dict[str, str] = Field(default_factory=dict)
 
 
 class ProblemState(BaseModel):

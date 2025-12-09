@@ -3,7 +3,7 @@ from __future__ import annotations
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from agentic.problem.sentiment import make_agent_dispatcher, make_tool_registry
+from agentic.problem.sentiment import make_agent_dispatcher, make_tool_registry, problem_state_cls
 from agentic.supervisor import Supervisor
 
 
@@ -35,6 +35,7 @@ def main() -> None:
         dispatcher=dispatcher,
         tool_registry=tool_registry,
         max_loops=5,
+        problem_state_cls=problem_state_cls,
     )
     run = supervisor()
     _pretty_print_run(run)
@@ -42,4 +43,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
