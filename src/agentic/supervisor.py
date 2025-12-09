@@ -126,7 +126,10 @@ class Supervisor:
         context.previous_plan = planner_output.task
         context.previous_worker_id = planner_output.worker_id
         context.planner_feedback = None
-        context.worker_input = WorkerInput(task=context.plan)
+        context.worker_input = WorkerInput(
+            task=context.plan,
+            project_state=context.project_state,
+        )
         context.last_stage = "plan"
         context.trace.append(
             {
@@ -264,6 +267,7 @@ class Supervisor:
             previous_result=prev_worker_input.previous_result,
             feedback=prev_worker_input.feedback,
             tool_result=tool_result,
+            project_state=context.project_state,
         )
         context.project_state.history.append(
             HistoryEntry(
@@ -325,6 +329,7 @@ class Supervisor:
                 previous_result=prev_worker_input.previous_result,
                 feedback=decision.feedback,
                 tool_result=prev_worker_input.tool_result,
+                project_state=context.project_state,
             )
             logger.info(f"[supervisor] REJECT after {context.loops_used} transitions")
             return State.WORK

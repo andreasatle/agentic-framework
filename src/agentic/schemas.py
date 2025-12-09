@@ -33,16 +33,17 @@ class Decision(BaseModel):
 
 class ConstrainedXOROutput(BaseModel):
     """Superclass that enforces exactly one active branch over child fields."""
+    _xor_fields: tuple[str, ...] = ("result", "tool_request")
 
     @model_validator(mode="after")
     def enforce_xor(self):
-        # Count all non-null fields on the instance
-        non_null_count = sum(
-            1 for _, v in self.__dict__.items() if v is not None
+        non_null = sum(
+            1 for f in self._xor_fields
+            if getattr(self, f, None) is not None
         )
-        if non_null_count != 1:
+        if non_null != 1:
             raise ValueError(
-                f"Exactly one branch must be active, found {non_null_count}"
+                f"Exactly one branch among {self._xor_fields} must be set; found {non_null}"
             )
         return self
     
@@ -98,6 +99,7 @@ class WorkerInput(BaseModel, Generic[T, R]):
     previous_result: R | None = None
     feedback: str | None = None
     tool_result: R | None = None
+    project_state: ProjectState | None = None
 
 class WorkerOutput(ConstrainedXOROutput, Generic[R]):
     result: R | None = None

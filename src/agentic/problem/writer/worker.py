@@ -17,17 +17,23 @@ INPUT (WriterWorkerInput JSON):
   "previous_text": string | null,
   "previous_result": { "text": string } | null,
   "feedback": string | null,
-  "tool_result": null
+  "tool_result": null,
+  "writer_state": { "sections": { ... } } | null,
+  "project_state": { ... } | null
 }
 
 OUTPUT (WorkerOutput JSON):
 {
-  "result": { "text": "<short placeholder paragraph>" }
+  "result": { "text": "<short placeholder paragraph>" },
+  "new_state": { "sections": { "<task.section_name>": "<short placeholder paragraph>", ... } }
 }
 
 RULES (MVP):
 - Write 1-3 sentences that directly address the purpose and requirements.
 - If feedback is present, apply it; otherwise produce a simple placeholder paragraph.
+- new_state MUST always be returned:
+  - start from writer_state.sections if provided, else {}.
+  - set sections[task.section_name] = result.text.
 - Do not request tools; always return the result branch.
 - Strict JSON only.
 """
