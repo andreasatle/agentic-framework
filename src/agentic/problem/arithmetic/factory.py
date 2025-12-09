@@ -27,6 +27,7 @@ def make_agent_dispatcher(
         planner=planner,
         workers=workers,
         critic=critic,
+        domain_name="arithmetic",
     )
 
 

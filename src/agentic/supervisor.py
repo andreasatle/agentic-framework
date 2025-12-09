@@ -182,6 +182,8 @@ class Supervisor:
 
         worker_response = self.dispatcher.work(context.worker_id, context.worker_input)
         worker_output = worker_response.output
+        if getattr(worker_output, "new_state", None) is not None:
+            context.project_state.domain_state[self.dispatcher.domain_name] = worker_output.new_state
         context.worker_output = worker_output
         context.last_stage = "work"
         context.trace.append(

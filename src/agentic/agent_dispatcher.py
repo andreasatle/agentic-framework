@@ -65,6 +65,7 @@ class AgentDispatcher(Generic[T, R, D], AgentDispatcherBase):
     planner: AgentProtocol[PlannerInput[T, R], PlannerOutput[T]]
     workers: dict[str, AgentProtocol[WorkerInput[T, R], WorkerOutput[R]]]
     critic: AgentProtocol[CriticInput[T, R], D]
+    domain_name: str
 
     # inherits max_retries and _call from base
 

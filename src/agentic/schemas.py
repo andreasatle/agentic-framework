@@ -102,6 +102,7 @@ class WorkerInput(BaseModel, Generic[T, R]):
 class WorkerOutput(ConstrainedXOROutput, Generic[R]):
     result: R | None = None
     tool_request: ToolRequest | None = None
+    new_state: BaseModel | None = None
 
 class CriticInput(BaseModel, Generic[T, R]):
     """Critic sees the original plan and the Worker’s answer."""

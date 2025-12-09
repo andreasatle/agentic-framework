@@ -20,6 +20,7 @@ def make_agent_dispatcher(
         planner=planner,
         workers={"coder-worker": worker},
         critic=critic,
+        domain_name="coder",
     )
 
 
