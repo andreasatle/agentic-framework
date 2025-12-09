@@ -4,12 +4,7 @@ from agentic.agents import Agent
 from agentic.problem.coder.types import CoderCriticInput, CoderCriticOutput
 
 
-def make_critic(client: OpenAI, model: str) -> Agent[CoderCriticInput, CoderCriticOutput]:
-    """
-    Critic validates that the code meets the project-aligned specification and requirements.
-    """
-    critic_prompt = """
-ROLE:
+PROMPT_CRITIC = """ROLE:
 You are the Coder Critic. Judge whether the worker's code satisfies the planned subtask and aligns with the project.
 
 INPUT (CriticInput JSON):
@@ -38,11 +33,17 @@ RULES:
 6) On ACCEPT, set feedback = null.
 7) Strict JSON only.
 """
+
+
+def make_critic(client: OpenAI, model: str) -> Agent[CoderCriticInput, CoderCriticOutput]:
+    """
+    Critic validates that the code meets the project-aligned specification and requirements.
+    """
     return Agent(
         name="CoderCritic",
         client=client,
         model=model,
-        system_prompt=critic_prompt,
+        system_prompt=PROMPT_CRITIC,
         input_schema=CoderCriticInput,
         output_schema=CoderCriticOutput,
         temperature=0.0,

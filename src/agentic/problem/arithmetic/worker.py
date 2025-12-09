@@ -1,11 +1,11 @@
+from pathlib import Path
+
 from openai import OpenAI
 from agentic.agents import Agent
 from agentic.problem.arithmetic.types import ArithmeticWorkerInput, ArithmeticWorkerOutput
 
 
-def _addsub_prompt() -> str:
-    return """
-ROLE:
+PROMPT_WORKER_ADDSUB = """ROLE:
 You are the ADD/SUB Worker.
 You support ONLY two operations: ADD and SUB.
 You MUST NOT compute MUL or any unsupported operation.
@@ -32,11 +32,7 @@ RULES:
 - Do NOT execute tools yourself for supported ops; compute directly.
 - Strict JSON only. No extra text.
 """
-
-
-def _mul_prompt() -> str:
-    return """
-ROLE:
+PROMPT_WORKER_MUL = """ROLE:
 You are the MUL Worker.
 You support ONLY the MUL operation.
 You MUST NOT compute ADD or SUB or any other operation.
@@ -72,7 +68,7 @@ def make_worker(client: OpenAI, model: str, worker_id: str) -> Agent[ArithmeticW
 
     It NEVER executes the tool itself.
     """
-    worker_prompt = _addsub_prompt() if worker_id == "worker_addsub" else _mul_prompt()
+    worker_prompt = PROMPT_WORKER_ADDSUB if worker_id == "worker_addsub" else PROMPT_WORKER_MUL
     return Agent(
         name=worker_id,
         client=client,

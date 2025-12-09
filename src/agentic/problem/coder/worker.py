@@ -4,12 +4,7 @@ from agentic.agents import Agent
 from agentic.problem.coder.types import CoderWorkerInput, CoderWorkerOutput
 
 
-def make_worker(client: OpenAI, model: str) -> Agent[CoderWorkerInput, CoderWorkerOutput]:
-    """
-    Worker produces code that satisfies the coding task.
-    """
-    worker_prompt = """
-ROLE:
+PROMPT_WORKER = """ROLE:
 You are the Coder Worker. Implement the provided subtask exactly as specified.
 
 INPUT (WorkerInput JSON):
@@ -37,11 +32,17 @@ RULES:
 - No tool_request branch; tools are not available.
 - Strict JSON only; no commentary outside the JSON.
 """
+
+
+def make_worker(client: OpenAI, model: str) -> Agent[CoderWorkerInput, CoderWorkerOutput]:
+    """
+    Worker produces code that satisfies the coding task.
+    """
     return Agent(
         name="coder-worker",
         client=client,
         model=model,
-        system_prompt=worker_prompt,
+        system_prompt=PROMPT_WORKER,
         input_schema=CoderWorkerInput,
         output_schema=CoderWorkerOutput,
         temperature=0.2,

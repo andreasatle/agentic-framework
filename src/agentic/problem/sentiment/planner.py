@@ -4,12 +4,7 @@ from agentic.agents import Agent
 from agentic.problem.sentiment.types import SentimentPlannerInput, SentimentPlannerOutput
 
 
-def make_planner(client: OpenAI, model: str) -> Agent[SentimentPlannerInput, SentimentPlannerOutput]:
-    """
-    Planner emits a single sentiment task.
-    """
-    planner_prompt = """
-ROLE:
+PROMPT_PLANNER = """ROLE:
 You are the Sentiment Planner. Generate a sentiment classification task with an explicit target sentiment and expressive text.
 
 TARGET SENTIMENTS:
@@ -49,11 +44,17 @@ NEUTRAL: "I walked to the store yesterday and bought some groceries."
 STRICT FORMAT:
 Return only the JSON object described in OUTPUT with no extra text.
 """
+
+
+def make_planner(client: OpenAI, model: str) -> Agent[SentimentPlannerInput, SentimentPlannerOutput]:
+    """
+    Planner emits a single sentiment task.
+    """
     return Agent(
         name="SentimentPlanner",
         client=client,
         model=model,
-        system_prompt=planner_prompt,
+        system_prompt=PROMPT_PLANNER,
         input_schema=SentimentPlannerInput,
         output_schema=SentimentPlannerOutput,
         temperature=0.2,

@@ -4,12 +4,7 @@ from agentic.agents import Agent
 from agentic.problem.coder.types import CoderPlannerInput, CoderPlannerOutput
 
 
-def make_planner(client: OpenAI, model: str) -> Agent[CoderPlannerInput, CoderPlannerOutput]:
-    """
-    Planner decomposes a user-defined project into concrete subtasks.
-    """
-    planner_prompt = """
-ROLE:
+PROMPT_PLANNER = """ROLE:
 You are the Coder Planner. Break down the user-provided project into a sequence of small coding subtasks.
 
 INPUT (PlannerInput JSON):
@@ -41,11 +36,17 @@ GUIDELINES:
 - No randomness: variation comes only from project_description, previous_task, and feedback.
 - Strict JSON only; no explanation or extra fields.
 """
+
+
+def make_planner(client: OpenAI, model: str) -> Agent[CoderPlannerInput, CoderPlannerOutput]:
+    """
+    Planner decomposes a user-defined project into concrete subtasks.
+    """
     return Agent(
         name="CoderPlanner",
         client=client,
         model=model,
-        system_prompt=planner_prompt,
+        system_prompt=PROMPT_PLANNER,
         input_schema=CoderPlannerInput,
         output_schema=CoderPlannerOutput,
         temperature=0.4,

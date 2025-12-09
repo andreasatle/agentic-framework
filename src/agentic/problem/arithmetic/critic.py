@@ -1,15 +1,9 @@
 from openai import OpenAI
 from agentic.agents import Agent
-from agentic.problem.arithmetic.types import ArithmeticCriticInput, ArithmeticCriticOutput, WORKER_CAPABILITIES
+from agentic.problem.arithmetic.types import ArithmeticCriticInput, ArithmeticCriticOutput
 
 
-def make_critic(client: OpenAI, model: str) -> Agent[ArithmeticCriticInput, ArithmeticCriticOutput]:
-    worker_specs = "\n".join(
-        f"- {worker_id}: supports {', '.join(sorted(spec.supported_ops))}"
-        for worker_id, spec in sorted(WORKER_CAPABILITIES.items())
-    )
-    prompt = """
-ROLE:
+PROMPT_CRITIC = """ROLE:
 You are the Arithmetic Critic.
 Enforce correctness and proper worker routing.
 
@@ -41,11 +35,13 @@ RULES:
 6. Feedback must be actionable; Strict JSON only.
 """
 
+
+def make_critic(client: OpenAI, model: str) -> Agent[ArithmeticCriticInput, ArithmeticCriticOutput]:
     return Agent(
         name="Critic",
         client=client,
         model=model,
-        system_prompt=prompt,
+        system_prompt=PROMPT_CRITIC,
         input_schema=ArithmeticCriticInput,
         output_schema=ArithmeticCriticOutput,
         temperature=0.0,

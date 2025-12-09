@@ -3,21 +3,10 @@ from agentic.agents import Agent
 from agentic.problem.arithmetic.types import (
     ArithmeticPlannerInput,
     ArithmeticPlannerOutput,
-    WORKER_CAPABILITIES,
 )
 
 
-def make_planner(client: OpenAI, model: str) -> Agent[ArithmeticPlannerInput, ArithmeticPlannerOutput]:
-    """
-    Planner emits a single ArithmeticTask and routes it to a compatible worker.
-    """
-    worker_specs = "\n".join(
-        f"- {worker_id}: supports {', '.join(sorted(spec.supported_ops))}"
-        for worker_id, spec in sorted(WORKER_CAPABILITIES.items())
-    )
-    worker_options = " | ".join(f'"{worker_id}"' for worker_id in sorted(WORKER_CAPABILITIES))
-    planner_prompt = """
-ROLE:
+PROMPT_PLANNER = """ROLE:
 You are the Arithmetic Planner.
 Use the capability table to route tasks to the correct worker.
 
@@ -62,11 +51,17 @@ RULES:
 4) OUTPUT:
    - Strict JSON only; no comments or extra fields.
 """
+
+
+def make_planner(client: OpenAI, model: str) -> Agent[ArithmeticPlannerInput, ArithmeticPlannerOutput]:
+    """
+    Planner emits a single ArithmeticTask and routes it to a compatible worker.
+    """
     return Agent(
         name="Planner",
         client=client,
         model=model,
-        system_prompt=planner_prompt,
+        system_prompt=PROMPT_PLANNER,
         input_schema=ArithmeticPlannerInput,
         output_schema=ArithmeticPlannerOutput,
         temperature=0.4,

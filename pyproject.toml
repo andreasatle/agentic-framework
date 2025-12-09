@@ -20,11 +20,13 @@ agentic = "agentic.main:main"
 agentic-arithmetic = "agentic.entrypoints.arithmetic_main:main"
 agentic-sentiment = "agentic.entrypoints.sentiment_main:main"
 agentic-coder = "agentic.entrypoints.coder_main:main"
+agentic-writer = "agentic.entrypoints.writer_main:main"
 
 [tool.poetry.scripts]
 arithmetic = "agentic.entrypoints.arithmetic_main:main"
 sentiment = "agentic.entrypoints.sentiment_main:main"
 coder = "agentic.entrypoints.coder_main:main"
+writer = "agentic.entrypoints.writer_main:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
