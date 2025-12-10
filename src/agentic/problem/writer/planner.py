@@ -20,7 +20,7 @@ to a meta-meta collaborative workflow.
 OPTIONAL INPUT FIELD:
 "project_state": {
   "project": { ... },   // global ProjectState snapshot
-  "domain": { ... }     // domain-specific snapshot
+  "domain": { ... }     // writer-specific state snapshot
 } | null
 
 THE ARTICLE MUST:
@@ -58,9 +58,13 @@ PLANNER RULES:
 6. No commentary outside the JSON.
 
 STATE USAGE:
-- If project_state is provided, you MAY use it to improve decisions.
-- If project_state is absent or null, behave exactly as before.
-- Never require state fields. Never fail if they are missing.
+- If project_state.domain contains an outline, a working topic, or prior section
+  choices, use that information to continue the writing task rather than starting
+  from scratch.
+- If project_state.project includes the last plan or last result, use it to avoid
+  repeating the same high-level planning decisions.
+- If project_state is missing or null, behave exactly as before.
+- Never require project_state fields; prompts must remain fully valid without it.
 
 Generate the first plan now.
 """

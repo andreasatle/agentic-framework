@@ -64,7 +64,12 @@ EVALUATION RULES:
    No analysis, no commentary, no Markdown, no prose outside the JSON.
 
 STATE USAGE:
-- You may consider project_state to improve evaluation, but must operate correctly when it is null or missing.
+- If project_state.project shows repeated failures or rejected sections, use
+  this information to detect loops or uncorrected issues.
+- If project_state.domain contains details about the current overall outline or
+  writing intent, ensure the Worker output remains consistent with that state.
+- If no project_state is present, behave exactly as before.
+- Never require project_state; all validations must work without it.
 
 Your job is deterministic evaluation. Nothing more.
 """
