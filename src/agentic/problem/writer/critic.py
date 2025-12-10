@@ -1,8 +1,7 @@
 from openai import OpenAI
 
 from agentic.agents import Agent
-from agentic.problem.writer.schemas import WriterCriticInput, WriterCriticOutput
-from agentic.problem.writer.state import WriterState
+from agentic.problem.writer.schemas import WriterCriticInput, WriterCriticOutput, WriterDomainState
 
 
 PROMPT_CRITIC = """ROLE:
@@ -99,15 +98,16 @@ def make_critic(client: OpenAI, model: str) -> Agent[WriterCriticInput, WriterCr
 
         def __call__(self, user_input: str) -> str:
             critic_input = WriterCriticInput.model_validate_json(user_input)
-            problem_state = getattr(critic_input, "problem_state", None)
+            project_state = getattr(critic_input, "project_state", None)
+            domain_state = project_state.domain_state.get("writer") if project_state else None
+            completed_sections = domain_state.completed_sections if isinstance(domain_state, WriterDomainState) else None
 
-            if isinstance(problem_state, WriterState):
-                if critic_input.plan.section_name in problem_state.sections:
-                    rejection = WriterCriticOutput(
-                        decision="REJECT",
-                        feedback="Section already exists in state; choose a new section name.",
-                    )
-                    return rejection.model_dump_json()
+            if completed_sections and critic_input.plan.section_name in completed_sections:
+                rejection = WriterCriticOutput(
+                    decision="REJECT",
+                    feedback="Section already exists in state; choose a new section name.",
+                )
+                return rejection.model_dump_json()
 
             return self._agent(user_input)
 

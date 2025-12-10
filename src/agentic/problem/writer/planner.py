@@ -1,8 +1,8 @@
+import json
 from openai import OpenAI
 
 from agentic.agents import Agent
 from agentic.problem.writer.schemas import WriterPlannerInput, WriterPlannerOutput
-from agentic.problem.writer.state import WriterState
 
 
 PROMPT_PLANNER = """ROLE:
@@ -93,22 +93,33 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
             self.id = agent.id
 
         def __call__(self, user_input: str) -> str:
-            planner_input = WriterPlannerInput.model_validate_json(user_input)
-            problem_state = getattr(planner_input, "problem_state", None)
+            try:
+                raw_payload = json.loads(user_input)
+            except Exception:
+                raw_payload = {}
+            project_state_snapshot = raw_payload.get("project_state")
+            domain_snapshot = (
+                project_state_snapshot.get("domain")
+                if isinstance(project_state_snapshot, dict)
+                else None
+            )
+            completed_sections = []
+            if isinstance(domain_snapshot, dict):
+                completed_sections = list(domain_snapshot.get("completed_sections") or [])
             raw = self._agent(user_input)
             try:
                 output_model = self.output_schema.model_validate_json(raw)
             except Exception:
                 return raw
 
-            if isinstance(problem_state, WriterState):
+            if completed_sections:
                 section_name = output_model.task.section_name
-                if section_name in problem_state.sections:
-                    alt_name = (
-                        f"{section_name} (continued)"
-                        if f"{section_name} (continued)" not in problem_state.sections
-                        else f"{section_name} Part 2"
-                    )
+                taken_sections = set(completed_sections)
+                if section_name in taken_sections:
+                    alt_candidate = f"{section_name} (continued)"
+                    if alt_candidate in taken_sections:
+                        alt_candidate = f"{section_name} Part 2"
+                    alt_name = alt_candidate
                     output_model.task.section_name = alt_name
 
             return output_model.model_dump_json()

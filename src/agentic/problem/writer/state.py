@@ -9,18 +9,14 @@ class WriterState(BaseModel):
     sections: dict[str, str] = Field(default_factory=dict)
 
     def update(self, task: WriterTask, result: WriterResult) -> "WriterState":
-        new_sections = dict(self.sections)
-        new_sections[task.section_name] = result.text
-        return WriterState(sections=new_sections)
+        return self
 
     def snapshot_for_llm(self) -> dict:
         """
         Return a small, JSON-serializable dictionary containing ONLY the state
         that the LLM should see. Expose section names only.
         """
-        return {
-            "sections_written": list(self.sections.keys())
-        }
+        return {}
 
 
 class ProblemState(BaseModel):

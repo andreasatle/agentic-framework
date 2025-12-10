@@ -1,4 +1,4 @@
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from agentic.schemas import (
     CriticInput,
@@ -10,6 +10,21 @@ from agentic.schemas import (
 )
 from agentic.problem.writer.types import WriterResult, WriterTask
 from agentic.problem.writer.state import WriterState
+
+
+class WriterDomainState(BaseModel):
+    outline: list[str] | None = None
+    completed_sections: list[str] | None = None
+
+    def update(self, task, result):
+        completed = list(self.completed_sections or [])
+        section_name = getattr(task, "section_name", None)
+        if section_name and section_name not in completed:
+            completed.append(section_name)
+        return WriterDomainState(outline=self.outline, completed_sections=completed or None)
+
+    def snapshot_for_llm(self) -> dict:
+        return self.model_dump(exclude_none=True)
 
 
 class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):
