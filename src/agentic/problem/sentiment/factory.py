@@ -6,7 +6,6 @@ from agentic.problem.sentiment.planner import make_planner
 from agentic.problem.sentiment.worker import make_worker
 from agentic.problem.sentiment.critic import make_critic
 from agentic.problem.sentiment.state import ProblemState
-from agentic.problem.sentiment import state_update
 
 
 def make_agent_dispatcher(
@@ -31,5 +30,3 @@ def make_tool_registry() -> ToolRegistry:
     return ToolRegistry()
 
 problem_state_cls = ProblemState
-
-update_state_fn = state_update.update_state
