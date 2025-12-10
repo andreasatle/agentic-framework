@@ -2,6 +2,7 @@ from openai import OpenAI
 
 from agentic.agents import Agent
 from agentic.problem.writer.schemas import WriterPlannerInput, WriterPlannerOutput
+from agentic.problem.writer.state import WriterState
 
 
 PROMPT_PLANNER = """ROLE:
@@ -58,7 +59,7 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
     """
     MVP planner: emits a single WriterTask routed to the writer worker.
     """
-    return Agent(
+    base_agent = Agent(
         name="WriterPlanner",
         client=client,
         model=model,
@@ -67,3 +68,34 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
         output_schema=WriterPlannerOutput,
         temperature=0.0,
     )
+
+    class WriterPlannerAgent:
+        def __init__(self, agent: Agent[WriterPlannerInput, WriterPlannerOutput]):
+            self._agent = agent
+            self.name = agent.name
+            self.input_schema = agent.input_schema
+            self.output_schema = agent.output_schema
+            self.id = agent.id
+
+        def __call__(self, user_input: str) -> str:
+            planner_input = WriterPlannerInput.model_validate_json(user_input)
+            problem_state = getattr(planner_input, "problem_state", None)
+            raw = self._agent(user_input)
+            try:
+                output_model = self.output_schema.model_validate_json(raw)
+            except Exception:
+                return raw
+
+            if isinstance(problem_state, WriterState):
+                section_name = output_model.task.section_name
+                if section_name in problem_state.sections:
+                    alt_name = (
+                        f"{section_name} (continued)"
+                        if f"{section_name} (continued)" not in problem_state.sections
+                        else f"{section_name} Part 2"
+                    )
+                    output_model.task.section_name = alt_name
+
+            return output_model.model_dump_json()
+
+    return WriterPlannerAgent(base_agent)  # type: ignore[return-value]

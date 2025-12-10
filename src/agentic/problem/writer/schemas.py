@@ -16,9 +16,10 @@ from agentic.problem.writer.state import WriterState
 class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):
     """Supervisor context for the writer planner."""
 
+    model_config = ConfigDict(extra="allow")
+
     topic: str | None = None
     project_state: ProjectState | None = None
-    writer_state: WriterState | None = None
 
 
 class WriterPlannerOutput(PlannerOutput[WriterTask]):
@@ -61,11 +62,10 @@ WriterWorkerOutput = WorkerOutput[WriterResult]
 class WriterCriticInput(CriticInput[WriterTask, WriterResult]):
     """Critic sees the planned task and the worker's text."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     plan: WriterTask = Field(..., alias="task")
     worker_answer: WriterResult = Field(..., alias="candidate")
-    writer_state: WriterState | None = None
 
 
 class WriterCriticOutput(Decision):

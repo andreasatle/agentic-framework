@@ -1,4 +1,5 @@
 from openai import OpenAI
+from pydantic import BaseModel
 
 from agentic.tool_registry import ToolRegistry
 from agentic.problem.sentiment.types import SentimentDispatcher
@@ -28,4 +29,6 @@ def make_tool_registry() -> ToolRegistry:
     # Sentiment domain has no tools; return an empty registry for interface parity.
     return ToolRegistry()
 
-problem_state_cls = StatelessProblemState
+
+def problem_state_cls() -> type[BaseModel]:
+    return StatelessProblemState

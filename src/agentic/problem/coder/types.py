@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 
 from agentic.agent_dispatcher import AgentDispatcher
@@ -28,6 +28,8 @@ class CodeResult(BaseModel):
 # Bind generics to domain
 class CoderPlannerInput(PlannerInput[CodeTask, CodeResult]):
     """Planner context tied to a user-defined project."""
+    model_config = ConfigDict(extra="allow")
+
     project_description: str
     previous_task: CodeTask | None = None
     feedback: str | None = None
@@ -43,6 +45,8 @@ CoderWorkerOutput = WorkerOutput[CodeResult]
 
 class CoderCriticInput(CriticInput[CodeTask, CodeResult]):
     """Critic sees the plan, worker answer, and the overarching project."""
+    model_config = ConfigDict(extra="allow")
+
     project_description: str
     project_state: ProjectState | None = None
 

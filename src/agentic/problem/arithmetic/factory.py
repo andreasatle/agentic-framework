@@ -1,4 +1,5 @@
 from openai import OpenAI
+from pydantic import BaseModel
 
 from agentic.tool_registry import ToolRegistry
 from agentic.problem.arithmetic.types import (
@@ -38,4 +39,6 @@ def make_tool_registry() -> ToolRegistry:
     tool_registry.register("mul", "Deterministic multiplication tool.", mul, MulArgs)
     return tool_registry
 
-problem_state_cls = StatelessProblemState
+
+def problem_state_cls() -> type[BaseModel]:
+    return StatelessProblemState

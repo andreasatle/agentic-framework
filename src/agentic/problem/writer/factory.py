@@ -1,4 +1,5 @@
 from openai import OpenAI
+from pydantic import BaseModel
 
 from agentic.tool_registry import ToolRegistry
 from agentic.problem.writer.dispatcher import WriterDispatcher
@@ -29,4 +30,6 @@ def make_tool_registry() -> ToolRegistry:
     # Writer domain uses no tools in the MVP.
     return ToolRegistry()
 
-problem_state_cls = ProblemState
+
+def problem_state_cls() -> type[BaseModel]:
+    return ProblemState

@@ -1,4 +1,5 @@
 from openai import OpenAI
+from pydantic import BaseModel
 
 from agentic.tool_registry import ToolRegistry
 from agentic.problem.coder.types import CoderDispatcher
@@ -29,4 +30,6 @@ def make_tool_registry() -> ToolRegistry:
     # Coding domain has no external tools; return an empty registry for parity.
     return ToolRegistry()
 
-problem_state_cls = ProblemState
+
+def problem_state_cls() -> type[BaseModel]:
+    return ProblemState

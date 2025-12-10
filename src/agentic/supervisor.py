@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
+from pydantic import BaseModel
 
 from agentic.schemas import WorkerInput, WorkerOutput, Decision, ProjectState, HistoryEntry
 from agentic.tool_registry import ToolRegistry
@@ -14,7 +15,7 @@ logger = get_logger("agentic.supervisor")
 class Supervisor:
     dispatcher: AgentDispatcher
     tool_registry: ToolRegistry
-    problem_state_cls: type
+    problem_state_cls: Callable[[], type[BaseModel]]
     max_loops: int = 5
     planner_defaults: dict[str, Any] = field(default_factory=dict)
 
@@ -35,7 +36,8 @@ class Supervisor:
         context.project_state = ProjectState()
         domain = self.dispatcher.domain_name
         if domain not in context.project_state.domain_state:
-            context.project_state.domain_state[domain] = self.problem_state_cls()
+            state_cls = self.problem_state_cls()
+            context.project_state.domain_state[domain] = state_cls()
         self._current_project_state = context.project_state
         state = State.PLAN
 
@@ -75,6 +77,7 @@ class Supervisor:
             previous_task=context.previous_plan,
             previous_worker_id=context.previous_worker_id,
         )
+        planner_kwargs["problem_state"] = context.project_state.domain_state.get(self.dispatcher.domain_name)
         planner_fields = planner_input_cls.model_fields
         if "project_state" in planner_fields:
             planner_kwargs["project_state"] = context.project_state
@@ -318,7 +321,8 @@ class Supervisor:
             domain = self.dispatcher.domain_name
             prev_state = context.project_state.domain_state.get(domain)
             if prev_state is None:
-                prev_state = self.problem_state_cls()
+                state_cls = self.problem_state_cls()
+                prev_state = state_cls()
             new_state = prev_state.update(context.plan, context.worker_result)
             context.project_state.domain_state[domain] = new_state
             logger.info(f"[supervisor] ACCEPT after {context.loops_used} transitions")
@@ -354,4 +358,5 @@ class Supervisor:
             critic_kwargs["project_description"] = self.planner_defaults.get("project_description", "")
         if "project_state" in fields:
             critic_kwargs["project_state"] = self._current_project_state
+        critic_kwargs["problem_state"] = self._current_project_state.domain_state.get(self.dispatcher.domain_name)
         return critic_input_cls(**critic_kwargs)

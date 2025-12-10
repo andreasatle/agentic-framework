@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from agentic.agent_dispatcher import AgentDispatcher
 from agentic.schemas import (
@@ -27,6 +27,8 @@ class Result(BaseModel):
 
 class SentimentPlannerInput(PlannerInput[SentimentTask, Result]):
     """Planner context for sentiment tasks."""
+    model_config = ConfigDict(extra="allow")
+
     previous_task: SentimentTask | None = None
     feedback: str | None = None
     random_seed: int | str | None = None
@@ -40,6 +42,8 @@ SentimentWorkerOutput = WorkerOutput[Result]
 
 
 class SentimentCriticInput(CriticInput[SentimentTask, Result]):
+    model_config = ConfigDict(extra="allow")
+
     project_state: ProjectState | None = None
 
 

@@ -2,6 +2,7 @@ from openai import OpenAI
 
 from agentic.agents import Agent
 from agentic.problem.writer.schemas import WriterCriticInput, WriterCriticOutput
+from agentic.problem.writer.state import WriterState
 
 
 PROMPT_CRITIC = """ROLE:
@@ -64,7 +65,7 @@ def make_critic(client: OpenAI, model: str) -> Agent[WriterCriticInput, WriterCr
     """
     MVP critic: accepts any non-empty text and mirrors the writer decision schema.
     """
-    return Agent(
+    base_agent = Agent(
         name="WriterCritic",
         client=client,
         model=model,
@@ -73,3 +74,27 @@ def make_critic(client: OpenAI, model: str) -> Agent[WriterCriticInput, WriterCr
         output_schema=WriterCriticOutput,
         temperature=0.0,
     )
+
+    class WriterCriticAgent:
+        def __init__(self, agent: Agent[WriterCriticInput, WriterCriticOutput]):
+            self._agent = agent
+            self.name = agent.name
+            self.input_schema = agent.input_schema
+            self.output_schema = agent.output_schema
+            self.id = agent.id
+
+        def __call__(self, user_input: str) -> str:
+            critic_input = WriterCriticInput.model_validate_json(user_input)
+            problem_state = getattr(critic_input, "problem_state", None)
+
+            if isinstance(problem_state, WriterState):
+                if critic_input.plan.section_name in problem_state.sections:
+                    rejection = WriterCriticOutput(
+                        decision="REJECT",
+                        feedback="Section already exists in state; choose a new section name.",
+                    )
+                    return rejection.model_dump_json()
+
+            return self._agent(user_input)
+
+    return WriterCriticAgent(base_agent)  # type: ignore[return-value]
