@@ -69,6 +69,24 @@ class Supervisor:
             "project_state": context.project_state,
         }
 
+    def _make_snapshot(self, context):
+        snapshot = {}
+
+        # Global project summary
+        project_snapshot = context.project_state.snapshot_for_llm()
+        if project_snapshot:
+            snapshot["project"] = project_snapshot
+
+        # Domain summary
+        domain_state = context.project_state.domain_state.get(self.dispatcher.domain_name)
+        if domain_state:
+            domain_snapshot = domain_state.snapshot_for_llm()
+            if domain_snapshot:
+                snapshot["domain"] = domain_snapshot
+
+        # Return None if no information is present
+        return snapshot or None
+
     def _handle_plan(self, context: SupervisorContext) -> State:
         planner_input_cls = self.dispatcher.planner.input_schema
         planner_kwargs: dict[str, Any] = dict(self.planner_defaults or {})
@@ -83,8 +101,7 @@ class Supervisor:
             raise RuntimeError("Coder domain requires planner_defaults['project_description'] to be set.")
 
         planner_input = planner_input_cls(**planner_kwargs)
-        domain_state = context.project_state.domain_state.get(self.dispatcher.domain_name)
-        snapshot = domain_state.snapshot_for_llm() if domain_state else {}
+        snapshot = self._make_snapshot(context)
         try:
             planner_response = self.dispatcher.plan(planner_input, snapshot=snapshot)
         except RuntimeError as e:
@@ -287,8 +304,7 @@ class Supervisor:
         if context.critic_input is None:
             raise RuntimeError("CRITIC state reached without critic_input in context.")
 
-        domain_state = self._current_project_state.domain_state.get(self.dispatcher.domain_name)
-        snapshot = domain_state.snapshot_for_llm() if domain_state else {}
+        snapshot = self._make_snapshot(context)
         critic_response = self.dispatcher.critique(context.critic_input, snapshot=snapshot)
         decision = critic_response.output
         context.decision = decision

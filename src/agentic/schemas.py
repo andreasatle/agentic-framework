@@ -92,6 +92,21 @@ class ProjectState(BaseModel):
     last_result: dict | None = None
     last_decision: dict | None = None
 
+    def snapshot_for_llm(self) -> dict:
+        """
+        Return a compact JSON-serializable summary of global project state.
+        Include only:
+        - cycle
+        - last_plan
+        - last_result
+        - last_decision
+        Omit fields that are None.
+        """
+        return self.model_dump(
+            include={"cycle", "last_plan", "last_result", "last_decision"},
+            exclude_none=True,
+        )
+
 
 T = TypeVar("T")  # Task
 R = TypeVar("R")  # Result
