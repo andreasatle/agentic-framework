@@ -77,18 +77,16 @@ class Supervisor:
             previous_task=context.previous_plan,
             previous_worker_id=context.previous_worker_id,
         )
-        planner_kwargs["problem_state"] = context.project_state.domain_state.get(self.dispatcher.domain_name)
-        planner_fields = planner_input_cls.model_fields
-        if "project_state" in planner_fields:
-            planner_kwargs["project_state"] = context.project_state.domain_state.get(self.dispatcher.domain_name)
 
         required_fields = getattr(planner_input_cls, "model_fields", {})
         if "project_description" in required_fields and not planner_kwargs.get("project_description"):
             raise RuntimeError("Coder domain requires planner_defaults['project_description'] to be set.")
 
         planner_input = planner_input_cls(**planner_kwargs)
+        domain_state = context.project_state.domain_state.get(self.dispatcher.domain_name)
+        snapshot = domain_state.snapshot_for_llm() if domain_state else {}
         try:
-            planner_response = self.dispatcher.plan(planner_input)
+            planner_response = self.dispatcher.plan(planner_input, snapshot=snapshot)
         except RuntimeError as e:
             # Planner failed (e.g., invalid worker routing). Route through critic.
             context.feedback = str(e)
@@ -135,7 +133,6 @@ class Supervisor:
         context.planner_feedback = None
         context.worker_input = WorkerInput(
             task=context.plan,
-            project_state=context.project_state,
         )
         context.last_stage = "plan"
         context.trace.append(
@@ -190,7 +187,9 @@ class Supervisor:
             )
             return State.CRITIC
 
-        worker_response = self.dispatcher.work(context.worker_id, context.worker_input)
+        domain_state = context.project_state.domain_state.get(self.dispatcher.domain_name)
+        snapshot = domain_state.snapshot_for_llm() if domain_state else {}
+        worker_response = self.dispatcher.work(context.worker_id, context.worker_input, snapshot=snapshot)
         worker_output = worker_response.output
         context.worker_output = worker_output
         context.last_stage = "work"
@@ -272,7 +271,6 @@ class Supervisor:
             previous_result=prev_worker_input.previous_result,
             feedback=prev_worker_input.feedback,
             tool_result=tool_result,
-            project_state=context.project_state,
         )
         context.project_state.history.append(
             HistoryEntry(
@@ -289,7 +287,9 @@ class Supervisor:
         if context.critic_input is None:
             raise RuntimeError("CRITIC state reached without critic_input in context.")
 
-        critic_response = self.dispatcher.critique(context.critic_input)
+        domain_state = self._current_project_state.domain_state.get(self.dispatcher.domain_name)
+        snapshot = domain_state.snapshot_for_llm() if domain_state else {}
+        critic_response = self.dispatcher.critique(context.critic_input, snapshot=snapshot)
         decision = critic_response.output
         context.decision = decision
         context.project_state.last_decision = (
@@ -341,7 +341,6 @@ class Supervisor:
                 previous_result=prev_worker_input.previous_result,
                 feedback=decision.feedback,
                 tool_result=prev_worker_input.tool_result,
-                project_state=context.project_state,
             )
             logger.info(f"[supervisor] REJECT after {context.loops_used} transitions")
             return State.WORK
@@ -356,7 +355,4 @@ class Supervisor:
             critic_kwargs["worker_id"] = worker_id or ""
         if "project_description" in fields:
             critic_kwargs["project_description"] = self.planner_defaults.get("project_description", "")
-        if "project_state" in fields:
-            critic_kwargs["project_state"] = self._current_project_state
-        critic_kwargs["problem_state"] = self._current_project_state.domain_state.get(self.dispatcher.domain_name)
         return critic_input_cls(**critic_kwargs)

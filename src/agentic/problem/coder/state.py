@@ -19,3 +19,10 @@ class ProblemState(BaseModel):
         Default behavior: no change.
         """
         return self
+
+    def snapshot_for_llm(self) -> dict:
+        """
+        Return a small, JSON-serializable dictionary containing ONLY the state
+        that the LLM should see. Default: expose nothing.
+        """
+        return {}

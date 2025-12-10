@@ -31,13 +31,17 @@ class AgentDispatcherBase:
         self,
         agent: AgentProtocol[InputSchema, OutputSchema],
         input: InputSchema,
+        snapshot: dict | None = None,
     ) -> OutputSchema:
         """Call agent, validate JSON, retry boundedly, return typed object."""
         last_err: Exception | None = None
         last_raw: str | None = None
 
         for attempt in range(1, self.max_retries + 1):
-            raw = agent(json.dumps(input.to_llm()))
+            payload = input.model_dump()
+            if snapshot:
+                payload["state"] = snapshot
+            raw = agent(json.dumps(payload))
             last_raw = raw
             logger.debug(
                 f"[dispatcher] {agent.name} attempt {attempt}/{self.max_retries} "
@@ -70,13 +74,13 @@ class AgentDispatcher(Generic[T, R, D], AgentDispatcherBase):
 
     # inherits max_retries and _call from base
 
-    def plan(self, planner_input: PlannerInput[T, R] | None = None) -> AgentCallResult[PlannerOutput[T]]:
+    def plan(self, planner_input: PlannerInput[T, R] | None = None, snapshot: dict | None = None) -> AgentCallResult[PlannerOutput[T]]:
         if planner_input is None:
             planner_input = PlannerInput[T, R]()
-        output: PlannerOutput[T] = self._call(self.planner, planner_input)
+        output: PlannerOutput[T] = self._call(self.planner, planner_input, snapshot)
         return AgentCallResult(agent_id=self.planner.id, output=output)
 
-    def work(self, worker_id: str, args: WorkerInput[T, R]) -> AgentCallResult[WorkerOutput[R]]:
+    def work(self, worker_id: str, args: WorkerInput[T, R], snapshot: dict | None = None) -> AgentCallResult[WorkerOutput[R]]:
         last_err: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -87,7 +91,7 @@ class AgentDispatcher(Generic[T, R, D], AgentDispatcherBase):
                     f"[dispatcher] worker attempt {attempt}/{self.max_retries} "
                     f"routing_id={worker_id}"
                 )
-                output: WorkerOutput[R] = self._call(worker_agent, args)
+                output: WorkerOutput[R] = self._call(worker_agent, args, snapshot)
                 return AgentCallResult(agent_id=worker_agent.id, output=output)
             except Exception as e:
                 last_err = e
@@ -98,8 +102,8 @@ class AgentDispatcher(Generic[T, R, D], AgentDispatcherBase):
             f"Last error: {last_err}"
         )
 
-    def critique(self, args: CriticInput[T, R]) -> AgentCallResult[D]:
-        output: D = self._call(self.critic, args)
+    def critique(self, args: CriticInput[T, R], snapshot: dict | None = None) -> AgentCallResult[D]:
+        output: D = self._call(self.critic, args, snapshot)
         return AgentCallResult(agent_id=self.critic.id, output=output)
 
     def validate_worker_routing(self, task: T, worker_id: str) -> bool:

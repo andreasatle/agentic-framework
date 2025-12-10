@@ -13,6 +13,15 @@ class WriterState(BaseModel):
         new_sections[task.section_name] = result.text
         return WriterState(sections=new_sections)
 
+    def snapshot_for_llm(self) -> dict:
+        """
+        Return a small, JSON-serializable dictionary containing ONLY the state
+        that the LLM should see. Expose section names only.
+        """
+        return {
+            "sections_written": list(self.sections.keys())
+        }
+
 
 class ProblemState(BaseModel):
     """
@@ -28,3 +37,10 @@ class ProblemState(BaseModel):
         Default behavior: no change.
         """
         return self
+
+    def snapshot_for_llm(self) -> dict:
+        """
+        Return a small, JSON-serializable dictionary containing ONLY the state
+        that the LLM should see. Default: expose nothing.
+        """
+        return {}

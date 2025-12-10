@@ -14,3 +14,10 @@ class StatelessProblemState(BaseModel):
         Must exist so that the supervisor can uniformly call update().
         """
         return self
+
+    def snapshot_for_llm(self) -> dict:
+        """
+        Return a small, JSON-serializable dictionary containing ONLY the state
+        that the LLM should see. Stateless domains expose nothing.
+        """
+        return {}
