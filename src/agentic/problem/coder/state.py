@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from pydantic import BaseModel
 
-from agentic.schemas import ProjectState, WorkerOutput
+from agentic.problem.coder.types import CodeResult, CodeTask
 
 
 class ProblemState(BaseModel):
@@ -11,9 +13,9 @@ class ProblemState(BaseModel):
 
     content: str = ""
 
-    def update(self, worker_output: WorkerOutput) -> "ProblemState":
+    def update(self, task: CodeTask, result: CodeResult) -> ProblemState:
         """
-        Return a NEW ProblemState instance updated with accepted worker output.
+        Return a NEW ProblemState instance updated with accepted worker result.
         Default behavior: no change.
         """
         return self

@@ -319,7 +319,7 @@ class Supervisor:
             prev_state = context.project_state.domain_state.get(domain)
             if prev_state is None:
                 prev_state = self.problem_state_cls()
-            new_state = prev_state.update(context.worker_output)
+            new_state = prev_state.update(context.plan, context.worker_result)
             context.project_state.domain_state[domain] = new_state
             logger.info(f"[supervisor] ACCEPT after {context.loops_used} transitions")
             return State.END
