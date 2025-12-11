@@ -13,10 +13,10 @@ def _pretty_print_run(run: dict) -> None:
     def _serialize(value):
         return value.model_dump() if hasattr(value, "model_dump") else value
 
-    plan = run.get("plan")
-    result = run.get("result")
-    decision = run.get("decision")
-    loops_used = run.get("loops_used")
+    plan = run.plan
+    result = run.result
+    decision = run.decision
+    loops_used = run.loops_used
 
     print("Sentiment supervisor run complete:")
     print(f"  Plan: {_serialize(plan)}")

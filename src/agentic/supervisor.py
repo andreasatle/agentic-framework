@@ -8,6 +8,7 @@ from agentic.tool_registry import ToolRegistry
 from agentic.logging_config import get_logger
 from agentic.agent_dispatcher import AgentDispatcher
 from agentic.supervisor_types import SupervisorState as State, SupervisorContext
+from agentic.supervisor_result import SupervisorRunResult
 logger = get_logger("agentic.supervisor")
 
 
@@ -59,13 +60,14 @@ class Supervisor:
                 "project_state": context.project_state,
             }
         )
-        return {
-            "plan": context.plan,
-            "result": context.final_result,
-            "decision": context.decision,
-            "loops_used": context.loops_used,
-            "project_state": context.project_state,
-        }
+        return SupervisorRunResult(
+            plan=context.plan,
+            result=context.final_result,
+            decision=context.decision,
+            loops_used=context.loops_used,
+            project_state=context.project_state,
+            trace=context.trace or [],
+        )
 
     def _make_snapshot(self, context):
         snapshot = {}

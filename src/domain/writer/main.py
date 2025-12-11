@@ -18,10 +18,10 @@ def _pretty_print_run(run: dict) -> None:
     def _serialize(value):
         return value.model_dump() if hasattr(value, "model_dump") else value
 
-    plan = run.get("plan")
-    result = run.get("result")
-    decision = run.get("decision")
-    loops_used = run.get("loops_used")
+    plan = run.plan
+    result = run.result
+    decision = run.decision
+    loops_used = run.loops_used
 
     print("Writer supervisor run complete:")
     print(f"  Plan: {_serialize(plan)}")
@@ -50,7 +50,7 @@ def main() -> None:
         problem_state_cls=problem_state_cls,
     )
     run = supervisor()
-    updated_state = run.get("project_state").state if run.get("project_state") else None
+    updated_state = run.project_state.state if run.project_state else None
     if updated_state is not None:
         updated_state.save()
     _pretty_print_run(run)
