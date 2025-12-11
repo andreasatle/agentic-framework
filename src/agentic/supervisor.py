@@ -29,14 +29,15 @@ class Supervisor:
             State.CRITIC: self._handle_critic,
         }
 
-    def __call__(self) -> dict:
+    def __call__(self) -> SupervisorRunResult:
         """
         Explicit FSM over PLAN → WORK → TOOL/CRITIC → END.
         Each agent/tool invocation is a state transition.
+        Returns a structured SupervisorRunResult.
         """
         context = SupervisorContext(trace=[])
         context.project_state = ProjectState()
-        context.project_state.state = self.domain_state
+        context.project_state.domain_state = self.domain_state
         self._current_project_state = context.project_state
         state = State.PLAN
 
@@ -45,7 +46,6 @@ class Supervisor:
             if handler is None:
                 raise RuntimeError(f"Unknown supervisor state: {state}")
             context.loops_used += 1
-            context.project_state.cycle += 1
             state = handler(context)
 
         if state != State.END:
@@ -73,7 +73,14 @@ class Supervisor:
         snapshot = {}
 
         # Global project summary
-        project_snapshot = context.project_state.snapshot_for_llm()
+        domain_state_obj = getattr(context.project_state, "domain_state", None)
+        domain_snapshot = domain_state_obj.snapshot_for_llm() if domain_state_obj is not None else None
+        project_snapshot = {
+            "domain_state": domain_snapshot,
+            "last_plan": context.project_state.last_plan,
+            "last_result": context.project_state.last_result,
+            "last_decision": context.project_state.last_decision,
+        }
         if project_snapshot:
             snapshot.update(project_snapshot)
 
@@ -262,12 +269,11 @@ class Supervisor:
         if decision.decision == "ACCEPT":
             context.final_result = context.worker_result
             context.final_output = context.worker_output
-            prev_state = context.project_state.state
+            prev_state = context.project_state.domain_state
             if prev_state is None:
-                state_cls = self.problem_state_cls()
-                prev_state = state_cls()
+                raise RuntimeError("Domain state must be provided to Supervisor.")
             new_state = prev_state.update(context.plan, context.worker_result)
-            context.project_state.state = new_state
+            context.project_state.domain_state = new_state
             logger.info(f"[supervisor] ACCEPT after {context.loops_used} transitions")
             return State.END
 

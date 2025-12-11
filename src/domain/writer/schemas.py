@@ -38,7 +38,7 @@ class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):
     model_config = ConfigDict(extra="allow")
 
     topic: str | None = None
-    project_state: WriterState | None = None
+    project_state: dict | None = None
 
 
 class WriterPlannerOutput(PlannerOutput[WriterTask]):

@@ -6,6 +6,7 @@ from domain.writer.schemas import (
     WriterWorkerInput,
     WriterWorkerOutput,
 )
+from domain.writer.types import WriterResult
 
 
 PROMPT_WORKER = """ROLE:
@@ -87,21 +88,28 @@ def make_worker(client: OpenAI, model: str) -> Agent[WriterWorkerInput, WriterWo
             try:
                 output_model = WriterWorkerOutput.model_validate_json(raw_output)
             except Exception:
-                return raw_output
+                fallback_text = raw_output if isinstance(raw_output, str) else str(raw_output)
+                fallback = WriterWorkerOutput(result=WriterResult(text=fallback_text))
+                return fallback.model_dump_json()
 
             project_state = getattr(worker_input, "project_state", None) if worker_input else None
             operation = getattr(worker_input.task, "operation", None) if worker_input else None
             if not operation:
                 operation = "initial_draft"
             if project_state is not None:
-                previous_state = getattr(project_state, "state", None)
-                match previous_state:
-                    case WriterDomainState():
-                        refinement_steps = previous_state.refinement_steps
-                        previous_text = previous_state.draft_text
-                    case _:
-                        refinement_steps = 0
-                        previous_text = None
+                previous_state = None
+                if isinstance(project_state, dict):
+                    domain_snap = project_state.get("domain_state") or project_state.get("domain")
+                    if domain_snap:
+                        try:
+                            previous_state = WriterDomainState.model_validate(domain_snap)
+                        except Exception:
+                            previous_state = None
+                elif isinstance(project_state, WriterDomainState):
+                    previous_state = project_state
+
+                refinement_steps = previous_state.refinement_steps if previous_state else 0
+                previous_text = previous_state.draft_text if previous_state else None
 
                 if operation == "refine_draft" and previous_text:
                     output_model.result.text = f"{previous_text}\n\nRefined:\n{output_model.result.text}"
@@ -110,12 +118,6 @@ def make_worker(client: OpenAI, model: str) -> Agent[WriterWorkerInput, WriterWo
                         output_model.result.text = f"{previous_text}\n\nFinalized:\n{output_model.result.text}"
                     else:
                         output_model.result.text = previous_text
-
-                project_state.state = WriterDomainState(
-                    draft_text=output_model.result.text,
-                    refinement_steps=refinement_steps + 1,
-                    completed_sections=getattr(previous_state, "completed_sections", None),
-                )
 
             return output_model.model_dump_json()
 

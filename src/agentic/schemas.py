@@ -83,25 +83,12 @@ TState = TypeVar("TState")
 class ProjectState(GenericModel, Generic[TState]):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    cycle: int = 0
-    state: TState | None = None
-    last_plan: dict | None = None
-    last_result: dict | None = None
-    last_decision: dict | None = None
-
-    def snapshot_for_llm(self) -> dict:
-        snap: dict = {}
-        if self.state is not None:
-            state_snap = getattr(self.state, "snapshot_for_llm", lambda: {})()
-            if state_snap:
-                snap["domain"] = state_snap
-        if self.last_plan is not None:
-            snap["last_plan"] = self.last_plan
-        if self.last_result is not None:
-            snap["last_result"] = self.last_result
-        if self.last_decision is not None:
-            snap["last_decision"] = self.last_decision
-        return snap
+    domain_state: TState | None = None
+    trace: list[Any] = []
+    last_plan: PlannerOutput | None = None
+    last_result: WorkerOutput | None = None
+    last_decision: Decision | None = None
+    loops_used: int = 0
 
 
 T = TypeVar("T")  # Task
@@ -122,7 +109,7 @@ class PlannerInput(BaseModel, Generic[T, R]):
     previous_task: T | None = None
     previous_worker_id: str | None = None
     random_seed: str | None = None
-    project_state: ProjectState | None = None
+    project_state: dict | None = None
 
     def to_llm(self) -> dict:
         raw = self.model_dump()
@@ -138,7 +125,7 @@ class WorkerInput(BaseModel, Generic[T, R]):
     previous_result: R | None = None
     feedback: Feedback | None = None
     tool_result: R | None = None
-    project_state: ProjectState | None = None
+    project_state: dict | None = None
 
     def to_llm(self) -> dict:
         raw = self.model_dump()
@@ -153,7 +140,7 @@ class CriticInput(BaseModel, Generic[T, R]):
     """Critic sees the original plan and the Worker’s answer."""
     plan: T
     worker_answer: R
-    project_state: ProjectState | None = None
+    project_state: dict | None = None
 
     def to_llm(self) -> dict:
         raw = self.model_dump()
