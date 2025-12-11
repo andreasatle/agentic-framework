@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from agentic.common.load_save_mixin import LoadSaveMixin
 from domain.coder.types import CodeResult, CodeTask
 
 
-class ProblemState(BaseModel):
+class ProblemState(LoadSaveMixin):
     """
     Domain-specific persistent state.
     MUST NOT mutate in-place; always return a new instance from update().

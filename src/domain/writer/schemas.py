@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from agentic.common.load_save_mixin import LoadSaveMixin
 from agentic.schemas import (
     CriticInput,
     Decision,
@@ -12,7 +13,7 @@ from domain.writer.types import WriterResult, WriterTask
 from domain.writer.state import WriterState
 
 
-class WriterDomainState(BaseModel):
+class WriterDomainState(LoadSaveMixin):
     draft_text: str | None = None
     refinement_steps: int = 0
     completed_sections: list[str] | None = None

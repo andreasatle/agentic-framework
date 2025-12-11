@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from agentic.common.load_save_mixin import LoadSaveMixin
 from domain.writer.types import WriterResult, WriterTask
 
 
-class WriterState(BaseModel):
+class WriterState(LoadSaveMixin):
     sections: dict[str, str] = Field(default_factory=dict)
 
     def update(self, task: WriterTask, result: WriterResult) -> "WriterState":

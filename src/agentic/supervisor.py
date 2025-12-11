@@ -16,6 +16,7 @@ class Supervisor:
     dispatcher: AgentDispatcher
     tool_registry: ToolRegistry
     problem_state_cls: Callable[[], type[BaseModel]]
+    domain_state: BaseModel | None
     max_loops: int = 5
     planner_defaults: dict[str, Any] = field(default_factory=dict)
 
@@ -34,10 +35,7 @@ class Supervisor:
         """
         context = SupervisorContext(trace=[])
         context.project_state = ProjectState()
-        domain = self.dispatcher.domain_name
-        if context.project_state.state is None:
-            state_cls = self.problem_state_cls()
-            context.project_state.state = state_cls()
+        context.project_state.state = self.domain_state
         self._current_project_state = context.project_state
         state = State.PLAN
 

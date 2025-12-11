@@ -10,6 +10,7 @@ from domain.coder import (
     problem_state_cls,
 )
 from agentic.supervisor import Supervisor
+from domain.coder.state import ProblemState
 
 
 def _pretty_print_run(run: dict) -> None:
@@ -40,10 +41,12 @@ def main() -> None:
 
     tool_registry = make_tool_registry()
     dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
+    state = ProblemState.load()
 
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=tool_registry,
+        domain_state=state,
         max_loops=5,
         planner_defaults=initial_planner_input.model_dump(),
         problem_state_cls=problem_state_cls,
