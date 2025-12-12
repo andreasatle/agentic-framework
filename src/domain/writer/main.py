@@ -40,6 +40,7 @@ def main() -> None:
     parser.add_argument("--audience", type=str, default="", help="Optional target audience.")
     parser.add_argument("--length", type=str, default="", help="Optional length guidance.")
     parser.add_argument("--max-iterations", type=int, default=1, help="Maximum supervisor iterations (capped at 10).")
+    parser.add_argument("--fresh", action="store_true", help="Start with a fresh state (ignore persisted topic state).")
     args = parser.parse_args()
 
     topic = args.topic.strip()
@@ -55,7 +56,7 @@ def main() -> None:
     )
 
     tool_registry = make_tool_registry()
-    state = WriterDomainState.load(topic=topic or None)
+    state = WriterDomainState.load(topic=topic or None) if not args.fresh else WriterDomainState(topic=topic or None)
 
     for i in range(max_iterations):
         print(f"[writer] iteration {i + 1} / {max_iterations}")
