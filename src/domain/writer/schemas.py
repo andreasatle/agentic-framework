@@ -17,6 +17,7 @@ class WriterDomainState(LoadSaveMixin):
     draft_text: str | None = None
     refinement_steps: int = 0
     completed_sections: list[str] | None = None
+    section_order: list[str] | None = None
 
     def update(self, task, result):
         completed = list(self.completed_sections or [])
@@ -30,7 +31,14 @@ class WriterDomainState(LoadSaveMixin):
         )
 
     def snapshot_for_llm(self) -> dict:
-        return self.model_dump(exclude_none=True)
+        data = {}
+        if self.refinement_steps:
+            data["refinement_steps"] = self.refinement_steps
+        if self.completed_sections:
+            data["completed_sections"] = self.completed_sections
+        if self.section_order:
+            data["section_order"] = self.section_order
+        return data
 
 class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):
     """Supervisor context for the writer planner."""
