@@ -86,6 +86,19 @@ def main() -> None:
 
     if updated_state is not None:
         updated_state.save()
+
+        sections = updated_state.completed_sections or {}
+
+        if isinstance(sections, dict):
+            order = updated_state.section_order or sections.keys()
+            article = "\n\n".join(sections[name] for name in order if name in sections)
+        elif isinstance(sections, list):
+            # fallback: list already represents ordered content or titles
+            article = "\n\n".join(sections)
+        else:
+            article = ""
+
+        print(article)
     _pretty_print_run(run)
 
 
