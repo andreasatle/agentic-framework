@@ -56,7 +56,7 @@ class WriterPlannerOutput(PlannerOutput[WriterTask]):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    task: WriterTask = Field(..., alias="next_task")
+    task: WriterTask
     worker_id: str = "writer-worker"
     section_order: list[str] | None = None
 
