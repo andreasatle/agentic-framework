@@ -176,24 +176,6 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
             else:
                 operation = "finalize_draft"
 
-            def _is_empty_domain_state(ds) -> bool:
-                if ds is None:
-                    return True
-                if isinstance(ds, dict):
-                    return not (
-                        ds.get("draft_text")
-                        or ds.get("completed_sections")
-                        or ds.get("section_order")
-                        or ds.get("refinement_steps")
-                    )
-                return (
-                    not getattr(ds, "draft_text", None)
-                    and not getattr(ds, "completed_sections", None)
-                    and not getattr(ds, "section_order", None)
-                    and getattr(ds, "refinement_steps", 0) == 0
-                )
-
-            is_first_call = state is None or _is_empty_domain_state(domain_state)
             default_section_order = [
                 "Introduction",
                 "Origin Story",
@@ -201,6 +183,9 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
                 "Meta-Reflection",
                 "Conclusion",
             ]
+
+            has_domain_state = domain_state is not None
+            is_first_call = has_domain_state and preserved_section_order is None
 
             if section_order is None:
                 if is_first_call:
