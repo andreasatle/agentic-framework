@@ -19,7 +19,7 @@ class WriterDomainState(LoadSaveMixin):
     completed_sections: list[str] | None = None
     section_order: list[str] | None = None
 
-    def update(self, task, result):
+    def update(self, task, result, *, section_order: list[str] | None = None):
         completed = list(self.completed_sections or [])
         name = getattr(task, "section_name", None)
         if name and name not in completed:
@@ -28,6 +28,7 @@ class WriterDomainState(LoadSaveMixin):
             draft_text=getattr(result, "text", self.draft_text),
             refinement_steps=self.refinement_steps,
             completed_sections=completed or None,
+            section_order=section_order if section_order is not None else self.section_order,
         )
 
     def snapshot_for_llm(self) -> dict:
