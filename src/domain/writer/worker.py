@@ -95,6 +95,7 @@ def make_worker(client: OpenAI, model: str) -> Agent[WriterWorkerInput, WriterWo
             project_state = getattr(worker_input, "project_state", None) if worker_input else None
             operation = worker_input.task.operation if worker_input else None
 
+            previous_text = getattr(worker_input, "previous_text", None) if worker_input else None
             if project_state is not None:
                 previous_state = None
                 if isinstance(project_state, dict):
@@ -107,7 +108,8 @@ def make_worker(client: OpenAI, model: str) -> Agent[WriterWorkerInput, WriterWo
                 elif isinstance(project_state, WriterDomainState):
                     previous_state = project_state
 
-                previous_text = previous_state.draft_text if previous_state else None
+                if previous_text is None:
+                    previous_text = previous_state.draft_text if previous_state else None
 
                 if operation == "refine" and previous_text:
                     output_model.result.text = f"{previous_text}\n\n{output_model.result.text}"
