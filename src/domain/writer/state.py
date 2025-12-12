@@ -23,7 +23,7 @@ class WriterState(LoadSaveMixin):
         operation = getattr(task, "operation", None)
         if section_name:
             existing_text = new_sections.get(section_name)
-            if existing_text is None or operation == "refine_draft":
+            if existing_text is None or operation == "refine":
                 new_sections[section_name] = result.text
 
         # Determine updated section_order

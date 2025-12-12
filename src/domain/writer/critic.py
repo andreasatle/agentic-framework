@@ -103,20 +103,19 @@ def make_critic(client: OpenAI, model: str) -> Agent[WriterCriticInput, WriterCr
         def __call__(self, user_input: str) -> str:
             critic_input = WriterCriticInput.model_validate_json(user_input)
             text = critic_input.worker_answer.text if critic_input.worker_answer else ""
-
-            # Reject only if no text was produced
-            if not text or not text.strip():
-                rejection = WriterCriticOutput(
+        
+            if not text.strip():
+                return WriterCriticOutput(
                     decision="REJECT",
-                    feedback={"kind": "EMPTY_RESULT", "message": "Worker produced empty or missing text for this section."},
-                )
-                return rejection.model_dump_json()
-
-            # Otherwise accept
-            acceptance = WriterCriticOutput(
+                    feedback={
+                        "kind": "EMPTY_RESULT",
+                        "message": "Worker produced empty text.",
+                    },
+                ).model_dump_json()
+        
+            return WriterCriticOutput(
                 decision="ACCEPT",
                 feedback=None,
-            )
-            return acceptance.model_dump_json()
+            ).model_dump_json()
 
     return WriterCriticAgent(base_agent)  # type: ignore[return-value]

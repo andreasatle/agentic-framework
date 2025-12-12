@@ -119,7 +119,7 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
                         case _:
                             task_key = None
                     if task_obj is not None and "operation" not in task_obj:
-                        task_obj["operation"] = "initial_draft"
+                        task_obj["operation"] = "draft"
                         if task_key:
                             payload[task_key] = task_obj
                     section_order = payload.get("section_order")
