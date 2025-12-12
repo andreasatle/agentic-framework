@@ -55,7 +55,7 @@ def main() -> None:
     )
 
     tool_registry = make_tool_registry()
-    state = WriterDomainState.load()
+    state = WriterDomainState.load(topic=topic or None)
 
     for i in range(max_iterations):
         print(f"[writer] iteration {i + 1} / {max_iterations}")
@@ -100,7 +100,7 @@ def main() -> None:
             )
 
         if updated_state is not None:
-            updated_state.save()
+            updated_state.save(topic=topic or None)
             state = updated_state
 
         _pretty_print_run(run)

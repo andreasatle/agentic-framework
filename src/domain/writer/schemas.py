@@ -1,4 +1,7 @@
 from pydantic import ConfigDict, Field, model_validator
+from pathlib import Path
+import json
+import re
 
 from agentic.common.load_save_mixin import LoadSaveMixin
 from agentic.schemas import (
@@ -19,6 +22,32 @@ class WriterDomainState(LoadSaveMixin):
     refinement_steps: int = 0
     completed_sections: list[str] | None = None
     section_order: list[str] | None = None
+    topic: str | None = None
+
+    @classmethod
+    def topic_key(cls, topic: str | None) -> str:
+        if topic is None or not str(topic).strip():
+            return "default"
+        slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", str(topic).strip().lower()).strip("-")
+        return slug or "default"
+
+    @classmethod
+    def load(cls, topic: str | None = None) -> "WriterDomainState":
+        key = cls.topic_key(topic)
+        base = Path(".agentic_state") / "writer"
+        path = base / f"{key}.json"
+        if not path.exists():
+            return cls(topic=topic)
+        data = json.loads(path.read_text())
+        return cls.model_validate({**data, "topic": topic})
+
+    def save(self, topic: str | None = None) -> None:
+        effective_topic = topic if topic is not None else self.topic
+        key = self.topic_key(effective_topic)
+        base = Path(".agentic_state") / "writer"
+        base.mkdir(parents=True, exist_ok=True)
+        path = base / f"{key}.json"
+        path.write_text(self.model_dump_json(indent=2))
 
     def update(self, task, result, *, section_order: list[str] | None = None):
         completed = list(self.completed_sections or [])
