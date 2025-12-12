@@ -169,12 +169,14 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
             section_name = base_task.section_name
             attempts = completed_sections.count(section_name)
 
-            if attempts == 0:
-                operation = "initial_draft"
-            elif attempts == 1:
-                operation = "refine_draft"
-            else:
-                operation = "finalize_draft"
+            sections_map = {}
+            match domain_state:
+                case dict() as domain_dict:
+                    sections_map = domain_dict.get("sections") or {}
+                case _:
+                    if domain_state and getattr(domain_state, "sections", None):
+                        sections_map = domain_state.sections
+            operation = "draft" if section_name not in sections_map else "refine"
 
             default_section_order = [
                 "Introduction",
