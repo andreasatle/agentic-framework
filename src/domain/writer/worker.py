@@ -88,9 +88,7 @@ def make_worker(client: OpenAI, model: str) -> Agent[WriterWorkerInput, WriterWo
             try:
                 output_model = WriterWorkerOutput.model_validate_json(raw_output)
             except Exception:
-                fallback_text = raw_output if isinstance(raw_output, str) else str(raw_output)
-                fallback = WriterWorkerOutput(result=WriterResult(text=fallback_text))
-                return fallback.model_dump_json()
+                raise
 
             project_state = getattr(worker_input, "project_state", None) if worker_input else None
             operation = worker_input.task.operation if worker_input else None
