@@ -47,8 +47,11 @@ class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):
 
     model_config = ConfigDict(extra="allow")
 
-    topic: str | None = None
     project_state: dict | None = None
+    topic: str | None = None
+    tone: str | None = None
+    audience: str | None = None
+    length: str | None = None
 
 
 class WriterPlannerOutput(PlannerOutput[WriterTask]):

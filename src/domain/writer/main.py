@@ -36,12 +36,23 @@ def main() -> None:
     client = OpenAI()
     parser = argparse.ArgumentParser(description="Run the writer supervisor.")
     parser.add_argument("--topic", type=str, default="", help="Optional writing topic.")
+    parser.add_argument("--tone", type=str, default="", help="Optional writing tone.")
+    parser.add_argument("--audience", type=str, default="", help="Optional target audience.")
+    parser.add_argument("--length", type=str, default="", help="Optional length guidance.")
     parser.add_argument("--max-iterations", type=int, default=1, help="Maximum supervisor iterations (capped at 10).")
     args = parser.parse_args()
 
     topic = args.topic.strip()
+    tone = args.tone.strip()
+    audience = args.audience.strip()
+    length = args.length.strip()
     max_iterations = max(1, min(args.max_iterations, 10))
-    initial_planner_input = WriterPlannerInput(topic=topic or None)
+    initial_planner_input = WriterPlannerInput(
+        topic=topic or None,
+        tone=tone or None,
+        audience=audience or None,
+        length=length or None,
+    )
 
     tool_registry = make_tool_registry()
     state = WriterDomainState.load()
