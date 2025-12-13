@@ -16,6 +16,10 @@ class StructureState(BaseModel):
         return None
 
 
+def next_structure(structure_state: StructureState, supervisor_response) -> StructureState:
+    return StructureState(sections=list(structure_state.sections))
+
+
 class WriterContentState(LoadSaveMixin):
     sections: dict[str, str] = Field(default_factory=dict)
     section_order: list[str] | None = None
