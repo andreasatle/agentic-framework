@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from agentic.common.domain_state import DomainStateProtocol
 from agentic.schemas import WorkerInput, Decision, ProjectState, Feedback
@@ -13,12 +13,20 @@ from agentic.supervisor_result import SupervisorRunResult
 logger = get_logger("agentic.supervisor")
 
 
-class SupervisorInput(BaseModel):
+class SupervisorControlInput(BaseModel):
+    max_loops: int
+
+
+class SupervisorDomainInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    planner_defaults: dict
     domain_state: DomainStateProtocol | None = None
-    max_loops: int
+    planner_defaults: dict = Field(default_factory=dict)
+
+
+class SupervisorInput(BaseModel):
+    control: SupervisorControlInput
+    domain: SupervisorDomainInput
 
 
 class SupervisorOutput(BaseModel):
@@ -328,13 +336,13 @@ def run_supervisor(
     problem_state_cls: Callable[[], type[BaseModel]],
 ) -> SupervisorOutput:
     project_state = ProjectState()
-    project_state.domain_state = supervisor_input.domain_state
+    project_state.domain_state = supervisor_input.domain.domain_state
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=tool_registry,
         project_state=project_state,
-        max_loops=supervisor_input.max_loops,
-        planner_defaults=supervisor_input.planner_defaults,
+        max_loops=supervisor_input.control.max_loops,
+        planner_defaults=supervisor_input.domain.planner_defaults,
         problem_state_cls=problem_state_cls,
     )
     run = supervisor()

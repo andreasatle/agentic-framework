@@ -5,7 +5,12 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from domain.sentiment import make_agent_dispatcher, make_tool_registry, problem_state_cls
-from agentic.supervisor import SupervisorInput, run_supervisor
+from agentic.supervisor import (
+    SupervisorControlInput,
+    SupervisorDomainInput,
+    SupervisorInput,
+    run_supervisor,
+)
 from domain.sentiment.factory import SentimentContentState
 
 
@@ -37,9 +42,11 @@ def main() -> None:
     state = SentimentContentState()
 
     supervisor_input = SupervisorInput(
-        planner_defaults={},
-        domain_state=state,
-        max_loops=5,
+        control=SupervisorControlInput(max_loops=5),
+        domain=SupervisorDomainInput(
+            domain_state=state,
+            planner_defaults={},
+        ),
     )
     run = run_supervisor(
         supervisor_input,

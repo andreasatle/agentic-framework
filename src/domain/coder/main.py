@@ -10,7 +10,12 @@ from domain.coder import (
     make_tool_registry,
     problem_state_cls,
 )
-from agentic.supervisor import SupervisorInput, run_supervisor
+from agentic.supervisor import (
+    SupervisorControlInput,
+    SupervisorDomainInput,
+    SupervisorInput,
+    run_supervisor,
+)
 from domain.coder.state import ProblemState
 
 
@@ -48,9 +53,11 @@ def main() -> None:
     state = ProblemState.load()
 
     supervisor_input = SupervisorInput(
-        planner_defaults=initial_planner_input.model_dump(),
-        domain_state=state,
-        max_loops=5,
+        control=SupervisorControlInput(max_loops=5),
+        domain=SupervisorDomainInput(
+            domain_state=state,
+            planner_defaults=initial_planner_input.model_dump(),
+        ),
     )
     run = run_supervisor(
         supervisor_input,
