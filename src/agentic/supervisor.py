@@ -37,7 +37,7 @@ class Supervisor:
     dispatcher: AgentDispatcher
     tool_registry: ToolRegistry
     problem_state_cls: Callable[[], type[BaseModel]]
-    domain_state: BaseModel | None
+    project_state: ProjectState
     max_loops: int = 5
     planner_defaults: dict[str, Any] = field(default_factory=dict)
 
@@ -56,8 +56,7 @@ class Supervisor:
         Returns a structured SupervisorRunResult.
         """
         context = SupervisorContext(trace=[])
-        context.project_state = ProjectState()
-        context.project_state.domain_state = self.domain_state
+        context.project_state = self.project_state
         self._current_project_state = context.project_state
         state = State.PLAN
 
@@ -326,10 +325,12 @@ def run_supervisor(
     tool_registry: ToolRegistry,
     problem_state_cls: Callable[[], type[BaseModel]],
 ) -> SupervisorOutput:
+    project_state = ProjectState()
+    project_state.domain_state = supervisor_input.domain_state
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=tool_registry,
-        domain_state=supervisor_input.domain_state,
+        project_state=project_state,
         max_loops=supervisor_input.max_loops,
         planner_defaults=supervisor_input.planner_defaults,
         problem_state_cls=problem_state_cls,
