@@ -64,6 +64,10 @@ def main() -> None:
     state = WriterDomainState.load(topic=topic or None) if not args.fresh else WriterDomainState(topic=topic or None)
 
     for i in range(max_iterations):
+        structure_sections = state.structure.sections
+        completed = state.completed_sections or []
+        if structure_sections and all(name in completed for name in structure_sections):
+            break
         print(f"[writer] iteration {i + 1} / {max_iterations}")
         dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
         supervisor_input = SupervisorRequest(

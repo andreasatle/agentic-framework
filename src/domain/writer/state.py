@@ -6,6 +6,16 @@ from agentic.common.load_save_mixin import LoadSaveMixin
 from domain.writer.types import WriterResult, WriterTask
 
 
+class StructureState(BaseModel):
+    sections: list[str] = Field(default_factory=list)
+
+    def next_section(self, completed: list[str]) -> str | None:
+        for name in self.sections:
+            if name not in completed:
+                return name
+        return None
+
+
 class WriterContentState(LoadSaveMixin):
     sections: dict[str, str] = Field(default_factory=dict)
     section_order: list[str] | None = None

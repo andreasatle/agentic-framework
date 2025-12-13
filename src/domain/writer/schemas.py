@@ -14,7 +14,7 @@ from agentic.schemas import (
 )
 
 from domain.writer.types import WriterResult, WriterTask
-from domain.writer.state import WriterContentState
+from domain.writer.state import StructureState, WriterContentState
 
 
 class WriterDomainState(LoadSaveMixin):
@@ -22,6 +22,7 @@ class WriterDomainState(LoadSaveMixin):
     refinement_steps: int = 0
     completed_sections: list[str] | None = None
     topic: str | None = None
+    structure: StructureState = Field(default_factory=StructureState)
     content: WriterContentState = Field(default_factory=WriterContentState)
 
     @classmethod
@@ -71,6 +72,8 @@ class WriterDomainState(LoadSaveMixin):
             data["completed_sections"] = self.completed_sections
         if self.content.section_order:
             data["section_order"] = self.content.section_order
+        if self.structure.sections:
+            data["structure"] = {"sections": self.structure.sections}
         return data
 
 class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):

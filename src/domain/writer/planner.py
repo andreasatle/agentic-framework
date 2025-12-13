@@ -4,7 +4,7 @@ from openai import OpenAI
 from agentic.agents import Agent
 from domain.writer.schemas import WriterPlannerInput, WriterPlannerOutput
 from domain.writer.types import WriterTask
-from domain.writer.state import WriterContentState
+from domain.writer.state import StructureState, WriterContentState
 
 
 PROMPT_PLANNER = """ROLE:
@@ -99,8 +99,38 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
             self.id = agent.id
 
         def __call__(self, user_input: str) -> str:
-            raw = self._agent(user_input)
-            output_model = self.output_schema.model_validate_json(raw)
+            planner_input = self.input_schema.model_validate_json(user_input)
+            project_state = planner_input.project_state or {}
+            domain_state = project_state.get("domain_state") or {}
+            structure_data = domain_state.get("structure")
+            completed_sections = domain_state.get("completed_sections") or []
+            if structure_data is None:
+                raise RuntimeError("StructureState is required for writer planning.")
+            structure = StructureState.model_validate(structure_data)
+            next_section = structure.next_section(completed_sections)
+            if not next_section:
+                output_model = WriterPlannerOutput(
+                    task=WriterTask(
+                        section_name="__complete__",
+                        purpose="Structure exhausted; no work remaining.",
+                        operation="draft",
+                        requirements=[],
+                    ),
+                    worker_id="writer-complete",
+                    section_order=structure.sections,
+                )
+            else:
+                task = WriterTask(
+                    section_name=next_section,
+                    purpose=f"Write the '{next_section}' section.",
+                    operation="draft",
+                    requirements=[],
+                )
+                output_model = WriterPlannerOutput(
+                    task=task,
+                    worker_id="writer-worker",
+                    section_order=structure.sections,
+                )
             return output_model.model_dump_json()
 
     return WriterPlannerAgent(base_agent)  # type: ignore[return-value]
