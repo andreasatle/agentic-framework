@@ -57,21 +57,26 @@ class Supervisor:
             State.CRITIC: self._handle_critic,
         }
 
-    def __call__(self) -> SupervisorRunResult:
+    def handle(self, request: SupervisorRequest) -> SupervisorResponse:
         """
         Explicit FSM over PLAN → WORK → TOOL/CRITIC → END.
         Each agent/tool invocation is a state transition.
-        Returns a structured SupervisorRunResult.
+        Returns a structured SupervisorResponse.
         """
-        initial_domain_state = getattr(self.project_state, "domain_state", None)
+        max_loops = request.control.max_loops
+        planner_defaults = request.domain.planner_defaults
+        project_state = ProjectState()
+        project_state.domain_state = request.domain.domain_state
+
+        initial_domain_state = getattr(project_state, "domain_state", None)
         domain_snapshot = initial_domain_state.snapshot_for_llm() if initial_domain_state is not None else None
         context = SupervisorContext(trace=[])
-        context.project_state = self.project_state
+        context.project_state = project_state
         context.domain_snapshot = domain_snapshot
-        self._current_project_state = context.project_state
+        context.planner_defaults = planner_defaults
         state = State.PLAN
 
-        while state != State.END and context.loops_used < self.max_loops:
+        while state != State.END and context.loops_used < max_loops:
             handler = self._handlers.get(state)
             if handler is None:
                 raise RuntimeError(f"Unknown supervisor state: {state}")
@@ -83,7 +88,7 @@ class Supervisor:
 
         if context.pending_state_update and initial_domain_state is not None:
             plan, worker_result = context.pending_state_update
-            self.project_state.domain_state = initial_domain_state.update(plan, worker_result)
+            project_state.domain_state = initial_domain_state.update(plan, worker_result)
 
         context.trace.append(
             {
@@ -94,13 +99,33 @@ class Supervisor:
                 "project_state": context.project_state,
             }
         )
-        return SupervisorRunResult(
+        return SupervisorResponse(
             plan=context.plan,
             result=context.final_result,
             decision=context.decision,
             loops_used=context.loops_used,
-            project_state=context.project_state,
+            project_state=project_state,
             trace=context.trace or [],
+        )
+
+    def __call__(self) -> SupervisorRunResult:
+        response = self.handle(self._legacy_request_adapter())
+        return SupervisorRunResult(
+            plan=response.plan,
+            result=response.result,
+            decision=response.decision,
+            loops_used=response.loops_used,
+            project_state=response.project_state,
+            trace=response.trace,
+        )
+
+    def _legacy_request_adapter(self) -> SupervisorRequest:
+        return SupervisorRequest(
+            control=SupervisorControlInput(max_loops=self.max_loops),
+            domain=SupervisorDomainInput(
+                domain_state=getattr(self.project_state, "domain_state", None),
+                planner_defaults=self.planner_defaults,
+            ),
         )
 
     def _make_snapshot(self, context):
@@ -122,7 +147,7 @@ class Supervisor:
 
     def _handle_plan(self, context: SupervisorContext) -> State:
         planner_input_cls = self.dispatcher.planner.input_schema
-        planner_kwargs: dict[str, Any] = dict(self.planner_defaults or {})
+        planner_kwargs = dict(context.planner_defaults or {})
         planner_feedback = context.planner_feedback
         if isinstance(planner_feedback, str):
             planner_feedback = Feedback(kind="OTHER", message=planner_feedback)
@@ -200,6 +225,7 @@ class Supervisor:
                 plan=task,
                 worker_answer=None,
                 worker_id=worker_id,
+                planner_defaults=context.planner_defaults,
             )
             return State.CRITIC
 
@@ -228,6 +254,7 @@ class Supervisor:
                 plan=context.plan,
                 worker_answer=worker_output.result,
                 worker_id=context.worker_id,
+                planner_defaults=context.planner_defaults,
             )
             return State.CRITIC
 
@@ -318,14 +345,15 @@ class Supervisor:
 
         raise RuntimeError("Critic decision must be ACCEPT or REJECT.")
 
-    def _build_critic_input(self, plan, worker_answer, worker_id):
+    def _build_critic_input(self, plan, worker_answer, worker_id, planner_defaults=None):
         critic_input_cls = self.dispatcher.critic.input_schema
         critic_kwargs = {"plan": plan, "worker_answer": worker_answer}
         fields = critic_input_cls.model_fields
         if "worker_id" in fields:
             critic_kwargs["worker_id"] = worker_id or ""
         if "project_description" in fields:
-            critic_kwargs["project_description"] = self.planner_defaults.get("project_description", "")
+            defaults = planner_defaults or {}
+            critic_kwargs["project_description"] = defaults.get("project_description", "")
         return critic_input_cls(**critic_kwargs)
 
 def run_supervisor(
@@ -335,22 +363,12 @@ def run_supervisor(
     tool_registry: ToolRegistry,
     problem_state_cls: Callable[[], type[BaseModel]],
 ) -> SupervisorResponse:
-    project_state = ProjectState()
-    project_state.domain_state = supervisor_input.domain.domain_state
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=tool_registry,
-        project_state=project_state,
+        project_state=ProjectState(),
         max_loops=supervisor_input.control.max_loops,
         planner_defaults=supervisor_input.domain.planner_defaults,
         problem_state_cls=problem_state_cls,
     )
-    run = supervisor()
-    return SupervisorResponse(
-        plan=run.plan,
-        result=run.result,
-        decision=run.decision,
-        project_state=run.project_state,
-        trace=run.trace,
-        loops_used=run.loops_used,
-    )
+    return supervisor.handle(supervisor_input)
