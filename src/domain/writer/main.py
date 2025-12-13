@@ -63,12 +63,10 @@ def main() -> None:
     tool_registry = make_tool_registry()
     state = WriterDomainState.load(topic=topic or None) if not args.fresh else WriterDomainState(topic=topic or None)
 
-    for i in range(max_iterations):
-        structure_sections = state.structure.sections
-        completed = state.completed_sections or []
-        if structure_sections and all(name in completed for name in structure_sections):
-            break
-        print(f"[writer] iteration {i + 1} / {max_iterations}")
+    iteration = 0
+    remaining = state.remaining_sections()
+    while remaining and iteration < max_iterations:
+        print(f"[writer] iteration {iteration + 1} / {max_iterations}")
         dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
         supervisor_input = SupervisorRequest(
             control=SupervisorControlInput(max_loops=5),
@@ -91,9 +89,13 @@ def main() -> None:
             state = updated_state
 
         _pretty_print_run(run)
+        iteration += 1
+        remaining = state.remaining_sections()
 
-    if max_iterations > 1:
+    if iteration >= max_iterations and remaining:
         print("[writer] stopped after max_iterations without completion")
+    if not remaining:
+        print("[writer] structure exhausted")
 
     sections = state.content.sections
     order = state.content.section_order or sections.keys()

@@ -76,6 +76,10 @@ class WriterDomainState(LoadSaveMixin):
             data["structure"] = {"sections": self.structure.sections}
         return data
 
+    def remaining_sections(self) -> list[str]:
+        completed = set(self.completed_sections or [])
+        return [s for s in self.structure.sections if s not in completed]
+
 class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):
     """Supervisor context for the writer planner."""
 
