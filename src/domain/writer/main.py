@@ -13,7 +13,7 @@ from domain.writer import (
 from agentic.supervisor import (
     SupervisorControlInput,
     SupervisorDomainInput,
-    SupervisorInput,
+    SupervisorRequest,
     run_supervisor,
 )
 from domain.writer.schemas import WriterDomainState
@@ -66,7 +66,7 @@ def main() -> None:
     for i in range(max_iterations):
         print(f"[writer] iteration {i + 1} / {max_iterations}")
         dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
-        supervisor_input = SupervisorInput(
+        supervisor_input = SupervisorRequest(
             control=SupervisorControlInput(max_loops=5),
             domain=SupervisorDomainInput(
                 domain_state=state,

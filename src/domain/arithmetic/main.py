@@ -15,7 +15,7 @@ from domain.arithmetic import (
 from agentic.supervisor import (
     SupervisorControlInput,
     SupervisorDomainInput,
-    SupervisorInput,
+    SupervisorRequest,
     run_supervisor,
 )
 from domain.arithmetic.factory import ArithmeticContentState
@@ -49,7 +49,7 @@ def main() -> None:
     dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
     state = ArithmeticContentState()
 
-    supervisor_input = SupervisorInput(
+    supervisor_input = SupervisorRequest(
         control=SupervisorControlInput(max_loops=5),
         domain=SupervisorDomainInput(
             domain_state=state,

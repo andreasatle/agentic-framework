@@ -24,12 +24,12 @@ class SupervisorDomainInput(BaseModel):
     planner_defaults: dict = Field(default_factory=dict)
 
 
-class SupervisorInput(BaseModel):
+class SupervisorRequest(BaseModel):
     control: SupervisorControlInput
     domain: SupervisorDomainInput
 
 
-class SupervisorOutput(BaseModel):
+class SupervisorResponse(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     plan: Any | None
@@ -329,12 +329,12 @@ class Supervisor:
         return critic_input_cls(**critic_kwargs)
 
 def run_supervisor(
-    supervisor_input: SupervisorInput,
+    supervisor_input: SupervisorRequest,
     *,
     dispatcher: AgentDispatcher,
     tool_registry: ToolRegistry,
     problem_state_cls: Callable[[], type[BaseModel]],
-) -> SupervisorOutput:
+) -> SupervisorResponse:
     project_state = ProjectState()
     project_state.domain_state = supervisor_input.domain.domain_state
     supervisor = Supervisor(
@@ -346,7 +346,7 @@ def run_supervisor(
         problem_state_cls=problem_state_cls,
     )
     run = supervisor()
-    return SupervisorOutput(
+    return SupervisorResponse(
         plan=run.plan,
         result=run.result,
         decision=run.decision,
