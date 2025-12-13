@@ -20,11 +20,12 @@ class SupervisorControlInput(BaseModel):
 class SupervisorDomainInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    domain_state: DomainStateProtocol | None = None
-    planner_defaults: dict = Field(default_factory=dict)
+    domain_state: DomainStateProtocol
+    planner_defaults: dict
 
 
 class SupervisorRequest(BaseModel):
+    """domain_state is read-only during supervisor execution; mutate state only via the emitted response event."""
     control: SupervisorControlInput
     domain: SupervisorDomainInput
 
