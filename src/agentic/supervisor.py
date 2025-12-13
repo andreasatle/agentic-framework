@@ -30,13 +30,15 @@ class SupervisorRequest(BaseModel):
 
 
 class SupervisorResponse(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    """SupervisorResponse is an immutable event."""
+
+    model_config = ConfigDict(frozen=True)
 
     plan: Any | None
     result: Any | None
-    decision: Decision | None
-    project_state: ProjectState
-    trace: list[Any]
+    decision: Any | None
+    project_state: dict
+    trace: list[dict]
     loops_used: int
 
 
@@ -63,6 +65,19 @@ class Supervisor:
         Each agent/tool invocation is a state transition.
         Returns a structured SupervisorResponse.
         """
+        def _to_event(value):
+            if hasattr(value, "model_dump"):
+                return _to_event(value.model_dump())
+            if isinstance(value, dict):
+                return {k: _to_event(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [_to_event(v) for v in value]
+            if isinstance(value, tuple):
+                return [_to_event(v) for v in value]
+            if value is None or isinstance(value, (str, int, float, bool)):
+                return value
+            raise TypeError(f"Non-serializable type: {type(value).__name__}")
+
         max_loops = request.control.max_loops
         planner_defaults = request.domain.planner_defaults
         project_state = ProjectState()
@@ -92,7 +107,7 @@ class Supervisor:
 
         context.trace.append(
             {
-                "state": State.END,
+                "state": State.END.name,
                 "result": context.final_result,
                 "decision": context.decision,
                 "loops_used": context.loops_used,
@@ -100,12 +115,12 @@ class Supervisor:
             }
         )
         return SupervisorResponse(
-            plan=context.plan,
-            result=context.final_result,
-            decision=context.decision,
+            plan=_to_event(context.plan),
+            result=_to_event(context.final_result),
+            decision=_to_event(context.decision),
             loops_used=context.loops_used,
-            project_state=project_state,
-            trace=context.trace or [],
+            project_state=_to_event(project_state.model_dump()),
+            trace=[_to_event(entry) for entry in (context.trace or [])],
         )
 
     def __call__(self) -> SupervisorRunResult:
@@ -173,7 +188,7 @@ class Supervisor:
             context.last_stage = "plan"
             context.trace.append(
                 {
-                    "state": State.PLAN,
+                    "state": State.PLAN.name,
                     "agent_id": "Planner",
                     "call_id": None,
                     "tool_name": None,
@@ -200,7 +215,7 @@ class Supervisor:
         context.last_stage = "plan"
         context.trace.append(
             {
-                "state": State.PLAN,
+                "state": State.PLAN.name,
                 "agent_id": planner_response.agent_id,
                 "call_id": planner_response.call_id,
                 "tool_name": None,
@@ -236,7 +251,7 @@ class Supervisor:
         context.last_stage = "work"
         context.trace.append(
             {
-                "state": State.WORK,
+                "state": State.WORK.name,
                 "agent_id": worker_response.agent_id,
                 "call_id": worker_response.call_id,
                 "tool_name": None,
@@ -281,7 +296,7 @@ class Supervisor:
         tool_result = func(request.args)
         context.trace.append(
             {
-                "state": State.TOOL,
+                "state": State.TOOL.name,
                 "agent_id": None,
                 "call_id": None,
                 "tool_name": request.tool_name,
@@ -311,7 +326,7 @@ class Supervisor:
         )
         context.trace.append(
             {
-                "state": State.CRITIC,
+                "state": State.CRITIC.name,
                 "agent_id": critic_response.agent_id,
                 "call_id": critic_response.call_id,
                 "tool_name": None,

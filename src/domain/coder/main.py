@@ -65,8 +65,9 @@ def main() -> None:
         tool_registry=tool_registry,
         problem_state_cls=problem_state_cls,
     )
-    updated_state = run.project_state.domain_state if run.project_state else None
-    if updated_state is not None:
+    state_data = run.project_state.get("domain_state") if run.project_state else None
+    if state_data is not None:
+        updated_state = ProblemState(**state_data)
         updated_state.save()
     _pretty_print_run(run)
 

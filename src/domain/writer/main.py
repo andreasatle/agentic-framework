@@ -79,9 +79,10 @@ def main() -> None:
             tool_registry=tool_registry,
             problem_state_cls=problem_state_cls,
         )
-        updated_state = run.project_state.domain_state if run.project_state else None
+        state_data = run.project_state.get("domain_state") if run.project_state else None
 
-        if updated_state is not None:
+        if state_data is not None:
+            updated_state = WriterDomainState(**state_data)
             updated_state.save(topic=topic or None)
             state = updated_state
 
