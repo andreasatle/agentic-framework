@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from domain.sentiment import make_agent_dispatcher, make_tool_registry, problem_state_cls
-from agentic.supervisor import Supervisor
+from agentic.supervisor import SupervisorInput, run_supervisor
 from domain.sentiment.factory import SentimentContentState
 
 
@@ -36,14 +36,17 @@ def main() -> None:
     dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
     state = SentimentContentState()
 
-    supervisor = Supervisor(
-        dispatcher=dispatcher,
-        tool_registry=tool_registry,
+    supervisor_input = SupervisorInput(
+        planner_defaults={},
         domain_state=state,
         max_loops=5,
+    )
+    run = run_supervisor(
+        supervisor_input,
+        dispatcher=dispatcher,
+        tool_registry=tool_registry,
         problem_state_cls=problem_state_cls,
     )
-    run = supervisor()
     _pretty_print_run(run)
 
 

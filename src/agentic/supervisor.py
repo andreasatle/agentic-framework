@@ -1,8 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
+from agentic.common.domain_state import DomainStateProtocol
 from agentic.schemas import WorkerInput, Decision, ProjectState, Feedback
 from agentic.tool_registry import ToolRegistry
 from agentic.logging_config import get_logger
@@ -10,6 +11,25 @@ from agentic.agent_dispatcher import AgentDispatcher
 from agentic.supervisor_types import SupervisorState as State, SupervisorContext
 from agentic.supervisor_result import SupervisorRunResult
 logger = get_logger("agentic.supervisor")
+
+
+class SupervisorInput(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    planner_defaults: dict
+    domain_state: DomainStateProtocol | None = None
+    max_loops: int
+
+
+class SupervisorOutput(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    plan: Any | None
+    result: Any | None
+    decision: Decision | None
+    project_state: ProjectState
+    trace: list[Any]
+    loops_used: int
 
 
 @dataclass
@@ -298,3 +318,28 @@ class Supervisor:
         if "project_description" in fields:
             critic_kwargs["project_description"] = self.planner_defaults.get("project_description", "")
         return critic_input_cls(**critic_kwargs)
+
+def run_supervisor(
+    supervisor_input: SupervisorInput,
+    *,
+    dispatcher: AgentDispatcher,
+    tool_registry: ToolRegistry,
+    problem_state_cls: Callable[[], type[BaseModel]],
+) -> SupervisorOutput:
+    supervisor = Supervisor(
+        dispatcher=dispatcher,
+        tool_registry=tool_registry,
+        domain_state=supervisor_input.domain_state,
+        max_loops=supervisor_input.max_loops,
+        planner_defaults=supervisor_input.planner_defaults,
+        problem_state_cls=problem_state_cls,
+    )
+    run = supervisor()
+    return SupervisorOutput(
+        plan=run.plan,
+        result=run.result,
+        decision=run.decision,
+        project_state=run.project_state,
+        trace=run.trace,
+        loops_used=run.loops_used,
+    )

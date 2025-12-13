@@ -10,7 +10,7 @@ from domain.writer import (
     make_tool_registry,
     problem_state_cls,
 )
-from agentic.supervisor import Supervisor
+from agentic.supervisor import SupervisorInput, run_supervisor
 from domain.writer.schemas import WriterDomainState
 
 
@@ -61,15 +61,17 @@ def main() -> None:
     for i in range(max_iterations):
         print(f"[writer] iteration {i + 1} / {max_iterations}")
         dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
-        supervisor = Supervisor(
-            dispatcher=dispatcher,
-            tool_registry=tool_registry,
+        supervisor_input = SupervisorInput(
+            planner_defaults=initial_planner_input.model_dump(),
             domain_state=state,
             max_loops=5,
-            planner_defaults=initial_planner_input.model_dump(),
+        )
+        run = run_supervisor(
+            supervisor_input,
+            dispatcher=dispatcher,
+            tool_registry=tool_registry,
             problem_state_cls=problem_state_cls,
         )
-        run = supervisor()
         updated_state = run.project_state.domain_state if run.project_state else None
 
         if updated_state is not None:
