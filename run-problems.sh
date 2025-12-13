@@ -14,13 +14,16 @@ uv run agentic-sentiment
 echo
 
 echo "=== Running Coder Problem ==="
-echo "Write a fibonacci function." | \
-uv run agentic-coder
+uv run agentic-coder --description "Implement a fibonacci(n) function."
 echo
 
 echo "=== Running Writer Problem ==="
-echo "Write an article about fibonacci functions." | \
-uv run agentic-writer
+uv run agentic-writer \
+  --topic "Write an article about War and Piece." \
+  --tone "Informative" \
+  --audience "General public" \
+  --length "1000 words"
+
 echo
 
 echo "=== All problems completed ==="
