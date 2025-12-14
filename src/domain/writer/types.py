@@ -30,3 +30,12 @@ class WriteOp(BaseModel):
     target_section: str | None
     source_sections: list[str]
     instructions: str
+
+
+def writer_task_to_write_op(task: WriterTask) -> WriteOp:
+    return WriteOp(
+        op=task.operation,
+        target_section=task.section_name,
+        source_sections=[],
+        instructions=" ".join(task.requirements),
+    )
