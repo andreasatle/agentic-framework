@@ -124,7 +124,7 @@ class Supervisor:
         )
         return SupervisorResponse(
             plan=_to_event(context.plan),
-            result=_to_event(context.final_result),
+            result=_to_event(context.worker_output),
             decision=_to_event(context.decision),
             loops_used=context.loops_used,
             project_state=_to_event(project_state.model_dump()),
@@ -135,9 +135,9 @@ class Supervisor:
         response = self.handle(self._legacy_request_adapter())
         project_state = ProjectState.model_validate(response.project_state)
         return SupervisorRunResult(
-            plan=response.plan,
-            result=response.result,
-            decision=response.decision,
+            plan=self._current_project_state.last_plan if hasattr(self, "_current_project_state") else response.plan,
+            result=self._current_project_state.last_result if hasattr(self, "_current_project_state") else response.result,
+            decision=self._current_project_state.last_decision if hasattr(self, "_current_project_state") else response.decision,
             loops_used=response.loops_used,
             project_state=project_state,
             trace=response.trace,
@@ -212,7 +212,7 @@ class Supervisor:
         planner_output = planner_response.output
         context.plan = planner_output.task
         context.project_state.last_plan = (
-            context.plan.model_dump() if hasattr(context.plan, "model_dump") else context.plan
+            planner_output.model_dump() if hasattr(planner_output, "model_dump") else planner_output
         )
         context.worker_id = planner_output.worker_id
         context.previous_plan = planner_output.task
@@ -274,7 +274,7 @@ class Supervisor:
         if worker_output.result is not None:
             context.worker_result = worker_output.result
             context.project_state.last_result = (
-                context.worker_result.model_dump() if hasattr(context.worker_result, "model_dump") else context.worker_result
+                worker_output.model_dump() if hasattr(worker_output, "model_dump") else worker_output
             )
             context.critic_input = self._build_critic_input(
                 plan=context.plan,
@@ -286,6 +286,9 @@ class Supervisor:
 
         if worker_output.tool_request is not None:
             context.tool_request = worker_output.tool_request
+            context.project_state.last_result = (
+                worker_output.model_dump() if hasattr(worker_output, "model_dump") else worker_output
+            )
             return State.TOOL
 
         raise RuntimeError("WorkerOutput violated 'exactly one branch' invariant.")
