@@ -61,6 +61,7 @@ class WriterDomainState(LoadSaveMixin):
             refinement_steps=self.refinement_steps,
             completed_sections=completed or None,
             topic=self.topic,
+            structure=self.structure,
             content=new_content,
         )
 
@@ -85,8 +86,13 @@ class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):
 
     model_config = ConfigDict(extra="allow")
 
+    # instructions is preferred and opaque; other semantic fields are legacy and ignored by planner logic.
     project_state: dict | None = None
     instructions: str | None = None
+    topic: str | None = None
+    tone: str | None = None
+    audience: str | None = None
+    length: str | None = None
 
 
 class WriterPlannerOutput(PlannerOutput[WriterTask]):

@@ -1,10 +1,9 @@
-import json
 from openai import OpenAI
 
 from agentic.agents import Agent
 from domain.writer.schemas import WriterPlannerInput, WriterPlannerOutput
 from domain.writer.types import WriterTask
-from domain.writer.state import StructureState, WriterContentState
+from domain.writer.state import StructureState
 
 
 PROMPT_PLANNER = """ROLE:
@@ -82,17 +81,26 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
                 raise RuntimeError("StructureState must include sections for writer planning.")
             next_section = structure.next_section(completed_sections)
             if not next_section:
-                raise RuntimeError("No remaining sections in structure.")
-            task = WriterTask(
-                section_name=next_section,
-                purpose=f"Write the '{next_section}' section.",
-                operation="draft",
-                requirements=[],
-            )
-            output_model = WriterPlannerOutput(
-                task=task,
-                worker_id="writer-worker",
-            )
+                output_model = WriterPlannerOutput(
+                    task=WriterTask(
+                        section_name="__complete__",
+                        purpose="Structure exhausted; no work remaining.",
+                        operation="draft",
+                        requirements=[],
+                    ),
+                    worker_id="writer-complete",
+                )
+            else:
+                task = WriterTask(
+                    section_name=next_section,
+                    purpose=f"Write the '{next_section}' section.",
+                    operation="draft",
+                    requirements=[],
+                )
+                output_model = WriterPlannerOutput(
+                    task=task,
+                    worker_id="writer-worker",
+                )
             return output_model.model_dump_json()
 
     return WriterPlannerAgent(base_agent)  # type: ignore[return-value]
