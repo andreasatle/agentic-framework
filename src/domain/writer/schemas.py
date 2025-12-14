@@ -99,7 +99,6 @@ class WriterPlannerOutput(PlannerOutput[WriterTask]):
 
     task: WriterTask
     worker_id: str = "writer-worker"
-    section_order: list[str] | None = None
 
 
 class WriterWorkerInput(WorkerInput[WriterTask, WriterResult]):

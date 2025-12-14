@@ -119,7 +119,6 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
                         requirements=[],
                     ),
                     worker_id="writer-complete",
-                    section_order=structure.sections,
                 )
             else:
                 task = WriterTask(
@@ -131,7 +130,6 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
                 output_model = WriterPlannerOutput(
                     task=task,
                     worker_id="writer-worker",
-                    section_order=structure.sections,
                 )
             return output_model.model_dump_json()
 
