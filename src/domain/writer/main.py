@@ -102,7 +102,7 @@ def main() -> None:
         print("[writer] structure exhausted")
 
     sections = state.content.sections
-    order = state.content.section_order or sections.keys()
+    order = state.content.section_order or state.structure.sections
     article = "\n\n".join(sections[name] for name in order if name in sections)
 
     print(article)
