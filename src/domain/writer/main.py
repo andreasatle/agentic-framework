@@ -60,23 +60,12 @@ def main() -> None:
     remaining = state.remaining_sections()
     while remaining and iteration < max_iterations:
         print(f"[writer] iteration {iteration + 1} / {max_iterations}")
-        current_section = remaining[0]
-        current_task = WriterTask(
-            section_name=current_section,
-            purpose=f"Write the '{current_section}' section.",
-            operation="draft",
-            requirements=[],
-        )
-        planner_input = WriterPlannerInput(
-            task=current_task,
-            instructions=instructions or None,
-        )
         dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
         supervisor_input = SupervisorRequest(
             control=SupervisorControlInput(max_loops=5),
             domain=SupervisorDomainInput(
                 domain_state=state,
-                planner_defaults=planner_input.model_dump(),
+                planner_defaults=WriterPlannerInput(instructions=instructions or None).model_dump(),
             ),
         )
         run = run_supervisor(

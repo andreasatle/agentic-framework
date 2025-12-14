@@ -3,6 +3,7 @@ from openai import OpenAI
 from agentic.agents import Agent
 from domain.writer.schemas import WriterPlannerInput, WriterPlannerOutput
 from domain.writer.types import WriterTask
+from domain.writer.state import StructureState
 
 
 PROMPT_PLANNER = """ROLE:
@@ -69,9 +70,24 @@ def make_planner(client: OpenAI, model: str) -> Agent[WriterPlannerInput, Writer
 
         def __call__(self, user_input: str) -> str:
             planner_input = self.input_schema.model_validate_json(user_input)
-            task = planner_input.task
-            if task is None:
-                raise RuntimeError("WriterPlannerInput.task is required.")
+            project_state = planner_input.project_state or {}
+            domain_state = project_state.get("domain_state") or {}
+            structure_data = domain_state.get("structure")
+            completed_sections = domain_state.get("completed_sections") or []
+            if structure_data is None:
+                raise RuntimeError("StructureState is required for writer planning.")
+            structure = StructureState.model_validate(structure_data)
+            if not structure.sections:
+                raise RuntimeError("StructureState must include sections for writer planning.")
+            next_section = structure.next_section(completed_sections)
+            if not next_section:
+                raise RuntimeError("No remaining sections in structure.")
+            task = WriterTask(
+                section_name=next_section,
+                purpose=f"Write the '{next_section}' section.",
+                operation="draft",
+                requirements=["Write the section content clearly."],
+            )
             output_model = WriterPlannerOutput(
                 task=task,
                 worker_id="writer-worker",

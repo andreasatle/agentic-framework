@@ -66,7 +66,7 @@ def test_writer_single_task_execution():
         tool_registry=ToolRegistry(),
         project_state=ProjectState(domain_state=domain_state),
         max_loops=5,
-        planner_defaults=WriterPlannerInput(task=task).model_dump(),
+        planner_defaults=WriterPlannerInput().model_dump(),
         problem_state_cls=problem_state_cls,
     )
 
@@ -75,7 +75,7 @@ def test_writer_single_task_execution():
             control=SupervisorControlInput(max_loops=5),
             domain=SupervisorDomainInput(
                 domain_state=domain_state,
-                planner_defaults=WriterPlannerInput(task=task).model_dump(),
+                planner_defaults=WriterPlannerInput().model_dump(),
             ),
         )
     )
@@ -90,7 +90,7 @@ def test_writer_single_task_execution():
     assert worker_agent.calls == 1
 
 
-def test_writer_planner_requires_task():
+def test_writer_planner_requires_structure():
     planner = make_planner(client=object(), model="test-model")
     with pytest.raises(RuntimeError):
         planner(json.dumps({"project_state": {}}))
