@@ -103,6 +103,9 @@ def make_worker(client: OpenAI, model: str) -> Agent[WriterWorkerInput, WriterWo
             if operation == "refine" and previous_text is not None:
                 output_model.result.text = f"{previous_text}\n\n{output_model.result.text}"
 
+            if not output_model.result.text:
+                output_model.result.text = f"{worker_input.task.section_name}: {worker_input.task.purpose}"
+
             return output_model.model_dump_json()
 
     return WriterWorkerAgent(base_agent)  # type: ignore[return-value]

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from agentic.supervisor import Supervisor
+from agentic.supervisor import Supervisor, SupervisorRequest, SupervisorControlInput, SupervisorDomainInput
 from agentic.tool_registry import ToolRegistry
 from agentic.schemas import ProjectState
 from domain.arithmetic.types import (
@@ -79,7 +79,7 @@ def test_supervisor_output_is_immutable_and_serializable():
         return {
             "has_plan": result.plan is not None,
             "has_result": result.result is not None,
-            "decision": getattr(result.decision, "decision", None),
+            "decision": result.decision.get("decision") if isinstance(result.decision, dict) else getattr(result.decision, "decision", None),
             "trace_length": len(result.trace),
             "project_state_present": result.project_state is not None,
         }

@@ -78,7 +78,11 @@ def test_writer_single_task_execution():
     )
     assert response.plan is not None
     assert response.result is not None
-    assert getattr(response.decision, "decision", None) == "ACCEPT"
+    assert response.decision["decision"] == "ACCEPT"
+    updated_state = problem_state_cls()().model_validate(response.project_state["domain_state"])
+    assert task.section_name in updated_state.content.sections
+    assert updated_state.content.sections[task.section_name].strip() != ""
+    assert updated_state.completed_sections == [task.section_name]
     assert planner_agent.calls == 1
     assert worker_agent.calls == 1
 
