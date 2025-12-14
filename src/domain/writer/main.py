@@ -17,6 +17,7 @@ from agentic.supervisor import (
     run_supervisor,
 )
 from domain.writer.schemas import WriterDomainState
+from domain.writer.types import WriterTask
 
 
 def _pretty_print_run(run: dict) -> None:
@@ -47,10 +48,6 @@ def main() -> None:
 
     instructions = args.instructions.strip()
     max_iterations = max(1, min(args.max_iterations, 10))
-    initial_planner_input = WriterPlannerInput(
-        instructions=instructions or None,
-    )
-
     tool_registry = make_tool_registry()
     state = WriterDomainState.load(topic=instructions or None) if not args.fresh else WriterDomainState(topic=instructions or None)
     structure_sections = state.structure.sections if state.structure else []
@@ -63,12 +60,23 @@ def main() -> None:
     remaining = state.remaining_sections()
     while remaining and iteration < max_iterations:
         print(f"[writer] iteration {iteration + 1} / {max_iterations}")
+        current_section = remaining[0]
+        current_task = WriterTask(
+            section_name=current_section,
+            purpose=f"Write the '{current_section}' section.",
+            operation="draft",
+            requirements=[],
+        )
+        planner_input = WriterPlannerInput(
+            task=current_task,
+            instructions=instructions or None,
+        )
         dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
         supervisor_input = SupervisorRequest(
             control=SupervisorControlInput(max_loops=5),
             domain=SupervisorDomainInput(
                 domain_state=state,
-                planner_defaults=initial_planner_input.model_dump(),
+                planner_defaults=planner_input.model_dump(),
             ),
         )
         run = run_supervisor(
