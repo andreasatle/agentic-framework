@@ -49,6 +49,7 @@ def test_writer_reject_then_accept():
 
     planner_outputs = [
         WriterPlannerOutput(task=initial_task, worker_id="writer-worker").model_dump_json(),
+        WriterPlannerOutput(task=initial_task, worker_id="writer-worker").model_dump_json(),
     ]
     worker_outputs = [
         WriterWorkerOutput(result=WriterResult(text="bad")).model_dump_json(),
