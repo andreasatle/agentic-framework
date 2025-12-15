@@ -9,7 +9,7 @@ from typing import Any, Callable
 from pydantic import BaseModel, ConfigDict, Field
 
 from agentic.common.domain_state import DomainStateProtocol
-from agentic.schemas import WorkerInput, Decision, ProjectState, Feedback
+from agentic.schemas import WorkerInput, Decision, ProjectState
 from agentic.tool_registry import ToolRegistry
 from agentic.logging_config import get_logger
 from agentic.agent_dispatcher import AgentDispatcher
@@ -82,7 +82,6 @@ class Supervisor:
                 return value
             raise TypeError(f"Non-serializable type: {type(value).__name__}")
 
-        max_loops = request.control.max_loops
         request_task = request.domain.task
         if request_task is None:
             raise RuntimeError("SupervisorRequest must include a task.")
@@ -97,20 +96,22 @@ class Supervisor:
         context.request_task = request_task
         state = State.PLAN
 
-        while state != State.END and context.loops_used < max_loops:
-            handler = self._handlers.get(state)
-            if handler is None:
-                raise RuntimeError(f"Unknown supervisor state: {state}")
+        def _run(handler: Callable[[SupervisorContext], State]) -> State:
             context.loops_used += 1
-            state = handler(context)
+            return handler(context)
 
-        if state != State.END and context.loops_used >= max_loops:
-            context.decision = Decision(
-                decision="REJECT",
-                feedback=Feedback(kind="OTHER", message="Max loops reached"),
-            )
-            state = State.END
-
+        state = _run(self._handle_plan)
+        if state != State.WORK:
+            raise RuntimeError("Planner did not produce a work state.")
+        state = _run(self._handle_work)
+        if state == State.TOOL:
+            state = _run(self._handle_tool)
+            state = _run(self._handle_work)
+            if state == State.TOOL:
+                raise RuntimeError("Worker requested multiple tool invocations; not supported in atomic mode.")
+        if state != State.CRITIC:
+            raise RuntimeError("Supervisor did not reach CRITIC state.")
+        state = _run(self._handle_critic)
         if state != State.END:
             raise RuntimeError("Supervisor exited without reaching END state.")
 
@@ -121,7 +122,7 @@ class Supervisor:
         context.trace.append(
             {
                 "state": State.END.name,
-                "result": context.final_result,
+                "result": context.worker_result,
                 "decision": context.decision,
                 "loops_used": context.loops_used,
                 "project_state": context.project_state,
@@ -158,28 +159,8 @@ class Supervisor:
         planner_kwargs = {}
         if "task" in getattr(planner_input_cls, "model_fields", {}):
             planner_kwargs["task"] = context.request_task
-
         planner_input = planner_input_cls(**planner_kwargs)
-        try:
-            planner_response = self.dispatcher.plan(planner_input, snapshot=None)
-        except RuntimeError as e:
-            context.planner_feedback = Feedback(kind="OTHER", message=str(e))
-            context.plan = None
-            context.worker_id = None
-            context.worker_input = None
-            context.last_stage = "plan"
-            context.trace.append(
-                {
-                    "state": State.PLAN.name,
-                    "agent_id": "Planner",
-                    "call_id": None,
-                    "tool_name": None,
-                    "input": None,
-                    "output": None,
-                    "error": str(e),
-                }
-            )
-            return State.PLAN
+        planner_response = self.dispatcher.plan(planner_input, snapshot=None)
 
         logger.debug(f"[supervisor] PLAN call_id={planner_response.call_id}")
         planner_output = planner_response.output
@@ -191,9 +172,6 @@ class Supervisor:
         context.plan = task
         context.project_state.last_plan = planner_output.model_dump() if hasattr(planner_output, "model_dump") else planner_output
         context.worker_id = planner_output.worker_id
-        context.previous_plan = planner_output.task
-        context.previous_worker_id = planner_output.worker_id
-        context.planner_feedback = None
         worker_agent = self.dispatcher.workers.get(context.worker_id)
         worker_input_cls = worker_agent.input_schema if worker_agent else WorkerInput
         domain_state_obj = getattr(context.project_state, "domain_state", None)
@@ -202,7 +180,6 @@ class Supervisor:
             writer_state = getattr(domain_state_obj, "content", None)
             worker_kwargs["writer_state"] = writer_state
         context.worker_input = worker_input_cls(**worker_kwargs)
-        context.last_stage = "plan"
         context.trace.append(
             {
                 "state": State.PLAN.name,
@@ -214,8 +191,6 @@ class Supervisor:
             }
         )
         return State.WORK
-        context.decision = Decision(decision="ACCEPT")
-        return State.END
 
     def _handle_work(self, context: SupervisorContext) -> State:
         if context.worker_input is None:
@@ -239,7 +214,6 @@ class Supervisor:
         worker_response = self.dispatcher.work(context.worker_id, context.worker_input, snapshot=snapshot)
         worker_output = worker_response.output
         context.worker_output = worker_output
-        context.last_stage = "work"
         context.trace.append(
             {
                 "state": State.WORK.name,
@@ -335,35 +309,13 @@ class Supervisor:
             }
         )
         if decision.decision == "ACCEPT":
-            context.final_result = context.worker_result
-            context.final_output = context.worker_output
             context.pending_state_update = (context.plan, context.worker_result)
             logger.info(f"[supervisor] ACCEPT after {context.loops_used} transitions")
             return State.END
 
         if decision.decision == "REJECT":
-            prev_worker_input = context.worker_input
-            if context.last_stage == "plan" or context.plan is None or prev_worker_input is None:
-                context.planner_feedback = decision.feedback
-                # Planner failed, retry planning
-                logger.info(f"[supervisor] REJECT after {context.loops_used} transitions (replanning)")
-                return State.PLAN
-            context.feedback = decision.feedback
-            worker_agent = self.dispatcher.workers.get(context.worker_id)
-            worker_input_cls = worker_agent.input_schema if worker_agent else WorkerInput
-            worker_kwargs = {
-                "task": prev_worker_input.task,
-                "previous_result": prev_worker_input.previous_result,
-                "feedback": decision.feedback,
-                "tool_result": prev_worker_input.tool_result,
-            }
-            domain_state_obj = getattr(context.project_state, "domain_state", None)
-            if hasattr(worker_input_cls, "model_fields") and "writer_state" in worker_input_cls.model_fields:
-                writer_state = getattr(domain_state_obj, "content", None)
-                worker_kwargs["writer_state"] = writer_state
-            context.worker_input = worker_input_cls(**worker_kwargs)
             logger.info(f"[supervisor] REJECT after {context.loops_used} transitions")
-            return State.WORK
+            return State.END
 
         raise RuntimeError("Critic decision must be ACCEPT or REJECT.")
 
