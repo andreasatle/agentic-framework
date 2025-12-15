@@ -77,21 +77,19 @@ def test_supervisor_output_is_immutable_and_serializable():
 
     def outer_controller(result):
         return {
-            "has_plan": result.plan is not None,
-            "has_result": result.result is not None,
-            "decision": result.decision.get("decision") if isinstance(result.decision, dict) else getattr(result.decision, "decision", None),
-            "trace_length": len(result.trace),
-            "project_state_present": result.project_state is not None,
+            "has_task": result.task is not None,
+            "has_worker_output": result.worker_output is not None,
+            "decision": result.critic_decision.get("decision") if isinstance(result.critic_decision, dict) else getattr(result.critic_decision, "decision", None),
+            "trace_length": len(result.trace or []),
         }
 
     summary = outer_controller(output)
 
-    assert summary["has_plan"]
-    assert summary["has_result"]
+    assert summary["has_task"]
+    assert summary["has_worker_output"]
     assert summary["decision"] == "ACCEPT"
     assert summary["trace_length"] >= 1
-    assert summary["project_state_present"]
     assert output.model_dump() == summary_before
 
     with pytest.raises(ValidationError):
-        output.plan = None
+        output.task = None

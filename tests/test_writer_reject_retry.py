@@ -91,7 +91,8 @@ def test_writer_reject_then_accept():
         )
     )
 
-    state_after_accept = WriterDomainState(**response.project_state["domain_state"])
+    trace_state = response.trace[-1]["project_state"]["domain_state"]
+    state_after_accept = WriterDomainState(**trace_state)
 
     assert planner_agent.calls == 1
     assert worker_agent.calls == 1

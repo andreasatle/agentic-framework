@@ -25,16 +25,14 @@ def _pretty_print_run(run: dict) -> None:
     def _serialize(value):
         return value.model_dump() if hasattr(value, "model_dump") else value
 
-    plan = run.plan
-    result = run.result
-    decision = run.decision
-    loops_used = run.loops_used
+    plan = run.task
+    result = run.worker_output
+    decision = run.critic_decision
 
     print("Writer supervisor run complete:")
     print(f"  Plan: {_serialize(plan)}")
     print(f"  Result: {_serialize(result)}")
     print(f"  Decision: {_serialize(decision)}")
-    print(f"  Loops used: {loops_used}")
 
 
 def main() -> None:
@@ -81,12 +79,12 @@ def main() -> None:
             tool_registry=tool_registry,
             problem_state_cls=problem_state_cls,
         )
-        state_data = run.project_state.get("domain_state") if run.project_state else None
-
+        trace = run.trace or []
+        project_state_entry = trace[-1].get("project_state") if trace else None
+        state_data = project_state_entry.get("domain_state") if project_state_entry else None
         if state_data is not None:
-            updated_state = WriterDomainState(**state_data)
-            updated_state.save(topic=instructions or None)
-            state = updated_state
+            state = WriterDomainState(**state_data)
+            state.save(topic=instructions or None)
 
         _pretty_print_run(run)
         iteration += 1

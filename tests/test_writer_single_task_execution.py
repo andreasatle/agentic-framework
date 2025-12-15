@@ -21,6 +21,36 @@ from domain.writer.schemas import (
 from domain.writer.types import WriterResult, WriterTask
 from domain.writer.planner import make_planner
 from domain.writer.state import StructureState
+from agentic.supervisor import SupervisorResponse
+
+
+def apply_writer_accept(state: WriterDomainState, task: WriterTask, response: SupervisorResponse) -> WriterDomainState:
+    decision = response.critic_decision
+    decision_value = decision.get("decision") if isinstance(decision, dict) else getattr(decision, "decision", None)
+    if decision_value != "ACCEPT":
+        return state
+    worker_output = response.worker_output
+    if worker_output is None:
+        return state
+    if isinstance(worker_output, dict):
+        result = worker_output.get("result") if isinstance(worker_output.get("result"), dict) else worker_output.get("result")
+        text = result.get("text") if isinstance(result, dict) else ""
+    else:
+        result = getattr(worker_output, "result", None)
+        text = getattr(result, "text", "") if result else ""
+    if not text:
+        return state
+    sections = dict(state.content.sections or {})
+    current = sections.get(task.section_name, "")
+    if task.operation == "refine" and text != current:
+        sections[task.section_name] = text
+    else:
+        sections[task.section_name] = text if task.operation == "draft" else current or text
+    completed = list(state.completed_sections or [])
+    if task.section_name not in completed:
+        completed.append(task.section_name)
+    new_content = state.content.model_copy(update={"sections": sections})
+    return state.model_copy(update={"content": new_content, "completed_sections": completed})
 
 
 class DummyAgent:
@@ -78,10 +108,10 @@ def test_writer_single_task_execution():
             ),
         )
     )
-    assert response.plan is not None
-    assert response.result is not None
-    assert response.decision["decision"] == "ACCEPT"
-    updated_state = problem_state_cls()().model_validate(response.project_state["domain_state"])
+    assert response.task is not None
+    assert response.worker_output is not None
+    assert response.critic_decision["decision"] == "ACCEPT"
+    updated_state = apply_writer_accept(domain_state, task, response)
     assert task.section_name in updated_state.content.sections
     assert updated_state.content.sections[task.section_name].strip() != ""
     assert updated_state.completed_sections == [task.section_name]

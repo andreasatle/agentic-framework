@@ -46,16 +46,15 @@ class SupervisorRequest(BaseModel):
 
 
 class SupervisorResponse(BaseModel):
-    """SupervisorResponse is an immutable event."""
+    """SupervisorResponse is an immutable event representing one execution attempt."""
 
     model_config = ConfigDict(frozen=True)
 
-    plan: Any | None
-    result: Any | None
-    decision: Any | None
-    project_state: dict
-    trace: list[dict]
-    loops_used: int
+    task: Any
+    worker_id: str
+    worker_output: Any | None
+    critic_decision: Any | None
+    trace: list[dict] | None = None
 
 
 @dataclass
@@ -126,10 +125,6 @@ class Supervisor:
         if state != State.END:
             raise RuntimeError("Supervisor exited without reaching END state.")
 
-        if context.pending_state_update and initial_domain_state is not None:
-            plan, worker_result = context.pending_state_update
-            project_state.domain_state = initial_domain_state.update(plan, worker_result)
-
         context.trace.append(
             {
                 "state": State.END.name,
@@ -140,12 +135,11 @@ class Supervisor:
             }
         )
         return SupervisorResponse(
-            plan=_to_event(context.plan),
-            result=_to_event(context.worker_output),
-            decision=_to_event(context.decision),
-            loops_used=context.loops_used,
-            project_state=_to_event(project_state.model_dump()),
-            trace=[_to_event(entry) for entry in (context.trace or [])],
+            task=_to_event(context.plan),
+            worker_id=_to_event(context.worker_id),
+            worker_output=_to_event(context.worker_output),
+            critic_decision=_to_event(context.decision),
+            trace=[_to_event(entry) for entry in (context.trace or [])] or None,
         )
 
     def _make_snapshot(self, context):
@@ -153,14 +147,8 @@ class Supervisor:
 
         # Global project summary
         domain_snapshot = getattr(context, "domain_snapshot", None)
-        project_snapshot = {
-            "domain_state": domain_snapshot,
-            "last_plan": context.project_state.last_plan,
-            "last_result": context.project_state.last_result,
-            "last_decision": context.project_state.last_decision,
-        }
-        if project_snapshot:
-            snapshot.update(project_snapshot)
+        project_snapshot = {"domain_state": domain_snapshot}
+        snapshot.update(project_snapshot)
 
         # Return None if no information is present
         return snapshot or None
@@ -181,7 +169,6 @@ class Supervisor:
         if getattr(planner_output, "task", None) != task:
             raise RuntimeError("Planner output task did not match requested task.")
         context.plan = task
-        context.project_state.last_plan = planner_output.model_dump() if hasattr(planner_output, "model_dump") else planner_output
         context.worker_id = planner_output.worker_id
         worker_agent = self.dispatcher.workers.get(context.worker_id)
         worker_input_cls = worker_agent.input_schema if worker_agent else WorkerInput
@@ -238,9 +225,6 @@ class Supervisor:
 
         if worker_output.result is not None:
             context.worker_result = worker_output.result
-            context.project_state.last_result = (
-                worker_output.model_dump() if hasattr(worker_output, "model_dump") else worker_output
-            )
             context.critic_input = self._build_critic_input(
                 plan=context.plan,
                 worker_answer=worker_output.result,
@@ -250,9 +234,6 @@ class Supervisor:
 
         if worker_output.tool_request is not None:
             context.tool_request = worker_output.tool_request
-            context.project_state.last_result = (
-                worker_output.model_dump() if hasattr(worker_output, "model_dump") else worker_output
-            )
             return State.TOOL
 
         raise RuntimeError("WorkerOutput violated 'exactly one branch' invariant.")
@@ -306,9 +287,6 @@ class Supervisor:
         critic_response = self.dispatcher.critique(context.critic_input, snapshot=snapshot)
         decision = critic_response.output
         context.decision = decision
-        context.project_state.last_decision = (
-            context.decision.model_dump() if hasattr(context.decision, "model_dump") else context.decision
-        )
         context.trace.append(
             {
                 "state": State.CRITIC.name,
@@ -320,7 +298,6 @@ class Supervisor:
             }
         )
         if decision.decision == "ACCEPT":
-            context.pending_state_update = (context.plan, context.worker_result)
             logger.info(f"[supervisor] ACCEPT after {context.loops_used} transitions")
             return State.END
 

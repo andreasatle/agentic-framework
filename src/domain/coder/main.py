@@ -22,16 +22,14 @@ def _pretty_print_run(run: dict) -> None:
     def _serialize(value):
         return value.model_dump() if hasattr(value, "model_dump") else value
 
-    plan = run.plan
-    result = run.result
-    decision = run.decision
-    loops_used = run.loops_used
+    plan = run.task
+    result = run.worker_output
+    decision = run.critic_decision
 
     print("Coder supervisor run complete:")
     print(f"  Plan: {_serialize(plan)}")
     print(f"  Result: {_serialize(result)}")
     print(f"  Decision: {_serialize(decision)}")
-    print(f"  Loops used: {loops_used}")
 
 
 def main() -> None:
@@ -43,11 +41,10 @@ def main() -> None:
     if not project_description:
         raise SystemExit("A project description is required to start the coder supervisor.")
     # Supervisor now requires an explicit domain task; coder still relies on planner-generated tasks, so it is disabled until CoderTask is introduced.
-    logger.warning("Coder domain is disabled: it relies on planner-generated tasks. Introduce an explicit CoderTask before re-enabling.")  
-    return
-    raise RuntimeError(
+    logger.warning(
         "Coder domain is disabled: it relies on planner-generated tasks. Introduce an explicit CoderTask before re-enabling."
     )
+    return
 
     client = OpenAI()
 
@@ -69,7 +66,9 @@ def main() -> None:
         tool_registry=tool_registry,
         problem_state_cls=problem_state_cls,
     )
-    state_data = run.project_state.get("domain_state") if run.project_state else None
+    trace = run.trace or []
+    project_state_entry = trace[-1].get("project_state") if trace else None
+    state_data = project_state_entry.get("domain_state") if project_state_entry else None
     if state_data is not None:
         updated_state = ProblemState(**state_data)
         updated_state.save()

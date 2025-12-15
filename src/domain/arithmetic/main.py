@@ -21,16 +21,14 @@ def _pretty_print_run(run: dict) -> None:
     def _serialize(value):
         return value.model_dump() if hasattr(value, "model_dump") else value
 
-    plan = run.plan
-    result = run.result
-    decision = run.decision
-    loops_used = run.loops_used
+    plan = run.task
+    result = run.worker_output
+    decision = run.critic_decision
 
     print("Arithmetic supervisor run complete:")
     print(f"  Plan: {_serialize(plan)}")
     print(f"  Result: {_serialize(result)}")
     print(f"  Decision: {_serialize(decision)}")
-    print(f"  Loops used: {loops_used}")
 
 
 def main() -> None:

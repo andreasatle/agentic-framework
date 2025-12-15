@@ -18,6 +18,37 @@ from domain.writer.schemas import (
 from domain.writer.state import StructureState
 from domain.writer.schemas import WriterDomainState
 from domain.writer.types import WriterResult, WriterTask
+from agentic.supervisor import SupervisorResponse
+
+
+def apply_writer_accept(state: WriterDomainState, task: WriterTask, response: SupervisorResponse) -> WriterDomainState:
+    decision = response.critic_decision
+    decision_value = decision.get("decision") if isinstance(decision, dict) else getattr(decision, "decision", None)
+    if decision_value != "ACCEPT":
+        return state
+    worker_output = response.worker_output
+    if worker_output is None:
+        return state
+    if isinstance(worker_output, dict):
+        result = worker_output.get("result") if isinstance(worker_output.get("result"), dict) else worker_output.get("result")
+        text = result.get("text") if isinstance(result, dict) else ""
+    else:
+        result = getattr(worker_output, "result", None)
+        text = getattr(result, "text", "") if result else ""
+    if not text:
+        return state
+    sections = dict(state.content.sections or {})
+    current = sections.get(task.section_name, "")
+    if task.operation == "refine":
+        new_text = current if text == current else text
+    else:
+        new_text = text
+    sections[task.section_name] = new_text
+    completed = list(state.completed_sections or [])
+    if task.section_name not in completed:
+        completed.append(task.section_name)
+    new_content = state.content.model_copy(update={"sections": sections})
+    return state.model_copy(update={"content": new_content, "completed_sections": completed})
 
 
 class DummyAgent:
@@ -93,18 +124,18 @@ def test_refine_is_idempotent_and_appends_once():
     domain_state = WriterDomainState(structure=StructureState(sections=[section_name]))
 
     draft_response = run_supervisor_once(draft_task, draft_text, domain_state)
-    assert draft_response.decision["decision"] == "ACCEPT"
-    domain_state = WriterDomainState(**draft_response.project_state["domain_state"])
+    assert draft_response.critic_decision["decision"] == "ACCEPT"
+    domain_state = apply_writer_accept(domain_state, draft_task, draft_response)
     assert domain_state.content.sections[section_name].strip() != ""
 
     refine_response = run_supervisor_once(refine_task, refine_text, domain_state)
-    assert refine_response.decision["decision"] == "ACCEPT"
-    domain_state = WriterDomainState(**refine_response.project_state["domain_state"])
+    assert refine_response.critic_decision["decision"] == "ACCEPT"
+    domain_state = apply_writer_accept(domain_state, refine_task, refine_response)
     combined_text = domain_state.content.sections[section_name]
 
     refine_again_response = run_supervisor_once(refine_task, combined_text, domain_state)
-    assert refine_again_response.decision["decision"] == "ACCEPT"
-    domain_state = WriterDomainState(**refine_again_response.project_state["domain_state"])
+    assert refine_again_response.critic_decision["decision"] == "ACCEPT"
+    domain_state = apply_writer_accept(domain_state, refine_task, refine_again_response)
     final_text = domain_state.content.sections[section_name]
 
     assert final_text.count(draft_text) == 1

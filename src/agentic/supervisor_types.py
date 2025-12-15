@@ -29,4 +29,3 @@ class SupervisorContext:
     trace: list[Any] | None = None
     project_state: ProjectState | None = None
     domain_snapshot: dict | None = None
-    pending_state_update: tuple[Any, Any] | None = None
