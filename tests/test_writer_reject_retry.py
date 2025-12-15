@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.schemas import ProjectState
 from agentic.supervisor import (
     Supervisor,
     SupervisorControlInput,
@@ -76,7 +75,6 @@ def test_writer_reject_then_accept():
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=ToolRegistry(),
-        project_state=ProjectState(domain_state=domain_state),
         max_loops=5,
         problem_state_cls=lambda: WriterDomainState,
     )

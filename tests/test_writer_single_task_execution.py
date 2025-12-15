@@ -5,7 +5,6 @@ import json
 import pytest
 
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.schemas import ProjectState
 from agentic.supervisor import Supervisor, SupervisorControlInput, SupervisorDomainInput, SupervisorRequest
 from agentic.tool_registry import ToolRegistry
 from domain.writer.factory import problem_state_cls
@@ -94,7 +93,6 @@ def test_writer_single_task_execution():
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=ToolRegistry(),
-        project_state=ProjectState(domain_state=domain_state),
         max_loops=5,
         problem_state_cls=problem_state_cls,
     )

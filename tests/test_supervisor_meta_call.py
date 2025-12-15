@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from agentic.supervisor import Supervisor, SupervisorRequest, SupervisorControlInput, SupervisorDomainInput
 from agentic.tool_registry import ToolRegistry
-from agentic.schemas import ProjectState
 from domain.arithmetic.types import (
     ArithmeticCriticInput,
     ArithmeticCriticOutput,
@@ -53,12 +52,9 @@ def test_supervisor_output_is_immutable_and_serializable():
         max_retries=1,
     )
 
-    project_state = ProjectState()
-    project_state.domain_state = ArithmeticContentState()
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=ToolRegistry(),
-        project_state=project_state,
         max_loops=3,
         problem_state_cls=lambda: ArithmeticContentState,
     )
@@ -67,7 +63,7 @@ def test_supervisor_output_is_immutable_and_serializable():
         SupervisorRequest(
             control=SupervisorControlInput(max_loops=3),
             domain=SupervisorDomainInput(
-                domain_state=project_state.domain_state,
+                domain_state=ArithmeticContentState(),
                 task=task,
             ),
         )

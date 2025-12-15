@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.schemas import ProjectState
 from agentic.supervisor import Supervisor, SupervisorControlInput, SupervisorDomainInput, SupervisorRequest
 from agentic.tool_registry import ToolRegistry
 from domain.writer.factory import problem_state_cls
@@ -85,7 +84,6 @@ def run_supervisor_once(task: WriterTask, worker_text: str, domain_state: Writer
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=ToolRegistry(),
-        project_state=ProjectState(domain_state=domain_state),
         max_loops=5,
         problem_state_cls=problem_state_cls,
     )

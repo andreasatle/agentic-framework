@@ -7,17 +7,14 @@ Supervisor contract (authoritative test oracle):
 Any behavior diverging from this contract is a bug.
 """
 from __future__ import annotations
-from dataclasses import dataclass
 from typing import Any, Callable, Self
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from agentic.common.domain_state import DomainStateProtocol
-from agentic.schemas import WorkerInput, Decision, ProjectState
+from agentic.schemas import WorkerInput, Decision
 from agentic.tool_registry import ToolRegistry
-from agentic.logging_config import get_logger
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.supervisor_types import SupervisorState as State, SupervisorContext
-logger = get_logger("agentic.supervisor")
+from agentic.supervisor_types import SupervisorState as State
 
 
 class SupervisorControlInput(BaseModel):
@@ -57,21 +54,19 @@ class SupervisorResponse(BaseModel):
     trace: list[dict] | None = None
 
 
-@dataclass
 class Supervisor:
-    dispatcher: AgentDispatcher
-    tool_registry: ToolRegistry
-    problem_state_cls: Callable[[], type[BaseModel]]
-    project_state: ProjectState
-    max_loops: int = 5
-
-    def __post_init__(self) -> None:
-        self._handlers: dict[State, Callable[[SupervisorContext], State]] = {
-            State.PLAN: self._handle_plan,
-            State.WORK: self._handle_work,
-            State.TOOL: self._handle_tool,
-            State.CRITIC: self._handle_critic,
-        }
+    def __init__(
+        self,
+        *,
+        dispatcher: AgentDispatcher,
+        tool_registry: ToolRegistry,
+        problem_state_cls: Callable[[], type[BaseModel]],
+        max_loops: int = 5,
+    ) -> None:
+        self.dispatcher = dispatcher
+        self.tool_registry = tool_registry
+        self.problem_state_cls = problem_state_cls
+        self.max_loops = max_loops
 
     def handle(self, request: SupervisorRequest) -> SupervisorResponse:
         """
@@ -95,90 +90,28 @@ class Supervisor:
         request_task = request.domain.task
         if request_task is None:
             raise RuntimeError("SupervisorRequest must include a task.")
-        project_state = ProjectState()
-        project_state.domain_state = request.domain.domain_state
+        trace: list[dict] = []
 
-        initial_domain_state = getattr(project_state, "domain_state", None)
-        domain_snapshot = initial_domain_state.snapshot_for_llm() if initial_domain_state is not None else None
-        context = SupervisorContext(trace=[])
-        context.project_state = project_state
-        context.domain_snapshot = domain_snapshot
-        context.request_task = request_task
-        state = State.PLAN
-
-        def _run(handler: Callable[[SupervisorContext], State]) -> State:
-            context.loops_used += 1
-            return handler(context)
-
-        state = _run(self._handle_plan)
-        if state != State.WORK:
-            raise RuntimeError("Planner did not produce a work state.")
-        state = _run(self._handle_work)
-        if state == State.TOOL:
-            state = _run(self._handle_tool)
-            state = _run(self._handle_work)
-            if state == State.TOOL:
-                raise RuntimeError("Worker requested multiple tool invocations; not supported in atomic mode.")
-        if state != State.CRITIC:
-            raise RuntimeError("Supervisor did not reach CRITIC state.")
-        state = _run(self._handle_critic)
-        if state != State.END:
-            raise RuntimeError("Supervisor exited without reaching END state.")
-
-        context.trace.append(
-            {
-                "state": State.END.name,
-                "result": context.worker_result,
-                "decision": context.decision,
-                "loops_used": context.loops_used,
-                "project_state": context.project_state,
-            }
-        )
-        return SupervisorResponse(
-            task=_to_event(context.plan),
-            worker_id=_to_event(context.worker_id),
-            worker_output=_to_event(context.worker_output),
-            critic_decision=_to_event(context.decision),
-            trace=[_to_event(entry) for entry in (context.trace or [])] or None,
-        )
-
-    def _make_snapshot(self, context):
-        snapshot = {}
-
-        # Global project summary
-        domain_snapshot = getattr(context, "domain_snapshot", None)
-        project_snapshot = {"domain_state": domain_snapshot}
-        snapshot.update(project_snapshot)
-
-        # Return None if no information is present
-        return snapshot or None
-
-    def _handle_plan(self, context: SupervisorContext) -> State:
+        # PLAN
         planner_input_cls = self.dispatcher.planner.input_schema
         planner_kwargs = {}
         if "task" in getattr(planner_input_cls, "model_fields", {}):
-            planner_kwargs["task"] = context.request_task
+            planner_kwargs["task"] = request_task
         planner_input = planner_input_cls(**planner_kwargs)
         planner_response = self.dispatcher.plan(planner_input, snapshot=None)
-
-        logger.debug(f"[supervisor] PLAN call_id={planner_response.call_id}")
         planner_output = planner_response.output
-        task = context.request_task
-        if task is None:
-            raise RuntimeError("Planner produced no task and none was provided.")
-        if getattr(planner_output, "task", None) != task:
+        if getattr(planner_output, "task", None) != request_task:
             raise RuntimeError("Planner output task did not match requested task.")
-        context.plan = task
-        context.worker_id = planner_output.worker_id
-        worker_agent = self.dispatcher.workers.get(context.worker_id)
+        worker_id = planner_output.worker_id
+        worker_agent = self.dispatcher.workers.get(worker_id)
         worker_input_cls = worker_agent.input_schema if worker_agent else WorkerInput
-        domain_state_obj = getattr(context.project_state, "domain_state", None)
-        worker_kwargs = {"task": context.plan}
+        domain_state_obj = request.domain.domain_state
+        worker_kwargs = {"task": request_task}
         if hasattr(worker_input_cls, "model_fields") and "writer_state" in worker_input_cls.model_fields:
-            writer_state = getattr(domain_state_obj, "content", None)
+            writer_state = getattr(domain_state_obj, "content", None) if domain_state_obj else None
             worker_kwargs["writer_state"] = writer_state
-        context.worker_input = worker_input_cls(**worker_kwargs)
-        context.trace.append(
+        worker_input = worker_input_cls(**worker_kwargs)
+        trace.append(
             {
                 "state": State.PLAN.name,
                 "agent_id": planner_response.agent_id,
@@ -188,124 +121,105 @@ class Supervisor:
                 "output": planner_response.output,
             }
         )
-        return State.WORK
 
-    def _handle_work(self, context: SupervisorContext) -> State:
-        if context.worker_input is None:
-            raise RuntimeError("WORK state reached without worker_input in context.")
-        if context.worker_id is None:
-            raise RuntimeError("WORK state reached without worker_id in context.")
-        if context.plan is None:
-            raise RuntimeError("WORK state reached without plan in context.")
-
-        task = context.plan
-        worker_id = context.worker_id
-        if not self.dispatcher.validate_worker_routing(task, worker_id):
-            context.critic_input = self._build_critic_input(
-                plan=task,
-                worker_answer=None,
-                worker_id=worker_id,
-            )
-            return State.CRITIC
-
-        snapshot = self._make_snapshot(context)
-        worker_response = self.dispatcher.work(context.worker_id, context.worker_input, snapshot=snapshot)
+        # WORK
+        worker_response = self.dispatcher.work(worker_id, worker_input, snapshot=None)
         worker_output = worker_response.output
-        context.worker_output = worker_output
-        context.trace.append(
+        worker_result = worker_output.result
+        trace.append(
             {
                 "state": State.WORK.name,
                 "agent_id": worker_response.agent_id,
                 "call_id": worker_response.call_id,
                 "tool_name": None,
-                "input": context.worker_input,
+                "input": worker_input,
                 "output": worker_output,
             }
         )
 
-        if worker_output.result is not None:
-            context.worker_result = worker_output.result
-            context.critic_input = self._build_critic_input(
-                plan=context.plan,
-                worker_answer=worker_output.result,
-                worker_id=context.worker_id,
-            )
-            return State.CRITIC
-
+        # TOOL (single pass)
         if worker_output.tool_request is not None:
-            context.tool_request = worker_output.tool_request
-            return State.TOOL
-
-        raise RuntimeError("WorkerOutput violated 'exactly one branch' invariant.")
-
-    def _handle_tool(self, context: SupervisorContext) -> State:
-        request = context.tool_request
-        prev_worker_input = context.worker_input
-        if request is None or prev_worker_input is None:
-            raise RuntimeError("TOOL state reached without tool_request and worker_input.")
-
-        entry = self.tool_registry.get(request.tool_name)
-        if entry is None:
-            raise RuntimeError(f"Unknown tool: {request.tool_name}")
-        _, func, arg_type = entry
-        if not isinstance(request.args, arg_type):
-            raise TypeError(f"Args for '{request.tool_name}' must be {arg_type.__name__}")
-
-        logger.debug(f"[supervisor] TOOL call: {request.tool_name}")
-        tool_result = func(request.args)
-        context.trace.append(
-            {
-                "state": State.TOOL.name,
-                "agent_id": None,
-                "call_id": None,
-                "tool_name": request.tool_name,
-                "input": request.args,
-                "output": tool_result,
+            request_tool = worker_output.tool_request
+            entry = self.tool_registry.get(request_tool.tool_name)
+            if entry is None:
+                raise RuntimeError(f"Unknown tool: {request_tool.tool_name}")
+            _, func, arg_type = entry
+            if not isinstance(request_tool.args, arg_type):
+                raise TypeError(f"Args for '{request_tool.tool_name}' must be {arg_type.__name__}")
+            tool_result = func(request_tool.args)
+            trace.append(
+                {
+                    "state": State.TOOL.name,
+                    "agent_id": None,
+                    "call_id": None,
+                    "tool_name": request_tool.tool_name,
+                    "input": request_tool.args,
+                    "output": tool_result,
+                }
+            )
+            worker_kwargs = {
+                "task": worker_input.task,
+                "previous_result": worker_input.previous_result,
+                "feedback": worker_input.feedback,
+                "tool_result": tool_result,
             }
+            if hasattr(worker_input_cls, "model_fields") and "writer_state" in worker_input_cls.model_fields:
+                writer_state = getattr(domain_state_obj, "content", None) if domain_state_obj else None
+                worker_kwargs["writer_state"] = writer_state
+            worker_input = worker_input_cls(**worker_kwargs)
+            worker_response = self.dispatcher.work(worker_id, worker_input, snapshot=None)
+            worker_output = worker_response.output
+            worker_result = worker_output.result
+            trace.append(
+                {
+                    "state": State.WORK.name,
+                    "agent_id": worker_response.agent_id,
+                    "call_id": worker_response.call_id,
+                    "tool_name": None,
+                    "input": worker_input,
+                    "output": worker_output,
+                }
+            )
+            if worker_output.tool_request is not None:
+                raise RuntimeError("Worker requested multiple tool invocations; not supported in atomic mode.")
+
+        if worker_result is None:
+            raise RuntimeError("WorkerOutput violated 'exactly one branch' invariant.")
+
+        # CRITIC
+        critic_input = self._build_critic_input(
+            plan=request_task,
+            worker_answer=worker_result,
+            worker_id=worker_id,
         )
-        context.tool_result = tool_result
-        worker_agent = self.dispatcher.workers.get(context.worker_id)
-        worker_input_cls = worker_agent.input_schema if worker_agent else WorkerInput
-        worker_kwargs = {
-            "task": prev_worker_input.task,
-            "previous_result": prev_worker_input.previous_result,
-            "feedback": prev_worker_input.feedback,
-            "tool_result": tool_result,
-        }
-        domain_state_obj = getattr(context.project_state, "domain_state", None)
-        if hasattr(worker_input_cls, "model_fields") and "writer_state" in worker_input_cls.model_fields:
-            writer_state = getattr(domain_state_obj, "content", None)
-            worker_kwargs["writer_state"] = writer_state
-        context.worker_input = worker_input_cls(**worker_kwargs)
-        return State.WORK
-
-    def _handle_critic(self, context: SupervisorContext) -> State:
-        if context.critic_input is None:
-            raise RuntimeError("CRITIC state reached without critic_input in context.")
-
-        snapshot = self._make_snapshot(context)
-        critic_response = self.dispatcher.critique(context.critic_input, snapshot=snapshot)
+        critic_response = self.dispatcher.critique(critic_input, snapshot=None)
         decision = critic_response.output
-        context.decision = decision
-        context.trace.append(
+        trace.append(
             {
                 "state": State.CRITIC.name,
                 "agent_id": critic_response.agent_id,
                 "call_id": critic_response.call_id,
                 "tool_name": None,
-                "input": context.critic_input,
+                "input": critic_input,
                 "output": critic_response.output,
             }
         )
-        if decision.decision == "ACCEPT":
-            logger.info(f"[supervisor] ACCEPT after {context.loops_used} transitions")
-            return State.END
 
-        if decision.decision == "REJECT":
-            logger.info(f"[supervisor] REJECT after {context.loops_used} transitions")
-            return State.END
+        trace.append(
+            {
+                "state": State.END.name,
+                "decision": decision,
+            }
+        )
+        return SupervisorResponse(
+            task=_to_event(request_task),
+            worker_id=_to_event(worker_id),
+            worker_output=_to_event(worker_output),
+            critic_decision=_to_event(decision),
+            trace=[_to_event(entry) for entry in trace] or None,
+        )
 
-        raise RuntimeError("Critic decision must be ACCEPT or REJECT.")
+    # Legacy snapshot and handler methods removed; execution is inline in handle().
 
     def _build_critic_input(self, plan, worker_answer, worker_id):
         critic_input_cls = self.dispatcher.critic.input_schema
@@ -332,7 +246,6 @@ def run_supervisor(
     supervisor = Supervisor(
         dispatcher=dispatcher,
         tool_registry=tool_registry,
-        project_state=ProjectState(),
         max_loops=supervisor_input.control.max_loops,
         problem_state_cls=problem_state_cls,
     )
