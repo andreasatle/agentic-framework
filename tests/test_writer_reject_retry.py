@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 from agentic.agent_dispatcher import AgentDispatcher
 from agentic.supervisor import Supervisor, SupervisorDomainInput, SupervisorRequest

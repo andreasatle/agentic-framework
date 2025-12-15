@@ -1,3 +1,4 @@
+from typing import Self
 from pydantic import ConfigDict, Field, model_validator
 from pathlib import Path
 import json
@@ -127,6 +128,6 @@ class WriterCriticOutput(Decision):
     accepted: bool | None = None
 
     @model_validator(mode="after")
-    def backfill_accepted(self) -> "WriterCriticOutput":
+    def backfill_accepted(self) -> Self:
         self.accepted = self.decision == "ACCEPT"
         return self

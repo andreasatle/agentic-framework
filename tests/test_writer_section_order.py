@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 from domain.writer.state import StructureState
 from domain.writer.schemas import WriterDomainState

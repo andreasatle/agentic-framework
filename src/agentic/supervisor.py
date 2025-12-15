@@ -6,7 +6,6 @@ Supervisor contract (authoritative test oracle):
 - It returns a single immutable response representing one execution attempt.
 Any behavior diverging from this contract is a bug.
 """
-from __future__ import annotations
 from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, model_validator
 

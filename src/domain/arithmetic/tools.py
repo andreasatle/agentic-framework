@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 from domain.arithmetic.types import AddArgs, SubArgs, MulArgs, ArithmeticResult
 

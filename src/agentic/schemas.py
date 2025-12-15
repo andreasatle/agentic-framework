@@ -1,6 +1,5 @@
-from __future__ import annotations
 
-from typing import Literal, TypeVar, Generic, Final, Any
+from typing import Literal, TypeVar, Generic, Final, Any, Self
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from pydantic.generics import GenericModel
 from dataclasses import dataclass, field
@@ -44,7 +43,7 @@ class Decision(BaseModel):
     feedback: Feedback | None = None
 
     @model_validator(mode="after")
-    def require_feedback_on_reject(self) -> Decision:
+    def require_feedback_on_reject(self) -> Self:
         """
         Enforce that REJECT decisions include a non-empty feedback string.
         Keeps ACCEPT decisions lightweight while preserving traceability on failures.
@@ -74,21 +73,6 @@ class ConstrainedXOROutput(BaseModel):
                 f"Exactly one branch among {self._xor_fields} must be set; found {non_null}"
             )
         return self
-    
-
-
-TState = TypeVar("TState")
-
-
-class ProjectState(GenericModel, Generic[TState]):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    domain_state: TState | None = None
-    trace: list[Any] = []
-    last_plan: PlannerOutput | None = None
-    last_result: WorkerOutput | None = None
-    last_decision: Decision | None = None
-    loops_used: int = 0
 
 
 T = TypeVar("T")  # Task
@@ -163,3 +147,17 @@ class AgentCallResult(Generic[AgentOutput]):
     output: AgentOutput
     agent_id: str
     call_id: Final[str] = field(default_factory=lambda: str(uuid4()))
+
+
+TState = TypeVar("TState")
+
+
+class ProjectState(GenericModel, Generic[TState]):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    domain_state: TState | None = None
+    trace: list[Any] = []
+    last_plan: PlannerOutput | None = None
+    last_result: WorkerOutput | None = None
+    last_decision: Decision | None = None
+    loops_used: int = 0
