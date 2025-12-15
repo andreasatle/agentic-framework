@@ -156,21 +156,12 @@ class Supervisor:
     def _handle_plan(self, context: SupervisorContext) -> State:
         planner_input_cls = self.dispatcher.planner.input_schema
         planner_kwargs = {}
-        planner_feedback = context.planner_feedback
-        if isinstance(planner_feedback, str):
-            planner_feedback = Feedback(kind="OTHER", message=planner_feedback)
-        planner_kwargs.update(
-            feedback=planner_feedback,
-            previous_task=context.previous_plan,
-            previous_worker_id=context.previous_worker_id,
-        )
         if "task" in getattr(planner_input_cls, "model_fields", {}):
             planner_kwargs["task"] = context.request_task
 
         planner_input = planner_input_cls(**planner_kwargs)
-        snapshot = self._make_snapshot(context)
         try:
-            planner_response = self.dispatcher.plan(planner_input, snapshot=snapshot)
+            planner_response = self.dispatcher.plan(planner_input, snapshot=None)
         except RuntimeError as e:
             context.planner_feedback = Feedback(kind="OTHER", message=str(e))
             context.plan = None
@@ -195,8 +186,8 @@ class Supervisor:
         task = context.request_task
         if task is None:
             raise RuntimeError("Planner produced no task and none was provided.")
-        if hasattr(planner_output, "model_copy"):
-            planner_output = planner_output.model_copy(update={"task": task})
+        if getattr(planner_output, "task", None) != task:
+            raise RuntimeError("Planner output task did not match requested task.")
         context.plan = task
         context.project_state.last_plan = planner_output.model_dump() if hasattr(planner_output, "model_dump") else planner_output
         context.worker_id = planner_output.worker_id

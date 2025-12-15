@@ -68,7 +68,7 @@ def make_planner(client: OpenAI, model: str) -> Agent[ArithmeticPlannerInput, Ar
     """
     Planner emits a single ArithmeticTask and routes it to a compatible worker.
     """
-    return Agent(
+    base_agent = Agent(
         name="Planner",
         client=client,
         model=model,
@@ -77,3 +77,25 @@ def make_planner(client: OpenAI, model: str) -> Agent[ArithmeticPlannerInput, Ar
         output_schema=ArithmeticPlannerOutput,
         temperature=0.4,
     )
+
+    class ArithmeticPlannerAgent:
+        def __init__(self, agent: Agent[ArithmeticPlannerInput, ArithmeticPlannerOutput]):
+            self._agent = agent
+            self.name = agent.name
+            self.input_schema = agent.input_schema
+            self.output_schema = agent.output_schema
+            self.id = agent.id
+
+        def __call__(self, user_input: str) -> str:
+            planner_input = self.input_schema.model_validate_json(user_input)
+            task = planner_input.task
+            if task.op == "MUL":
+                worker_id = "worker_mul"
+            elif task.op in {"ADD", "SUB"}:
+                worker_id = "worker_addsub"
+            else:
+                raise RuntimeError("Unsupported arithmetic op")
+            output_model = ArithmeticPlannerOutput(task=task, worker_id=worker_id)
+            return output_model.model_dump_json()
+
+    return ArithmeticPlannerAgent(base_agent)  # type: ignore[return-value]

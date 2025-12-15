@@ -61,7 +61,7 @@ def make_planner(client: OpenAI, model: str) -> Agent[SentimentPlannerInput, Sen
     """
     Planner emits a single sentiment task.
     """
-    return Agent(
+    base_agent = Agent(
         name="SentimentPlanner",
         client=client,
         model=model,
@@ -70,3 +70,19 @@ def make_planner(client: OpenAI, model: str) -> Agent[SentimentPlannerInput, Sen
         output_schema=SentimentPlannerOutput,
         temperature=0.2,
     )
+
+    class SentimentPlannerAgent:
+        def __init__(self, agent: Agent[SentimentPlannerInput, SentimentPlannerOutput]):
+            self._agent = agent
+            self.name = agent.name
+            self.input_schema = agent.input_schema
+            self.output_schema = agent.output_schema
+            self.id = agent.id
+
+        def __call__(self, user_input: str) -> str:
+            planner_input = self.input_schema.model_validate_json(user_input)
+            task = planner_input.task
+            output_model = SentimentPlannerOutput(task=task, worker_id="sentiment-worker")
+            return output_model.model_dump_json()
+
+    return SentimentPlannerAgent(base_agent)  # type: ignore[return-value]

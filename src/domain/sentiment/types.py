@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.schemas import Decision, PlannerOutput, WorkerInput, WorkerOutput, _normalize_for_json, Feedback
+from agentic.schemas import Decision, PlannerOutput, WorkerInput, WorkerOutput
 
 
 class SentimentTask(BaseModel):
@@ -21,15 +21,7 @@ class SentimentPlannerInput(BaseModel):
     """Planner context for sentiment tasks."""
     model_config = ConfigDict(extra="allow")
 
-    previous_task: SentimentTask | None = None
-    feedback: Feedback | None = None
-    random_seed: int | str | None = None
-    previous_worker_id: str | None = None
-
-    def to_llm(self) -> dict:
-        raw = self.model_dump()
-        normalized = _normalize_for_json(raw)
-        return normalized
+    task: SentimentTask
 
 
 # Bind generics to domain

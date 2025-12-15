@@ -1,7 +1,7 @@
 from typing import Literal, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
-from agentic.schemas import Decision, PlannerOutput, WorkerInput, WorkerOutput, _normalize_for_json, Feedback
+from agentic.schemas import Decision, PlannerOutput, WorkerInput, WorkerOutput
 from agentic.agent_dispatcher import AgentDispatcher
 
 
@@ -61,15 +61,7 @@ TOOL_ARG_BY_NAME = {
 class ArithmeticPlannerInput(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    feedback: Feedback | None = None
-    previous_task: ArithmeticTask | None = None
-    previous_worker_id: str | None = None
-    random_seed: str | None = None
-
-    def to_llm(self) -> dict:
-        raw = self.model_dump()
-        normalized = _normalize_for_json(raw)
-        return normalized
+    task: ArithmeticTask
 
 ArithmeticPlannerOutput = PlannerOutput[ArithmeticTask]
 ArithmeticWorkerInput = WorkerInput[ArithmeticTask, ArithmeticResult]
