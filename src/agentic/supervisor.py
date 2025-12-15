@@ -8,8 +8,8 @@ Any behavior diverging from this contract is a bug.
 """
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Callable
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any, Callable, Self
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from agentic.common.domain_state import DomainStateProtocol
 from agentic.schemas import WorkerInput, Decision, ProjectState
@@ -27,8 +27,16 @@ class SupervisorControlInput(BaseModel):
 class SupervisorDomainInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    domain_state: DomainStateProtocol
+    domain_state: DomainStateProtocol | None = None
     task: Any
+
+    @model_validator(mode="after")
+    def validate_task(self) -> Self:
+        if self.task is None:
+            raise ValueError("SupervisorRequest requires exactly one task.")
+        if isinstance(self.task, (list, tuple, set)):
+            raise ValueError("SupervisorRequest accepts exactly one task, not a collection.")
+        return self
 
 
 class SupervisorRequest(BaseModel):
