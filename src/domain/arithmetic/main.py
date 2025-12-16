@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from domain.arithmetic import make_agent_dispatcher, make_tool_registry
-from agentic.supervisor import SupervisorDomainInput, SupervisorRequest, run_supervisor
 from domain.arithmetic.types import ArithmeticTask
+from domain.arithmetic.api import run
 
 
 def _pretty_print_run(run: dict, trace: str = False) -> None:
@@ -38,17 +38,12 @@ def main() -> None:
     dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
     task = ArithmeticTask(op="ADD", a=1, b=1)
 
-    supervisor_input = SupervisorRequest(
-        domain=SupervisorDomainInput(
-            task=task,
-        ),
-    )
-    run = run_supervisor(
-        supervisor_input,
+    result = run(
+        task,
         dispatcher=dispatcher,
         tool_registry=tool_registry,
     )
-    _pretty_print_run(run)
+    _pretty_print_run(result)
 
 
 if __name__ == "__main__":

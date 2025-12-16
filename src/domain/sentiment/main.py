@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from domain.sentiment import make_agent_dispatcher, make_tool_registry
-from agentic.supervisor import SupervisorDomainInput, SupervisorRequest, run_supervisor
 from domain.sentiment.types import SentimentTask
+from domain.sentiment.api import run
 
 
 def _pretty_print_run(run: dict, trace: bool = False) -> None:
@@ -37,17 +37,12 @@ def main() -> None:
     dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
     task = SentimentTask(text="Test", target_sentiment="NEUTRAL")
 
-    supervisor_input = SupervisorRequest(
-        domain=SupervisorDomainInput(
-            task=task,
-        ),
-    )
-    run = run_supervisor(
-        supervisor_input,
+    result = run(
+        task,
         dispatcher=dispatcher,
         tool_registry=tool_registry,
     )
-    _pretty_print_run(run)
+    _pretty_print_run(result)
 
 
 if __name__ == "__main__":

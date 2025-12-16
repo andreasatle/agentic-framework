@@ -43,26 +43,5 @@ def main() -> None:
     )
     return
 
-    #client = OpenAI()
-
-    #tool_registry = make_tool_registry()
-    #dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
-    #state = ProblemState.load()
-    #task = CodeTask(language="python", specification=project_description, requirements=[project_description])
-
-    #supervisor_input = SupervisorRequest(
-    #    domain=SupervisorDomainInput(
-    #        domain_state=state,
-    #        task=task,
-    #    ),
-    #)
-    #run = run_supervisor(
-    #    supervisor_input,
-    #    dispatcher=dispatcher,
-    #    tool_registry=tool_registry,
-    #)
-    #_pretty_print_run(run)
-
-
 if __name__ == "__main__":
     main()

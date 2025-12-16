@@ -4,11 +4,10 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from domain.writer import (
-    WriterPlannerInput,
     make_agent_dispatcher,
     make_tool_registry,
 )
-from agentic.supervisor import SupervisorDomainInput, SupervisorRequest, run_supervisor
+from domain.writer.api import run
 from domain.writer.schemas import WriterDomainState
 from domain.writer.types import WriterTask
 
@@ -63,20 +62,14 @@ def main() -> None:
             requirements=[instructions or "Write the section content clearly."],
         )
         dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
-        supervisor_input = SupervisorRequest(
-            domain=SupervisorDomainInput(
-                domain_state=state,
-                task=task,
-            ),
-        )
-        run = run_supervisor(
-            supervisor_input,
+        result = run(
+            task,
             dispatcher=dispatcher,
             tool_registry=tool_registry,
+            domain_state=state,
         )
-        state = state
 
-        _pretty_print_run(run)
+        _pretty_print_run(result)
         iteration += 1
         remaining = state.remaining_sections()
 

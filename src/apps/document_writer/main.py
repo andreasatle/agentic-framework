@@ -2,13 +2,9 @@ import argparse
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from agentic.analysis_supervisor import (
-    AnalysisSupervisorRequest,
-    run_analysis_supervisor,
-)
 from domain.document.planner import make_planner
-from domain.document.schemas import DocumentPlannerInput
 from domain.document.types import DocumentState
+from domain.document.api import analyze
 from agentic.agent_dispatcher import AgentDispatcher
 from agentic.logging_config import get_logger
 
@@ -69,19 +65,11 @@ def main() -> None:
     # For now, start with no state (first planning step).
     document_state: DocumentState | None = None
 
-    planner_input = DocumentPlannerInput(
+    run = analyze(
         document_state=document_state,
         tone=args.tone,
         audience=args.audience,
         goal=args.goal,
-    )
-
-    supervisor_input = AnalysisSupervisorRequest(
-        task=planner_input
-    )
-
-    run = run_analysis_supervisor(
-        supervisor_input,
         dispatcher=dispatcher,
     )
 
