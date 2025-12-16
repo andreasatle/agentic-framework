@@ -87,6 +87,11 @@ class Supervisor:
         planner_kwargs = {}
         if "task" in getattr(planner_input_cls, "model_fields", {}):
             planner_kwargs["task"] = request_task
+        if (
+            "project_state" in getattr(planner_input_cls, "model_fields", {})
+            and request.domain.domain_state is not None
+        ):
+            planner_kwargs["project_state"] = request.domain.domain_state
         planner_input = planner_input_cls(**planner_kwargs)
         planner_response = self.dispatcher.plan(planner_input)
         planner_output = planner_response.output

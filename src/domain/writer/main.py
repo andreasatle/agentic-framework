@@ -6,6 +6,7 @@ from domain.writer import (
     make_agent_dispatcher,
     make_tool_registry,
 )
+from domain.writer.state import StructureState
 from domain.writer.api import run
 from domain.writer.schemas import WriterDomainState
 from domain.writer.types import WriterTask
@@ -34,20 +35,19 @@ def main() -> None:
     load_dotenv(override=True)
     parser = argparse.ArgumentParser(description="Run the writer supervisor.")
     parser.add_argument("--instructions", type=str, default="", help="Opaque task instructions.")
-    parser.add_argument("--max-iterations", type=int, default=1, help="Maximum supervisor iterations (capped at 10).")
-    parser.add_argument("--fresh", action="store_true", help="Start with a fresh state (ignore persisted topic state).")
+    parser.add_argument("--sections", type=str, default="", help="Comma-separated list of section names.")
     args = parser.parse_args()
 
     instructions = args.instructions.strip()
     tool_registry = make_tool_registry()
-    state = WriterDomainState.load(topic=instructions or None) if not args.fresh else WriterDomainState(topic=instructions or None)
-    structure_sections = state.structure.sections if state.structure else []
-    if not structure_sections:
+    sections_arg = [s.strip() for s in args.sections.split(",") if s.strip()]
+    if not sections_arg:
         raise RuntimeError(
-            "Writer requires an explicit structure: no sections were provided in domain_state.structure.sections."
+            "Writer requires an explicit structure: no sections were provided."
         )
+    state = WriterDomainState(structure=StructureState(sections=sections_arg))
 
-    section_name = structure_sections[0]
+    section_name = state.structure.sections[0]
     task = WriterTask(
         section_name=section_name,
         purpose=f"Write the '{section_name}' section.",

@@ -1,10 +1,6 @@
 from typing import Self
-from pydantic import ConfigDict, Field, model_validator
-from pathlib import Path
-import json
-import re
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from agentic.common.load_save_mixin import LoadSaveMixin
 from agentic.schemas import (
     CriticInput,
     Decision,
@@ -18,38 +14,12 @@ from domain.writer.types import WriterResult, WriterTask
 from domain.writer.state import StructureState, WriterContentState
 
 
-class WriterDomainState(LoadSaveMixin):
+class WriterDomainState(BaseModel):
     draft_text: str | None = None
     refinement_steps: int = 0
     completed_sections: list[str] | None = None
-    topic: str | None = None
     structure: StructureState = Field(default_factory=StructureState)
     content: WriterContentState = Field(default_factory=WriterContentState)
-
-    @classmethod
-    def topic_key(cls, topic: str | None) -> str:
-        if topic is None or not str(topic).strip():
-            return "default"
-        slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", str(topic).strip().lower()).strip("-")
-        return slug or "default"
-
-    @classmethod
-    def load(cls, topic: str | None = None) -> "WriterDomainState":
-        key = cls.topic_key(topic)
-        base = Path(".agentic_state") / "writer"
-        path = base / f"{key}.json"
-        if not path.exists():
-            return cls(topic=topic)
-        data = json.loads(path.read_text())
-        return cls.model_validate({**data, "topic": topic})
-
-    def save(self, topic: str | None = None) -> None:
-        effective_topic = topic if topic is not None else self.topic
-        key = self.topic_key(effective_topic)
-        base = Path(".agentic_state") / "writer"
-        base.mkdir(parents=True, exist_ok=True)
-        path = base / f"{key}.json"
-        path.write_text(self.model_dump_json(indent=2))
 
     def update(self, task, result, *, section_order: list[str] | None = None):
         completed = list(self.completed_sections or [])
@@ -61,7 +31,6 @@ class WriterDomainState(LoadSaveMixin):
             draft_text=getattr(result, "text", self.draft_text),
             refinement_steps=self.refinement_steps,
             completed_sections=completed or None,
-            topic=self.topic,
             structure=self.structure,
             content=new_content,
         )
@@ -74,17 +43,13 @@ class WriterDomainState(LoadSaveMixin):
             data["section_order"] = list(self.structure.sections)
         return data
 
-    def remaining_sections(self) -> list[str]:
-        completed = set(self.completed_sections or [])
-        return [s for s in self.structure.sections if s not in completed]
-
 class WriterPlannerInput(PlannerInput[WriterTask, WriterResult]):
     """Supervisor context for the writer planner."""
 
     model_config = ConfigDict(extra="allow")
 
     # instructions is preferred and opaque; other semantic fields are legacy and ignored by planner logic.
-    project_state: dict | None = None
+    project_state: WriterDomainState | None = None
     task: WriterTask
     instructions: str | None = None
     topic: str | None = None

@@ -1,7 +1,5 @@
 
 from pydantic import BaseModel, Field
-
-from agentic.common.load_save_mixin import LoadSaveMixin
 from domain.writer.types import WriterResult, WriterTask
 
 
@@ -19,7 +17,7 @@ def next_structure(structure_state: StructureState, supervisor_response) -> Stru
     return StructureState(sections=list(structure_state.sections))
 
 
-class WriterContentState(LoadSaveMixin):
+class WriterContentState(BaseModel):
     sections: dict[str, str] = Field(default_factory=dict)
     section_order: list[str] | None = None
 

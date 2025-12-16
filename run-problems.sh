@@ -19,9 +19,8 @@ echo
 
 echo "=== Running Writer Problem ==="
 uv run agentic-writer \
-  --instructions "Write an article about War and Peace for the general public, informative tone, ~1000 words."
-echo
-
+  --sections "Introduction, Historical Context, Themes, Legacy" \
+  --instructions "Write an article about War and Peace for the general public, informative tone, ~500 words."
 echo "=== Running Document Analysis Problem ==="
 uv run agentic-document \
   --tone "informative" \
