@@ -1,7 +1,5 @@
 import argparse
 from dotenv import load_dotenv
-from openai import OpenAI
-
 from domain.document.planner import make_planner
 from domain.document.types import DocumentState
 from domain.document.api import analyze
@@ -51,10 +49,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    client = OpenAI()
-
     # --- Planner-only dispatcher ---
-    planner = make_planner(client, model="gpt-4.1-mini")
+    planner = make_planner(model="gpt-4.1-mini")
     dispatcher = AgentDispatcher(
         planner=planner,
         workers={},      # REQUIRED: empty, analysis-only

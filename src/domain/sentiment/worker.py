@@ -1,5 +1,3 @@
-from openai import OpenAI
-
 from agentic.agents.openai import OpenAIAgent
 from domain.sentiment.types import SentimentWorkerInput, SentimentWorkerOutput
 
@@ -33,13 +31,12 @@ RULES:
 """
 
 
-def make_worker(client: OpenAI, model: str) -> OpenAIAgent[SentimentWorkerInput, SentimentWorkerOutput]:
+def make_worker(model: str) -> OpenAIAgent[SentimentWorkerInput, SentimentWorkerOutput]:
     """
     Worker emits a sentiment label (no tools in this domain).
     """
     return OpenAIAgent(
         name="SentimentWorker",
-        client=client,
         model=model,
         system_prompt=PROMPT_WORKER,
         input_schema=SentimentWorkerInput,

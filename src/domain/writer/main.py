@@ -1,7 +1,6 @@
 
 import argparse
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from domain.writer import (
     make_agent_dispatcher,
@@ -33,7 +32,6 @@ def _pretty_print_run(run: dict) -> None:
 
 def main() -> None:
     load_dotenv(override=True)
-    client = OpenAI()
     parser = argparse.ArgumentParser(description="Run the writer supervisor.")
     parser.add_argument("--instructions", type=str, default="", help="Opaque task instructions.")
     parser.add_argument("--max-iterations", type=int, default=1, help="Maximum supervisor iterations (capped at 10).")
@@ -61,7 +59,7 @@ def main() -> None:
             operation="draft",
             requirements=[instructions or "Write the section content clearly."],
         )
-        dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
+        dispatcher = make_agent_dispatcher(model="gpt-4.1-mini", max_retries=3)
         result = run(
             task,
             dispatcher=dispatcher,

@@ -1,5 +1,3 @@
-from openai import OpenAI
-
 from agentic.agents.openai import OpenAIAgent
 from domain.sentiment.types import SentimentPlannerInput, SentimentPlannerOutput
 
@@ -57,13 +55,12 @@ STATE USAGE:
 """
 
 
-def make_planner(client: OpenAI, model: str) -> OpenAIAgent[SentimentPlannerInput, SentimentPlannerOutput]:
+def make_planner(model: str) -> OpenAIAgent[SentimentPlannerInput, SentimentPlannerOutput]:
     """
     Planner emits a single sentiment task.
     """
     base_agent = OpenAIAgent(
         name="SentimentPlanner",
-        client=client,
         model=model,
         system_prompt=PROMPT_PLANNER,
         input_schema=SentimentPlannerInput,

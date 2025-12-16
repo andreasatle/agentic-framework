@@ -1,7 +1,6 @@
 
 import argparse
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from domain.sentiment import make_agent_dispatcher, make_tool_registry
 from domain.sentiment.types import SentimentTask
@@ -31,10 +30,8 @@ def main() -> None:
     load_dotenv(override=True)
     parser = argparse.ArgumentParser(description="Run the sentiment supervisor.")
     parser.parse_args()
-    client = OpenAI()
-
     tool_registry = make_tool_registry()
-    dispatcher = make_agent_dispatcher(client, model="gpt-4.1-mini", max_retries=3)
+    dispatcher = make_agent_dispatcher(model="gpt-4.1-mini", max_retries=3)
     task = SentimentTask(text="Test", target_sentiment="NEUTRAL")
 
     result = run(

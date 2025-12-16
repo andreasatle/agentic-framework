@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from openai import OpenAI
 from agentic.agents.openai import OpenAIAgent
 from domain.arithmetic.types import ArithmeticWorkerInput, ArithmeticWorkerOutput
 
@@ -61,7 +60,6 @@ RULES:
 
 
 def make_worker(
-    client: OpenAI,
     *,
     worker_id: str,
     model: str = "gpt-4.1-mini",
@@ -76,7 +74,6 @@ def make_worker(
     worker_prompt = PROMPT_WORKER_ADDSUB if worker_id == "worker_addsub" else PROMPT_WORKER_MUL
     return OpenAIAgent(
         name=worker_id,
-        client=client,
         model=model,
         system_prompt=worker_prompt,
         input_schema=ArithmeticWorkerInput,

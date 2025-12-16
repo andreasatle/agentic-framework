@@ -1,7 +1,6 @@
 
 import argparse
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from domain.coder import make_agent_dispatcher, make_tool_registry
 from agentic.supervisor import SupervisorDomainInput, SupervisorRequest, run_supervisor

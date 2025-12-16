@@ -1,5 +1,3 @@
-from openai import OpenAI
-
 from agentic.agents.openai import OpenAIAgent
 from domain.coder.types import CoderWorkerInput, CoderWorkerOutput
 
@@ -34,13 +32,12 @@ RULES:
 """
 
 
-def make_worker(client: OpenAI, model: str) -> OpenAIAgent[CoderWorkerInput, CoderWorkerOutput]:
+def make_worker(model: str) -> OpenAIAgent[CoderWorkerInput, CoderWorkerOutput]:
     """
     Worker produces code that satisfies the coding task.
     """
     return OpenAIAgent(
         name="coder-worker",
-        client=client,
         model=model,
         system_prompt=PROMPT_WORKER,
         input_schema=CoderWorkerInput,

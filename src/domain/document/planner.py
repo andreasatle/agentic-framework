@@ -1,5 +1,3 @@
-from openai import OpenAI
-
 from agentic.agents.openai import OpenAIAgent
 from domain.document.schemas import DocumentPlannerInput, DocumentPlannerOutput
 
@@ -37,10 +35,9 @@ RULES:
 """
 
 
-def make_planner(client: OpenAI, model: str) -> OpenAIAgent[DocumentPlannerInput, DocumentPlannerOutput]:
+def make_planner(model: str) -> OpenAIAgent[DocumentPlannerInput, DocumentPlannerOutput]:
     return OpenAIAgent(
         name="document-planner",
-        client=client,
         model=model,
         system_prompt=PROMPT_PLANNER,
         input_schema=DocumentPlannerInput,

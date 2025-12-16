@@ -16,11 +16,11 @@ class OpenAIAgent(Generic[InputSchema, OutputSchema]):
         input_json  -> LLM -> validated_output_json
     """
     name: str
-    client: OpenAI
     model: str
     system_prompt: str
     input_schema: type[InputSchema]
     output_schema: type[OutputSchema]
+    client: OpenAI = field(default_factory=OpenAI)
     temperature: float = 0.0
     id: Final[str] = field(default_factory=lambda: str(uuid4()))
 

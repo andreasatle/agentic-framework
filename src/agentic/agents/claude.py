@@ -15,9 +15,9 @@ class ClaudeAgent(Generic[InT, OutT]):
     output_schema: type[OutT]
 
     # Provider-specific
-    client: Anthropic
     model: str
     system_prompt: str
+    client: Anthropic = field(default_factory=Anthropic)
     temperature: float = 0.0
     max_tokens: int = 4096
 
@@ -26,7 +26,7 @@ class ClaudeAgent(Generic[InT, OutT]):
     def __call__(self, input_json: str) -> str:
         response = self.client.messages.create(
             model=self.model,
-            temperature=self.temperature,
+            temperature=self.temperature, 
             max_tokens=self.max_tokens,
             system=self.system_prompt,
             messages=[{"role": "user", "content": input_json}],

@@ -1,5 +1,3 @@
-from openai import OpenAI
-
 from agentic.agents.openai import OpenAIAgent
 from domain.coder.types import CoderPlannerInput, CoderPlannerOutput
 
@@ -49,13 +47,12 @@ STATE USAGE:
 """
 
 
-def make_planner(client: OpenAI, model: str) -> OpenAIAgent[CoderPlannerInput, CoderPlannerOutput]:
+def make_planner(model: str) -> OpenAIAgent[CoderPlannerInput, CoderPlannerOutput]:
     """
     Planner decomposes a user-defined project into concrete subtasks.
     """
     return OpenAIAgent(
         name="CoderPlanner",
-        client=client,
         model=model,
         system_prompt=PROMPT_PLANNER,
         input_schema=CoderPlannerInput,
