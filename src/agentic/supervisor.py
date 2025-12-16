@@ -21,7 +21,6 @@ class SupervisorDomainInput(BaseModel):
 
     domain_state: DomainStateProtocol | None = None
     task: Any
-    worker_kwargs: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def validate_task(self) -> Self:
@@ -96,9 +95,7 @@ class Supervisor:
         worker_id = planner_output.worker_id
         worker_agent = self.dispatcher.workers.get(worker_id)
         worker_input_cls = worker_agent.input_schema if worker_agent else WorkerInput
-        base_worker_kwargs = request.domain.worker_kwargs or {}
-        worker_kwargs = {"task": request_task, **base_worker_kwargs}
-        worker_input = worker_input_cls(**worker_kwargs)
+        worker_input = worker_input_cls(task=request_task)
         trace.append(
             {
                 "state": State.PLAN.name,
@@ -145,14 +142,12 @@ class Supervisor:
                     "output": tool_result,
                 }
             )
-            worker_kwargs = {
-                "task": worker_input.task,
-                "previous_result": worker_input.previous_result,
-                "feedback": worker_input.feedback,
-                "tool_result": tool_result,
-                **base_worker_kwargs,
-            }
-            worker_input = worker_input_cls(**worker_kwargs)
+            worker_input = worker_input_cls(
+                task=worker_input.task,
+                previous_result=worker_input.previous_result,
+                feedback=worker_input.feedback,
+                tool_result=tool_result,
+            )
             worker_response = self.dispatcher.work(worker_id, worker_input)
             worker_output = worker_response.output
             worker_result = worker_output.result
