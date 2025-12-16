@@ -39,7 +39,6 @@ def main() -> None:
     args = parser.parse_args()
 
     instructions = args.instructions.strip()
-    max_iterations = max(1, min(args.max_iterations, 10))
     tool_registry = make_tool_registry()
     state = WriterDomainState.load(topic=instructions or None) if not args.fresh else WriterDomainState(topic=instructions or None)
     structure_sections = state.structure.sections if state.structure else []
@@ -48,39 +47,22 @@ def main() -> None:
             "Writer requires an explicit structure: no sections were provided in domain_state.structure.sections."
         )
 
-    iteration = 0
-    remaining = state.remaining_sections()
-    while remaining and iteration < max_iterations:
-        print(f"[writer] iteration {iteration + 1} / {max_iterations}")
-        section_name = remaining[0]
-        task = WriterTask(
-            section_name=section_name,
-            purpose=f"Write the '{section_name}' section.",
-            operation="draft",
-            requirements=[instructions or "Write the section content clearly."],
-        )
-        dispatcher = make_agent_dispatcher(model="gpt-4.1-mini", max_retries=3)
-        result = run(
-            task,
-            dispatcher=dispatcher,
-            tool_registry=tool_registry,
-            domain_state=state,
-        )
+    section_name = structure_sections[0]
+    task = WriterTask(
+        section_name=section_name,
+        purpose=f"Write the '{section_name}' section.",
+        operation="draft",
+        requirements=[instructions or "Write the section content clearly."],
+    )
+    dispatcher = make_agent_dispatcher(model="gpt-4.1-mini", max_retries=3)
+    result = run(
+        task,
+        dispatcher=dispatcher,
+        tool_registry=tool_registry,
+        domain_state=state,
+    )
 
-        _pretty_print_run(result)
-        iteration += 1
-        remaining = state.remaining_sections()
-
-    if iteration >= max_iterations and remaining:
-        print("[writer] stopped after max_iterations without completion")
-    if not remaining:
-        print("[writer] structure exhausted")
-
-    sections = state.content.sections
-    order = state.content.section_order or state.structure.sections
-    article = "\n\n".join(sections[name] for name in order if name in sections)
-
-    print(article)
+    _pretty_print_run(result)
 
 
 if __name__ == "__main__":
