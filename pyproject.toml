@@ -22,6 +22,7 @@ agentic-sentiment = "domain.sentiment.main:main"
 agentic-coder = "domain.coder.main:main"
 agentic-writer = "domain.writer.main:main"
 agentic-document = "domain.document.main:main"
+agentic-document-writer = "apps.document_writer.main:main"
 
 [tool.poetry.scripts]
 arithmetic = "domain.arithmetic.main:main"
