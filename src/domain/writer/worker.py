@@ -85,24 +85,9 @@ def make_worker(model: str) -> OpenAIAgent[WriterWorkerInput, WriterWorkerOutput
                 output_model = WriterWorkerOutput.model_validate_json(raw_output)
             except Exception:
                 raise
-            operation = worker_input.task.operation if worker_input else None
-
-            previous_text = None
-            if (
-                worker_input
-                and worker_input.writer_state is not None
-                and worker_input.task.section_name in worker_input.writer_state.sections
-            ):
-                previous_text = worker_input.writer_state.sections[
-                    worker_input.task.section_name
-                ]
-
-            if operation == "refine" and previous_text is not None:
-                if not output_model.result.text.startswith(previous_text):
-                    output_model.result.text = f"{previous_text}\n\n{output_model.result.text}"
-
             if not output_model.result.text:
-                output_model.result.text = f"{worker_input.task.section_name}: {worker_input.task.purpose}"
+                if worker_input:
+                    output_model.result.text = f"{worker_input.task.section_name}: {worker_input.task.purpose}"
 
             return output_model.model_dump_json()
 

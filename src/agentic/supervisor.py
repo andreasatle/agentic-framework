@@ -21,6 +21,7 @@ class SupervisorDomainInput(BaseModel):
 
     domain_state: DomainStateProtocol | None = None
     task: Any
+    worker_kwargs: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def validate_task(self) -> Self:
@@ -95,11 +96,8 @@ class Supervisor:
         worker_id = planner_output.worker_id
         worker_agent = self.dispatcher.workers.get(worker_id)
         worker_input_cls = worker_agent.input_schema if worker_agent else WorkerInput
-        domain_state_obj = request.domain.domain_state
-        worker_kwargs = {"task": request_task}
-        if hasattr(worker_input_cls, "model_fields") and "writer_state" in worker_input_cls.model_fields:
-            writer_state = getattr(domain_state_obj, "content", None) if domain_state_obj else None
-            worker_kwargs["writer_state"] = writer_state
+        base_worker_kwargs = request.domain.worker_kwargs or {}
+        worker_kwargs = {"task": request_task, **base_worker_kwargs}
         worker_input = worker_input_cls(**worker_kwargs)
         trace.append(
             {
@@ -152,10 +150,8 @@ class Supervisor:
                 "previous_result": worker_input.previous_result,
                 "feedback": worker_input.feedback,
                 "tool_result": tool_result,
+                **base_worker_kwargs,
             }
-            if hasattr(worker_input_cls, "model_fields") and "writer_state" in worker_input_cls.model_fields:
-                writer_state = getattr(domain_state_obj, "content", None) if domain_state_obj else None
-                worker_kwargs["writer_state"] = writer_state
             worker_input = worker_input_cls(**worker_kwargs)
             worker_response = self.dispatcher.work(worker_id, worker_input)
             worker_output = worker_response.output

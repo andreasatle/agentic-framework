@@ -107,8 +107,6 @@ class WriterWorkerInput(WorkerInput[WriterTask, WriterResult]):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    writer_state: WriterContentState | None = None
-
 
 WriterWorkerOutput = WorkerOutput[WriterResult]
 

@@ -14,8 +14,8 @@ def run(
 ):
     supervisor_input = SupervisorRequest(
         domain=SupervisorDomainInput(
-            domain_state=domain_state,
             task=task,
+            domain_state=domain_state,
         ),
     )
     return run_supervisor(
