@@ -2,7 +2,7 @@ from agentic.supervisor import SupervisorDomainInput, SupervisorRequest, run_sup
 from agentic.tool_registry import ToolRegistry
 from agentic.agent_dispatcher import AgentDispatcher
 from domain.writer.schemas import WriterDomainState
-from domain.writer.types import WriterTask
+from domain.writer.types import DraftSectionTask, RefineSectionTask, WriterTask
 
 
 def run(
@@ -12,7 +12,19 @@ def run(
     tool_registry: ToolRegistry,
     domain_state: WriterDomainState,
 ):
-    """Execute exactly one WriterTask; writer does not manage documents or persistence."""
+    """Execute exactly one writer task; writer does not manage documents or persistence."""
+    if not isinstance(task, (DraftSectionTask, RefineSectionTask)):
+        raise TypeError("Writer requires a DraftSectionTask or RefineSectionTask.")
+    if not task.section_name:
+        raise ValueError("Writer task must include section_name.")
+    if not task.requirements:
+        raise ValueError("Writer task must include explicit requirements.")
+    structure = getattr(domain_state, "structure", None)
+    if not structure or not getattr(structure, "sections", None):
+        raise ValueError("Writer domain_state must include explicit structure sections.")
+    if task.section_name not in structure.sections:
+        raise ValueError(f"Writer task section '{task.section_name}' not present in structure.")
+
     supervisor_input = SupervisorRequest(
         domain=SupervisorDomainInput(
             task=task,

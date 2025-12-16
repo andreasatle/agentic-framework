@@ -34,11 +34,13 @@ def _pretty_print_run(run: dict) -> None:
 def main() -> None:
     load_dotenv(override=True)
     parser = argparse.ArgumentParser(description="Run the writer supervisor.")
-    parser.add_argument("--instructions", type=str, default="", help="Opaque task instructions.")
-    parser.add_argument("--sections", type=str, default="", help="Comma-separated list of section names.")
+    parser.add_argument("--instructions", type=str, required=True, help="Opaque task instructions.")
+    parser.add_argument("--sections", type=str, required=True, help="Comma-separated list of section names.")
     args = parser.parse_args()
 
     instructions = args.instructions.strip()
+    if not instructions:
+        raise RuntimeError("Writer requires explicit instructions.")
     tool_registry = make_tool_registry()
     sections_arg = [s.strip() for s in args.sections.split(",") if s.strip()]
     if not sections_arg:
@@ -51,7 +53,7 @@ def main() -> None:
     task = DraftSectionTask(
         section_name=section_name,
         purpose=f"Write the '{section_name}' section.",
-        requirements=[instructions or "Write the section content clearly."],
+        requirements=[instructions],
     )
     dispatcher = make_agent_dispatcher(model="gpt-4.1-mini", max_retries=3)
     result = run(
