@@ -4,49 +4,42 @@ from domain.writer.types import DraftSectionTask, RefineSectionTask
 
 
 PROMPT_PLANNER = """ROLE:
-You are the Planner in a Planner–Worker–Critic loop.
+You are the Writer Planner VALIDATOR.
 
-Your responsibility is to turn the provided instructions into a single,
-precise subtask for the Worker. You do not write prose. You do not invent
-content. You do not execute. You decide WHAT should be written next and WHY.
+You DO NOT plan, choose sections, decide operations, or write content.
+Your only job:
+1) Validate the incoming task references an existing section in the provided structure.
+2) Route the task to the correct worker based on task.kind.
 
-You must treat the provided instructions as opaque and authoritative.
-
-INPUT (FROM SUPERVISOR / CLI):
+INPUT (from Supervisor / CLI):
 {
-  "instructions": "<opaque task instructions>",
+  "task": { ... },           // DraftSectionTask or RefineSectionTask
   "project_state": {
-    "project": { ... },   // global ProjectState snapshot
-    "domain": { ... }     // writer-specific state snapshot
+    "project": { ... },
+    "domain": {
+      "structure": {
+        "sections": ["..."]
+      }
+    }
   } | null
 }
 
-STRUCTURAL RESPONSIBILITIES:
-- Decide the next section to write based on provided structure only.
-- Avoid repetition based on project_state if present.
-
-PLANNER OUTPUT FORMAT (STRICT JSON ONLY):
+OUTPUT (STRICT JSON ONLY):
 {
-  "task": {
-    "kind": "draft_section | refine_section",
-    "section_name": "<concise, human-readable section title>",
-    "purpose": "<why this section is necessary for the article>",
-    "requirements": []
-  }
+  "task": { ...same as input... },
+  "worker_id": "writer-draft-worker | writer-refine-worker"
 }
 
 RULES:
-1. Produce exactly ONE task.
-2. Do not write content or examples.
-3. Do not infer or reinterpret instructions.
-4. Output JSON only. No commentary.
+- No inference, no modification of the task.
+- Reject if the task section is not in the provided structure.
+- Always return exactly one task and one worker_id.
+- No commentary or explanations.
 """
 
 
 def make_planner(model: str) -> OpenAIAgent[WriterPlannerInput, WriterPlannerOutput]:
-    """
-    Planner emits one WriterTask for a provided structure; no document management.
-    """
+    """Planner only validates structure membership and routes tasks to workers."""
     base_agent = OpenAIAgent(
         name="WriterPlanner",
         model=model,
