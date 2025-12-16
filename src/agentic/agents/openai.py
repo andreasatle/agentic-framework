@@ -20,9 +20,15 @@ class OpenAIAgent(Generic[InputSchema, OutputSchema]):
     system_prompt: str
     input_schema: type[InputSchema]
     output_schema: type[OutputSchema]
-    client: OpenAI = field(default_factory=OpenAI)
+    _client: OpenAI | None = field(default=None, repr=False)
     temperature: float = 0.0
     id: Final[str] = field(default_factory=lambda: str(uuid4()))
+
+    @property
+    def client(self) -> OpenAI:
+        if self._client is None:
+            self._client = OpenAI()
+        return self._client
 
     def __call__(self, user_input: str) -> str:
         """

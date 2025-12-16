@@ -112,6 +112,6 @@ def test_writer_single_task_execution():
 
 
 def test_writer_planner_requires_structure():
-    planner = make_planner(client=object(), model="test-model")
+    planner = make_planner(model="test-model")
     with pytest.raises(Exception):
         planner(json.dumps({}))

@@ -17,11 +17,17 @@ class ClaudeAgent(Generic[InT, OutT]):
     # Provider-specific
     model: str
     system_prompt: str
-    client: Anthropic = field(default_factory=Anthropic)
     temperature: float = 0.0
     max_tokens: int = 4096
+    _client: Anthropic | None = field(default=None, repr=False)
 
     id: Final[str] = field(default_factory=lambda: str(uuid4()))
+
+    @property
+    def client(self) -> Anthropic:
+        if self._client is None:
+            self._client = Anthropic()
+        return self._client
 
     def __call__(self, input_json: str) -> str:
         response = self.client.messages.create(
