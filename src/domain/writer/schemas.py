@@ -70,7 +70,7 @@ class WriterPlannerOutput(PlannerOutput[WriterTask]):
 class WriterWorkerInput(WorkerInput[WriterTask, WriterResult]):
     """Work request for the writer worker."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
 WriterWorkerOutput = WorkerOutput[WriterResult]
