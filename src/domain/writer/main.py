@@ -34,8 +34,8 @@ def _pretty_print_run(run: dict) -> None:
 def main() -> None:
     load_dotenv(override=True)
     parser = argparse.ArgumentParser(description="Run the writer supervisor.")
-    parser.add_argument("--instructions", type=str, required=True, help="Opaque task instructions.")
-    parser.add_argument("--sections", type=str, required=True, help="Comma-separated list of section names.")
+    parser.add_argument("--instructions", type=str, default="", help="Opaque task instructions.")
+    parser.add_argument("--sections", type=str, default="", help="Comma-separated list of section names.")
     args = parser.parse_args()
 
     instructions = args.instructions.strip()
