@@ -16,7 +16,8 @@ INPUT FORMAT:
     "purpose": "<reason>",
     "requirements": ["...", "..."]
   },
-  "worker_answer": "<text the Worker wrote>"
+  "worker_answer": "<text the Worker wrote>",
+  "node_description": "<semantic obligation for this section>"
 }
 
 OUTPUT FORMAT (STRICT JSON):
@@ -32,9 +33,9 @@ EVALUATION RULES:
 1. **Section match**: The Worker’s text must be clearly and exclusively about the
    section named in the plan. If it drifts into other sections or meta-topics, REJECT.
 
-2. **Purpose alignment**: The Worker’s text must fulfill the stated purpose.
-   If the section exists to introduce the framework, it must introduce it.
-   If the section exists to establish context, it must establish it.
+2. **Purpose alignment**: The Worker’s text must fulfill the stated purpose and the semantic
+   obligation described by node_description. If it fails to cover that described topic
+   or drifts away from it, REJECT.
 
 3. **Requirements satisfaction**:
    - Every requirement must be satisfied.
@@ -45,8 +46,8 @@ EVALUATION RULES:
    - No reasoning traces, no meta-discussion, no JSON, no apology text.
 
 5. **Scope containment**:
-   - Worker must NOT add unrequested subsections, theories, or detours.
-   - Worker must NOT anticipate future sections unless required by the task.
+   - Worker must NOT add unrequested subsections, theories, detours, or unrelated topics.
+   - Worker must NOT anticipate future sections unless required by the task or node_description.
 
 6. **Feedback policy**:
    - ACCEPT → feedback = null.
@@ -86,7 +87,7 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
         def __call__(self, user_input: str) -> str:
             critic_input = WriterCriticInput.model_validate_json(user_input)
             text = critic_input.worker_answer.text if critic_input.worker_answer else ""
-        
+
             if not text.strip():
                 return WriterCriticOutput(
                     decision="REJECT",
@@ -95,7 +96,17 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
                         "message": "Worker produced empty text.",
                     },
                 ).model_dump_json()
-        
+
+            if critic_input.node_description and critic_input.node_description.strip():
+                if critic_input.node_description.lower() not in text.lower():
+                    return WriterCriticOutput(
+                        decision="REJECT",
+                        feedback={
+                            "kind": "TASK_INCOMPLETE",
+                            "message": "Text does not address the described section intent.",
+                        },
+                    ).model_dump_json()
+
             return WriterCriticOutput(
                 decision="ACCEPT",
                 feedback=None,

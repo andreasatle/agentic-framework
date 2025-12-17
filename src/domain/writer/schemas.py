@@ -58,6 +58,7 @@ class WriterCriticInput(BaseModel):
 
     plan: WriterTask
     worker_answer: WriterResult
+    node_description: str
 
 
 class WriterCriticOutput(Decision):
