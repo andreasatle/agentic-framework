@@ -155,7 +155,6 @@ TState = TypeVar("TState")
 class ProjectState(GenericModel, Generic[TState]):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    domain_state: TState | None = None
     trace: list[Any] = []
     last_plan: PlannerOutput | None = None
     last_result: WorkerOutput | None = None

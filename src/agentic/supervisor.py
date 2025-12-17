@@ -9,7 +9,6 @@ Any behavior diverging from this contract is a bug.
 from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from agentic.common.domain_state import DomainStateProtocol
 from agentic.schemas import WorkerInput
 from agentic.tool_registry import ToolRegistry
 from agentic.agent_dispatcher import AgentDispatcher
@@ -19,7 +18,6 @@ from agentic.supervisor_types import SupervisorState as State
 class SupervisorDomainInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    domain_state: DomainStateProtocol | None = None
     task: Any
 
     @model_validator(mode="after")
@@ -32,7 +30,7 @@ class SupervisorDomainInput(BaseModel):
 
 
 class SupervisorRequest(BaseModel):
-    """domain_state is read-only during supervisor execution; mutate state only via the emitted response event."""
+    """Pure single-pass request: exactly one explicit task."""
     domain: SupervisorDomainInput
 
 
@@ -87,11 +85,6 @@ class Supervisor:
         planner_kwargs = {}
         if "task" in getattr(planner_input_cls, "model_fields", {}):
             planner_kwargs["task"] = request_task
-        if (
-            "project_state" in getattr(planner_input_cls, "model_fields", {})
-            and request.domain.domain_state is not None
-        ):
-            planner_kwargs["project_state"] = request.domain.domain_state
         planner_input = planner_input_cls(**planner_kwargs)
         planner_response = self.dispatcher.plan(planner_input)
         planner_output = planner_response.output
