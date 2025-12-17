@@ -21,7 +21,7 @@ def analyze(
         audience=audience,
         goal=goal,
     )
-    supervisor_input = AnalysisSupervisorRequest(task=planner_input)
+    supervisor_input = AnalysisSupervisorRequest(planner_input=planner_input)
     return run_analysis_supervisor(
         supervisor_input,
         dispatcher=dispatcher,

@@ -25,15 +25,15 @@ from agentic.supervisor_types import SupervisorState as State
 class AnalysisSupervisorRequest(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    task: Any
+    planner_input: BaseModel
 
     @model_validator(mode="after")
-    def validate_task(self) -> Self:
-        if self.task is None:
-            raise ValueError("AnalysisSupervisorRequest requires exactly one task.")
-        if isinstance(self.task, (list, tuple, set)):
+    def validate_planner_input(self) -> Self:
+        if self.planner_input is None:
+            raise ValueError("AnalysisSupervisorRequest requires exactly one planner_input.")
+        if isinstance(self.planner_input, (list, tuple, set)):
             raise ValueError(
-                "AnalysisSupervisorRequest accepts exactly one task, not a collection."
+                "AnalysisSupervisorRequest accepts exactly one planner_input object, not a collection."
             )
         return self
 
@@ -43,7 +43,7 @@ class AnalysisSupervisorResponse(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    task: Any
+    planner_input: Any
     plan: Any
     trace: list[dict] | None = None
 
@@ -68,17 +68,15 @@ class AnalysisSupervisor:
                 return value
             raise TypeError(f"Non-serializable type: {type(value).__name__}")
 
-        task = request.task
+        planner_input = request.planner_input
+        planner_input_cls = self.dispatcher.planner.input_schema
+        if not isinstance(planner_input, planner_input_cls):
+            raise TypeError(
+                f"AnalysisSupervisor requires planner_input of type {planner_input_cls.__name__}"
+            )
         trace: list[dict] = []
 
         # PLAN (planner-only execution)
-        planner_input_cls = self.dispatcher.planner.input_schema
-        planner_kwargs = {}
-
-        if "task" in getattr(planner_input_cls, "model_fields", {}):
-            planner_kwargs["task"] = task
-
-        planner_input = planner_input_cls(**planner_kwargs)
         planner_response = self.dispatcher.plan(planner_input)
         planner_output = planner_response.output
 
@@ -99,7 +97,7 @@ class AnalysisSupervisor:
         )
 
         return AnalysisSupervisorResponse(
-            task=_to_event(task),
+            planner_input=_to_event(planner_input),
             plan=_to_event(planner_output),
             trace=[_to_event(entry) for entry in trace],
         )

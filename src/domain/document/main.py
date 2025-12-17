@@ -15,7 +15,7 @@ def _pretty_print_run(run: dict, trace: bool = False) -> None:
         return value.model_dump() if hasattr(value, "model_dump") else value
 
     print("Document analysis supervisor run complete:")
-    print(f"  Task: {_serialize(run.task)}")
+    print(f"  PlannerInput: {_serialize(run.planner_input)}")
     print(f"  Plan: {_serialize(run.plan)}")
     if trace and run.trace:
         print("  Trace:")
