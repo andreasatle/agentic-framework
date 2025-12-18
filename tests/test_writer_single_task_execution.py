@@ -34,6 +34,7 @@ class DummyAgent:
 
 def test_writer_single_task_execution():
     task = DraftSectionTask(
+        node_id="Intro",
         section_name="Intro",
         purpose="Write intro",
         requirements=["Keep it concise"],

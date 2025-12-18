@@ -32,6 +32,7 @@ class SequenceAgent:
 def test_writer_reject_then_accept():
     section_name = "Intro"
     initial_task = DraftSectionTask(
+        node_id=section_name,
         section_name=section_name,
         purpose="Initial intro",
         requirements=["State intro"],

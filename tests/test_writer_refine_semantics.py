@@ -64,11 +64,13 @@ def run_controller_once(task: WriterTask, worker_text: str):
 def test_refine_is_idempotent_and_appends_once():
     section_name = "Intro"
     draft_task = DraftSectionTask(
+        node_id=section_name,
         section_name=section_name,
         purpose="Write intro",
         requirements=["Provide an introduction."],
     )
     refine_task = RefineSectionTask(
+        node_id=section_name,
         section_name=section_name,
         purpose="Refine intro",
         requirements=["Improve clarity."],

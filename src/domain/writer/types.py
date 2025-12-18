@@ -8,6 +8,7 @@ class BaseSectionTask(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    node_id: str = Field(..., description="Opaque identifier for the section node.")
     section_name: str = Field(..., description="Human-readable label for the section.")
     purpose: str = Field(..., description="Brief intent for the section.")
     requirements: list[str] = Field(

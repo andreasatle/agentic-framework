@@ -48,6 +48,7 @@ def main() -> None:
 
     section_name = sections_arg[0]
     task = DraftSectionTask(
+        node_id=section_name,
         section_name=section_name,
         purpose=f"Write the '{section_name}' section.",
         requirements=[instructions],
