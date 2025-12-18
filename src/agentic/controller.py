@@ -6,6 +6,7 @@ Controller contract (authoritative test oracle):
 - It returns a single immutable response representing one execution attempt.
 - Retry limits are enforced externally; Controller execution is atomic and finite per call.
 Any behavior diverging from this contract is a bug.
+See docs/authority_map.md for authority boundaries.
 """
 from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, model_validator
