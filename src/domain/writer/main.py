@@ -6,8 +6,9 @@ from domain.writer import (
     make_agent_dispatcher,
     make_tool_registry,
 )
-from domain.writer.api import run
-from domain.writer.types import DraftSectionTask
+from domain.writer.api import execute_document
+from domain.document.types import DocumentTree, DocumentNode
+from domain.document.content import ContentStore
 
 
 def _pretty_print_run(run: dict) -> None:
@@ -46,21 +47,35 @@ def main() -> None:
             "Writer requires an explicit section name: no sections were provided."
         )
 
-    section_name = sections_arg[0]
-    task = DraftSectionTask(
-        node_id=section_name,
-        section_name=section_name,
-        purpose=f"Write the '{section_name}' section.",
-        requirements=[instructions],
+    children = [
+        DocumentNode(
+            id=section,
+            title=section,
+            description=instructions,
+            children=[],
+        )
+        for section in sections_arg
+    ]
+    document_tree = DocumentTree(
+        root=DocumentNode(
+            id="root",
+            title="Document",
+            description=instructions,
+            children=children,
+        )
     )
+    content_store = ContentStore()
     dispatcher = make_agent_dispatcher(model="gpt-4.1-mini", max_retries=3)
-    result = run(
-        task,
+    result_store = execute_document(
+        document_tree=document_tree,
+        content_store=content_store,
         dispatcher=dispatcher,
         tool_registry=tool_registry,
     )
 
-    _pretty_print_run(result)
+    print("Writer execution complete. Sections written:")
+    for node_id, text in result_store.by_node_id.items():
+        print(f"- {node_id}: {text[:80]}")
 
 
 if __name__ == "__main__":

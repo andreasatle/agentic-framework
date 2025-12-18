@@ -2,6 +2,9 @@ from agentic.controller import ControllerDomainInput, ControllerRequest, run_con
 from agentic.tool_registry import ToolRegistry
 from agentic.agent_dispatcher import AgentDispatcher
 from domain.writer.types import DraftSectionTask, RefineSectionTask, WriterTask
+from domain.document.types import DocumentTree
+from domain.document.content import ContentStore
+from domain.writer.emission import emit_writer_tasks
 
 
 def run(
@@ -28,3 +31,42 @@ def run(
         dispatcher=dispatcher,
         tool_registry=tool_registry,
     )
+
+
+def execute_document(
+    *,
+    document_tree: DocumentTree,
+    content_store: ContentStore,
+    dispatcher: AgentDispatcher,
+    tool_registry: ToolRegistry,
+    max_refine_attempts: int = 1,
+) -> ContentStore:
+    tasks = emit_writer_tasks(document_tree, content_store)
+    for task in tasks:
+        attempts = 0
+        current_task: WriterTask = task
+        while attempts <= max_refine_attempts:
+            response = run(
+                current_task,
+                dispatcher=dispatcher,
+                tool_registry=tool_registry,
+            )
+            decision = response.critic_decision
+            decision_value = decision.get("decision") if isinstance(decision, dict) else getattr(decision, "decision", None)
+            if decision_value == "ACCEPT":
+                worker_output = response.worker_output
+                result = worker_output.get("result") if isinstance(worker_output, dict) else getattr(worker_output, "result", None)
+                text = result.get("text") if isinstance(result, dict) else getattr(result, "text", "")
+                if text:
+                    content_store.by_node_id[current_task.node_id] = text
+                break
+            attempts += 1
+            if attempts > max_refine_attempts:
+                break
+            current_task = RefineSectionTask(
+                node_id=current_task.node_id,
+                section_name=current_task.section_name,
+                purpose=current_task.purpose,
+                requirements=current_task.requirements,
+            )
+    return content_store
