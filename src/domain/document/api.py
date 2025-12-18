@@ -1,7 +1,7 @@
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.analysis_supervisor import (
-    AnalysisSupervisorRequest,
-    run_analysis_supervisor,
+from agentic.analysis_controller import (
+    AnalysisControllerRequest,
+    run_analysis_controller,
 )
 from domain.document.schemas import DocumentPlannerInput
 from domain.document.types import DocumentTree
@@ -21,8 +21,8 @@ def analyze(
         audience=audience,
         goal=goal,
     )
-    supervisor_input = AnalysisSupervisorRequest(planner_input=planner_input)
-    return run_analysis_supervisor(
-        supervisor_input,
+    controller_input = AnalysisControllerRequest(planner_input=planner_input)
+    return run_analysis_controller(
+        controller_input,
         dispatcher=dispatcher,
     )

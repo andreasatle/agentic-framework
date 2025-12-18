@@ -4,7 +4,7 @@ import json
 import pytest
 
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.supervisor import Supervisor, SupervisorDomainInput, SupervisorRequest
+from agentic.controller import Controller, ControllerDomainInput, ControllerRequest
 from agentic.tool_registry import ToolRegistry
 from domain.writer.schemas import (
     WriterPlannerInput,
@@ -53,14 +53,14 @@ def test_writer_single_task_execution():
         max_retries=1,
     )
 
-    supervisor = Supervisor(
+    controller = Controller(
         dispatcher=dispatcher,
         tool_registry=ToolRegistry(),
     )
 
-    response = supervisor(
-        SupervisorRequest(
-            domain=SupervisorDomainInput(
+    response = controller(
+        ControllerRequest(
+            domain=ControllerDomainInput(
                 task=task,
             ),
         )

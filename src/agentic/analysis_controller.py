@@ -1,7 +1,7 @@
 """
-AnalysisSupervisor contract (authoritative test oracle):
+AnalysisController contract (authoritative test oracle):
 
-- The AnalysisSupervisor is a pure planner executor.
+- The AnalysisController is a pure planner executor.
 - It executes exactly one analysis task per request.
 - It does not invoke workers, critics, or tools.
 - It does not loop, retry, or advance workflow.
@@ -15,14 +15,14 @@ from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.supervisor_types import SupervisorState as State
+from agentic.controller_types import ControllerState as State
 
 
 # =========================
 # Request / Response types
 # =========================
 
-class AnalysisSupervisorRequest(BaseModel):
+class AnalysisControllerRequest(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     planner_input: BaseModel
@@ -30,15 +30,15 @@ class AnalysisSupervisorRequest(BaseModel):
     @model_validator(mode="after")
     def validate_planner_input(self) -> Self:
         if self.planner_input is None:
-            raise ValueError("AnalysisSupervisorRequest requires exactly one planner_input.")
+            raise ValueError("AnalysisControllerRequest requires exactly one planner_input.")
         if isinstance(self.planner_input, (list, tuple, set)):
             raise ValueError(
-                "AnalysisSupervisorRequest accepts exactly one planner_input object, not a collection."
+                "AnalysisControllerRequest accepts exactly one planner_input object, not a collection."
             )
         return self
 
 
-class AnalysisSupervisorResponse(BaseModel):
+class AnalysisControllerResponse(BaseModel):
     """Immutable result of a single analysis / planning execution."""
 
     model_config = ConfigDict(frozen=True)
@@ -49,14 +49,14 @@ class AnalysisSupervisorResponse(BaseModel):
 
 
 # =========================
-# AnalysisSupervisor
+# AnalysisController
 # =========================
 
-class AnalysisSupervisor:
+class AnalysisController:
     def __init__(self, *, dispatcher: AgentDispatcher) -> None:
         self.dispatcher = dispatcher
 
-    def __call__(self, request: AnalysisSupervisorRequest) -> AnalysisSupervisorResponse:
+    def __call__(self, request: AnalysisControllerRequest) -> AnalysisControllerResponse:
         def _to_event(value):
             if hasattr(value, "model_dump"):
                 return _to_event(value.model_dump())
@@ -72,7 +72,7 @@ class AnalysisSupervisor:
         planner_input_cls = self.dispatcher.planner.input_schema
         if not isinstance(planner_input, planner_input_cls):
             raise TypeError(
-                f"AnalysisSupervisor requires planner_input of type {planner_input_cls.__name__}"
+                f"AnalysisController requires planner_input of type {planner_input_cls.__name__}"
             )
         trace: list[dict] = []
 
@@ -96,17 +96,17 @@ class AnalysisSupervisor:
             }
         )
 
-        return AnalysisSupervisorResponse(
+        return AnalysisControllerResponse(
             planner_input=_to_event(planner_input),
             plan=_to_event(planner_output),
             trace=[_to_event(entry) for entry in trace],
         )
 
 
-def run_analysis_supervisor(
-    supervisor_input: AnalysisSupervisorRequest,
+def run_analysis_controller(
+    controller_input: AnalysisControllerRequest,
     *,
     dispatcher: AgentDispatcher,
-) -> AnalysisSupervisorResponse:
-    analysis_supervisor = AnalysisSupervisor(dispatcher=dispatcher)
-    return analysis_supervisor(supervisor_input)
+) -> AnalysisControllerResponse:
+    analysis_controller = AnalysisController(dispatcher=dispatcher)
+    return analysis_controller(controller_input)

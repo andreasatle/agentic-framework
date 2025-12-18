@@ -3,7 +3,7 @@ import argparse
 from dotenv import load_dotenv
 
 from domain.coder import make_agent_dispatcher, make_tool_registry
-from agentic.supervisor import SupervisorDomainInput, SupervisorRequest, run_supervisor
+from agentic.controller import ControllerDomainInput, ControllerRequest, run_controller
 from domain.coder.types import CodeTask
 
 from agentic.logging_config import get_logger
@@ -36,7 +36,7 @@ def main() -> None:
     project_description = args.description.strip()
     if not project_description:
         raise SystemExit("A project description is required to start the coder supervisor.")
-    # Supervisor now requires an explicit domain task; coder still relies on planner-generated tasks, so it is disabled until CoderTask is introduced.
+    # Controller now requires an explicit domain task; coder still relies on planner-generated tasks, so it is disabled until CoderTask is introduced.
     logger.warning(
         "Coder domain is disabled: it relies on planner-generated tasks. Introduce an explicit CoderTask before re-enabling."
     )

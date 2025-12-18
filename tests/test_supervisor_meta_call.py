@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 
-from agentic.supervisor import Supervisor, SupervisorRequest, SupervisorDomainInput
+from agentic.controller import Controller, ControllerRequest, ControllerDomainInput
 from agentic.tool_registry import ToolRegistry
 from domain.arithmetic.types import (
     ArithmeticCriticInput,
@@ -49,14 +49,14 @@ def test_supervisor_output_is_immutable_and_serializable():
         max_retries=1,
     )
 
-    supervisor = Supervisor(
+    controller = Controller(
         dispatcher=dispatcher,
         tool_registry=ToolRegistry(),
     )
 
-    output = supervisor(
-        SupervisorRequest(
-            domain=SupervisorDomainInput(
+    output = controller(
+        ControllerRequest(
+            domain=ControllerDomainInput(
                 task=task,
             ),
         )

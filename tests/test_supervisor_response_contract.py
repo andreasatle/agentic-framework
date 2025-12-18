@@ -1,11 +1,11 @@
 
 import json
 
-from agentic.supervisor import SupervisorResponse
+from agentic.controller import ControllerResponse
 
 
 def test_supervisor_response_is_json_serializable():
-    response = SupervisorResponse(
+    response = ControllerResponse(
         task={"task": "example"},
         worker_id="worker",
         worker_output={"text": "done"},
@@ -18,7 +18,7 @@ def test_supervisor_response_is_json_serializable():
 
 
 def test_supervisor_response_has_trace_but_no_domain_state():
-    response = SupervisorResponse(
+    response = ControllerResponse(
         task={"task": "rehydrate"},
         worker_id="worker",
         worker_output={"text": "done"},

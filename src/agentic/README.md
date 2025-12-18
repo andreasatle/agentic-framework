@@ -6,7 +6,7 @@ The `agentic` package implements the **domain-agnostic execution engine**.
 
 ### Key Components
 
-* **Supervisor**
+* **Controller**
 
   * Explicit state machine (PLAN → WORK → TOOL → CRITIC → END)
   * Enforces loop bounds and termination
@@ -25,7 +25,7 @@ The `agentic` package implements the **domain-agnostic execution engine**.
 
 ### Design Constraints
 
-* Supervisor never mutates domain state directly
+* Controller never mutates domain state directly
 * No domain-specific branching
 * No implicit recursion or infinite loops
 

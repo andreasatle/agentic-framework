@@ -1,6 +1,6 @@
 
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.supervisor import Supervisor, SupervisorDomainInput, SupervisorRequest
+from agentic.controller import Controller, ControllerDomainInput, ControllerRequest
 from agentic.tool_registry import ToolRegistry
 from domain.writer.schemas import (
     WriterPlannerInput,
@@ -61,22 +61,22 @@ def test_writer_reject_then_accept():
         max_retries=1,
     )
 
-    supervisor = Supervisor(
+    controller = Controller(
         dispatcher=dispatcher,
         tool_registry=ToolRegistry(),
     )
 
-    reject_response = supervisor(
-        SupervisorRequest(
-            domain=SupervisorDomainInput(
+    reject_response = controller(
+        ControllerRequest(
+            domain=ControllerDomainInput(
                 task=initial_task,
             ),
         )
     )
 
-    accept_response = supervisor(
-        SupervisorRequest(
-            domain=SupervisorDomainInput(
+    accept_response = controller(
+        ControllerRequest(
+            domain=ControllerDomainInput(
                 task=initial_task,
             ),
         )

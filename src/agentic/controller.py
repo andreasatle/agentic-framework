@@ -1,6 +1,6 @@
 """
-Supervisor contract (authoritative test oracle):
-- The Supervisor is a pure executor.
+Controller contract (authoritative test oracle):
+- The Controller is a pure executor.
 - It executes exactly one task per request.
 - It does not create, advance, or decide tasks, manage workflow, or loop for progress.
 - It returns a single immutable response representing one execution attempt.
@@ -12,10 +12,10 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from agentic.schemas import WorkerInput
 from agentic.tool_registry import ToolRegistry
 from agentic.agent_dispatcher import AgentDispatcher
-from agentic.supervisor_types import SupervisorState as State
+from agentic.controller_types import ControllerState as State
 
 
-class SupervisorDomainInput(BaseModel):
+class ControllerDomainInput(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: Any
@@ -23,19 +23,19 @@ class SupervisorDomainInput(BaseModel):
     @model_validator(mode="after")
     def validate_task(self) -> Self:
         if self.task is None:
-            raise ValueError("SupervisorRequest requires exactly one task.")
+            raise ValueError("ControllerRequest requires exactly one task.")
         if isinstance(self.task, (list, tuple, set)):
-            raise ValueError("SupervisorRequest accepts exactly one task, not a collection.")
+            raise ValueError("ControllerRequest accepts exactly one task, not a collection.")
         return self
 
 
-class SupervisorRequest(BaseModel):
+class ControllerRequest(BaseModel):
     """Pure single-pass request: exactly one explicit task."""
-    domain: SupervisorDomainInput
+    domain: ControllerDomainInput
 
 
-class SupervisorResponse(BaseModel):
-    """SupervisorResponse is an immutable event representing one execution attempt."""
+class ControllerResponse(BaseModel):
+    """ControllerResponse is an immutable event representing one execution attempt."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -46,7 +46,7 @@ class SupervisorResponse(BaseModel):
     trace: list[dict] | None = None
 
 
-class Supervisor:
+class Controller:
     def __init__(
         self,
         *,
@@ -56,11 +56,11 @@ class Supervisor:
         self.dispatcher = dispatcher
         self.tool_registry = tool_registry
 
-    def __call__(self, request: SupervisorRequest) -> SupervisorResponse:
+    def __call__(self, request: ControllerRequest) -> ControllerResponse:
         """
         Explicit FSM over PLAN → WORK → TOOL/CRITIC → END.
         Each agent/tool invocation is a state transition.
-        Returns a structured SupervisorResponse.
+        Returns a structured ControllerResponse.
         """
         def _to_event(value):
             if hasattr(value, "model_dump"):
@@ -77,7 +77,7 @@ class Supervisor:
 
         request_task = request.domain.task
         if request_task is None:
-            raise RuntimeError("SupervisorRequest must include a task.")
+            raise RuntimeError("ControllerRequest must include a task.")
         trace: list[dict] = []
 
         # PLAN
@@ -190,7 +190,7 @@ class Supervisor:
                 "decision": decision,
             }
         )
-        return SupervisorResponse(
+        return ControllerResponse(
             task=_to_event(request_task),
             worker_id=_to_event(worker_id),
             worker_output=_to_event(worker_output),
@@ -215,14 +215,14 @@ class Supervisor:
                 critic_kwargs["project_description"] = ""
         return critic_input_cls(**critic_kwargs)
 
-def run_supervisor(
-    supervisor_input: SupervisorRequest,
+def run_controller(
+    controller_input: ControllerRequest,
     *,
     dispatcher: AgentDispatcher,
     tool_registry: ToolRegistry,
-) -> SupervisorResponse:
-    supervisor = Supervisor(
+) -> ControllerResponse:
+    controller = Controller(
         dispatcher=dispatcher,
         tool_registry=tool_registry,
     )
-    return supervisor(supervisor_input)
+    return controller(controller_input)

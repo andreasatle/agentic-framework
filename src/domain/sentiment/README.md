@@ -10,4 +10,4 @@ A lightweight sentiment-analysis example.
 * No persistent artifacts
 * Demonstrates planner → worker → critic flow without content accumulation
 
-Primarily used to validate Supervisor behavior under trivial state.
+Primarily used to validate Controller behavior under trivial state.

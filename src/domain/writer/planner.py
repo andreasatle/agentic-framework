@@ -11,7 +11,7 @@ Your only job:
 1) Validate the incoming task payload is well-formed.
 2) Route the task to the correct worker based on task.kind.
 
-INPUT (from Supervisor / CLI):
+INPUT (from Controller / CLI):
 { "task": { ... } }
 
 OUTPUT (STRICT JSON ONLY):

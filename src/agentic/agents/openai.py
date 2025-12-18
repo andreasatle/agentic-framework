@@ -11,7 +11,7 @@ class OpenAIAgent(Generic[InputSchema, OutputSchema]):
     """
     Generic LLM-based agent.
 
-    The Supervisor is the trusted layer. Agents are untrusted.
+    The Controller is the trusted layer. Agents are untrusted.
     Their only job is:
         input_json  -> LLM -> validated_output_json
     """
