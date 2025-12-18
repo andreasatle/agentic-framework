@@ -4,7 +4,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class BaseSectionTask(BaseModel):
-    """Common structure for writer tasks."""
+    """Common structure for writer tasks.
+
+    Invariants:
+    - Exactly one task per DocumentNode; node_id links back to DocumentNode.id.
+    - Writer tasks carry no structure; they reference nodes by id and use purpose/requirements only.
+    - Writer has no authority to create, remove, or reorder sections.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -17,7 +23,7 @@ class BaseSectionTask(BaseModel):
 
 
 class DraftSectionTask(BaseSectionTask):
-    """Draft a new section from instructions."""
+    """Draft a new section for a single DocumentNode (identified by node_id)."""
 
     kind: Literal["draft_section"] = Field(
         "draft_section", description="Indicates this task drafts a section."
@@ -25,7 +31,7 @@ class DraftSectionTask(BaseSectionTask):
 
 
 class RefineSectionTask(BaseSectionTask):
-    """Refine an existing section with new guidance."""
+    """Refine an existing section for a single DocumentNode (identified by node_id)."""
 
     kind: Literal["refine_section"] = Field(
         "refine_section", description="Indicates this task refines a section."
@@ -38,6 +44,6 @@ WriterTask = Annotated[
 
 
 class WriterResult(BaseModel):
-    """Text produced by the worker for a single writing task."""
+    """Single section output keyed by DocumentNode.id; no structural authority."""
 
     text: str = Field(..., description="Completed prose for the section.")

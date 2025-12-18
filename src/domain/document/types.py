@@ -56,7 +56,13 @@ class DocumentTask(BaseModel):
 
 
 class DocumentNode(BaseModel):
-    """Pure structural node describing the document outline."""
+    """Immutable structural node for the document outline.
+
+    Guarantees:
+    - Structure ownership lives in the Document layer; Writer receives these nodes as read-only context.
+    - id is opaque, unique within a tree, and stable for the duration of a writer run.
+    - title is a human-readable label; description is the semantic obligation the Writer must satisfy.
+    """
 
     id: str
     title: str
@@ -65,4 +71,9 @@ class DocumentNode(BaseModel):
 
 
 class DocumentTree(BaseModel):
+    """Complete document structure provided by the Document layer.
+
+    The tree is complete and immutable for a writer run; Writer consumes it but never mutates or enriches it.
+    """
+
     root: DocumentNode
