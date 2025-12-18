@@ -58,7 +58,13 @@ class WriterCriticInput(BaseModel):
 
     plan: WriterTask
     worker_answer: WriterResult
-    node_description: str
+    node_description: str | None = None
+
+    @model_validator(mode="after")
+    def fill_node_description(self) -> Self:
+        if self.node_description is None and hasattr(self.plan, "purpose"):
+            self.node_description = getattr(self.plan, "purpose")
+        return self
 
 
 class WriterCriticOutput(Decision):

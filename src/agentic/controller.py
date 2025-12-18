@@ -205,14 +205,12 @@ class Controller:
         critic_kwargs = {"plan": plan, "worker_answer": worker_answer}
         fields = critic_input_cls.model_fields
         if "worker_id" in fields:
-            critic_kwargs["worker_id"] = worker_id or ""
-        if "project_description" in fields:
-            if hasattr(plan, "project_description"):
-                critic_kwargs["project_description"] = getattr(plan, "project_description")
-            elif hasattr(plan, "specification"):
-                critic_kwargs["project_description"] = getattr(plan, "specification")
-            else:
-                critic_kwargs["project_description"] = ""
+            critic_kwargs["worker_id"] = worker_id
+        for field_name in fields:
+            if field_name in critic_kwargs:
+                continue
+            if hasattr(plan, field_name):
+                critic_kwargs[field_name] = getattr(plan, field_name)
         return critic_input_cls(**critic_kwargs)
 
 def run_controller(
