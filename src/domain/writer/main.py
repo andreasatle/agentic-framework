@@ -51,7 +51,7 @@ def main() -> None:
         DocumentNode(
             id=section,
             title=section,
-            description=instructions,
+            description=f"Write the '{section}' section. Follow these global instructions: {instructions}",
             children=[],
         )
         for section in sections_arg

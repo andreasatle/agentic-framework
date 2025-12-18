@@ -97,15 +97,15 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
                     },
                 ).model_dump_json()
 
-            if critic_input.node_description and critic_input.node_description.strip():
-                if critic_input.node_description.lower() not in text.lower():
-                    return WriterCriticOutput(
-                        decision="REJECT",
-                        feedback={
-                            "kind": "TASK_INCOMPLETE",
-                            "message": "Text does not address the described section intent.",
-                        },
-                    ).model_dump_json()
+            section_name = getattr(critic_input.plan, "section_name", "") or ""
+            if section_name and section_name.lower() not in text.lower():
+                return WriterCriticOutput(
+                    decision="REJECT",
+                    feedback={
+                        "kind": "SCOPE_ERROR",
+                        "message": f"Section '{section_name}' is not clearly addressed.",
+                    },
+                ).model_dump_json()
 
             return WriterCriticOutput(
                 decision="ACCEPT",

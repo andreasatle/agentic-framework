@@ -27,5 +27,6 @@ def emit_writer_tasks(tree: DocumentTree, store: ContentStore) -> list[WriterTas
         for child in node.children:
             visit(child)
 
-    visit(tree.root)
+    for child in tree.root.children:
+        visit(child)
     return tasks
