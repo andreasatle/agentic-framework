@@ -6,6 +6,18 @@ from agentic.analysis_controller import (
 from domain.document.schemas import DocumentPlannerInput
 from domain.document.types import DocumentTree
 from domain.intent.types import IntentEnvelope
+from dataclasses import dataclass
+
+
+@dataclass
+class DocumentAnalysisResult:
+    """Domain-owned wrapper adding intent observability; behavior is unchanged and delegated."""
+
+    controller_response: any
+    intent_observation: str
+
+    def __getattr__(self, item):
+        return getattr(self.controller_response, item)
 
 
 def analyze(
@@ -17,6 +29,12 @@ def analyze(
     intent: IntentEnvelope | None = None,
     dispatcher: AgentDispatcher,
 ):
+    intent_observation: str
+    if document_tree is not None:
+        intent_observation = "ignored_existing_structure"
+    else:
+        intent_observation = "intent_advisory_available" if intent is not None else "no_intent_provided"
+
     planner_input = DocumentPlannerInput(
         document_tree=document_tree,
         tone=tone,
@@ -25,7 +43,11 @@ def analyze(
         intent=intent,
     )
     controller_input = AnalysisControllerRequest(planner_input=planner_input)
-    return run_analysis_controller(
+    controller_response = run_analysis_controller(
         controller_input,
         dispatcher=dispatcher,
+    )
+    return DocumentAnalysisResult(
+        controller_response=controller_response,
+        intent_observation=intent_observation,
     )
