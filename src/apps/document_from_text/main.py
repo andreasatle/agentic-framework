@@ -33,7 +33,16 @@ def assemble_markdown(node: DocumentNode, store: ContentStore, depth: int = 0) -
     lines.append(f"{heading_prefix} {node.title}".strip())
     text = store.by_node_id.get(node.id)
     if text:
-        lines.append(text.strip())
+        text_lines = text.splitlines()
+        filtered_lines: list[str] = []
+        first_non_empty_seen = False
+        for line in text_lines:
+            if not first_non_empty_seen and line.strip():
+                first_non_empty_seen = True
+                if line == f"{node.title}:":
+                    continue
+            filtered_lines.append(line)
+        lines.append("\n".join(filtered_lines).strip())
     for child in node.children:
         lines.extend(assemble_markdown(child, store, depth + 1))
     return lines

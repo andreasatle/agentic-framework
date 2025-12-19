@@ -22,15 +22,16 @@ INPUT FORMAT (from Planner):
 OUTPUT FORMAT (STRICT):
 {
   "result": {
-    "text": "<complete draft for the section>"
+    "text": "<section_name>:\\n<complete draft for the section>"
   }
 }
 
 RULES:
 1. Output ONLY valid JSON with keys exactly as specified.
-2. Write a polished, publication-ready section.
-3. Satisfy every requirement; stay within scope.
-4. No meta-commentary, no explanations, no code fences.
+2. Begin result.text with the exact section_name followed by a colon and newline.
+3. Write a polished, publication-ready section.
+4. Satisfy every requirement; stay within scope.
+5. No meta-commentary, no explanations, no code fences.
 """
 
 

@@ -70,7 +70,7 @@ def make_text_prompt_refiner_controller(
         model=model,
         system_prompt=PROMPT_TEXT_REFINER,
         input_schema=TextPromptRefinerInput,
-        output_schema=BaseModel,  # type: ignore[arg-type]
+        output_schema=None,  # type: ignore[arg-type]
         temperature=0.0,
     )
 
@@ -85,6 +85,15 @@ def make_text_prompt_refiner_controller(
 
         def __call__(self, user_input: str) -> str:
             self.input_schema.model_validate_json(user_input)
-            return self._agent(user_input)
+            resp = self._agent.client.chat.completions.create(
+                model=self._agent.model,
+                temperature=self._agent.temperature,
+                messages=[
+                    {"role": "system", "content": self._agent.system_prompt.strip()},
+                    {"role": "user", "content": user_input},
+                ],
+            )
+            message = resp.choices[0].message
+            return (message.content or "").strip()
 
     return TextPromptRefinerController(agent=RefinerAgent(base_agent))
