@@ -25,6 +25,7 @@ agentic-coder = "domain.coder.main:main"
 agentic-writer = "domain.writer.main:main"
 agentic-document = "domain.document.main:main"
 agentic-document-writer = "apps.document_writer.main:main"
+agentic-document-from-text = "apps.document_from_text.main:main"
 
 [tool.poetry.scripts]
 arithmetic = "domain.arithmetic.main:main"
