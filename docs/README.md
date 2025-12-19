@@ -70,3 +70,6 @@ Only one of these is allowed to constrain the system.
 
 If a rule or guarantee is not documented under `contracts/`,
 it is not considered binding.
+
+## Text Prompt Refiner (Contract)
+The text prompt refiner exists solely to normalize messy human input into a cleaner version of the same text. It is semantic-preserving, advisory-only, and non-authoritative. It must not invent intent, extract intent, plan, execute, create structure, or generate documents; its role is distinct from intent extraction and limited to tidying input before downstream use.
