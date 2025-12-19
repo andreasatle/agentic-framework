@@ -122,6 +122,48 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
                         },
                     ).model_dump_json()
 
+            # Completeness heuristics
+            if len(text.strip()) < 80:
+                return WriterCriticOutput(
+                    decision="REJECT",
+                    feedback={
+                        "kind": "TASK_INCOMPLETE",
+                        "message": "Expand the section with substantive prose; current text is too short.",
+                    },
+                ).model_dump_json()
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+            if lines:
+                bullet_lines = [ln for ln in lines if ln.startswith(("-", "*", "•"))]
+                if len(bullet_lines) > len(lines) / 2:
+                    return WriterCriticOutput(
+                        decision="REJECT",
+                        feedback={
+                            "kind": "TASK_INCOMPLETE",
+                            "message": "Convert bullet fragments into cohesive prose paragraphs.",
+                        },
+                ).model_dump_json()
+            placeholder_terms = ["todo", "tbd", "lorem", "ipsum", "placeholder"]
+            for term in placeholder_terms:
+                if term in lower_text:
+                    return WriterCriticOutput(
+                        decision="REJECT",
+                        feedback={
+                            "kind": "TASK_INCOMPLETE",
+                            "message": "Replace placeholder text with completed section prose.",
+                        },
+                    ).model_dump_json()
+
+            def _has_section_identity(name: str, body: str) -> bool:
+                if not name:
+                    return True
+                escaped = re.escape(name)
+                patterns = [
+                    rf"(?mi)^\s*#{{1,6}}\s*{escaped}\b",  # Markdown heading
+                    rf"(?mi)^\s*{escaped}\s*:",          # Label style
+                    rf"(?i)\b{escaped}\s+section\b",     # Phrase style
+                ]
+                return any(re.search(pat, body) for pat in patterns)
+
             # Scope containment: enforce exclusions, not literal inclusion.
             forbidden_scope_terms = [
                 "future section",
@@ -152,36 +194,14 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
                         },
                     ).model_dump_json()
 
-            # Completeness heuristics
-            if len(text.strip()) < 80:
+            if not _has_section_identity(section_name, text):
                 return WriterCriticOutput(
                     decision="REJECT",
                     feedback={
-                        "kind": "TASK_INCOMPLETE",
-                        "message": "Expand the section with substantive prose; current text is too short.",
+                        "kind": "SCOPE_ERROR",
+                        "message": f"Section identity missing: add a heading or label for '{section_name}'.",
                     },
                 ).model_dump_json()
-            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-            if lines:
-                bullet_lines = [ln for ln in lines if ln.startswith(("-", "*", "•"))]
-                if len(bullet_lines) > len(lines) / 2:
-                    return WriterCriticOutput(
-                        decision="REJECT",
-                        feedback={
-                            "kind": "TASK_INCOMPLETE",
-                            "message": "Convert bullet fragments into cohesive prose paragraphs.",
-                        },
-                    ).model_dump_json()
-            placeholder_terms = ["todo", "tbd", "lorem", "ipsum", "placeholder"]
-            for term in placeholder_terms:
-                if term in lower_text:
-                    return WriterCriticOutput(
-                        decision="REJECT",
-                        feedback={
-                            "kind": "TASK_INCOMPLETE",
-                            "message": "Replace placeholder text with completed section prose.",
-                        },
-                    ).model_dump_json()
 
             return WriterCriticOutput(
                 decision="ACCEPT",
