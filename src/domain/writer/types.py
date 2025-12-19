@@ -20,6 +20,10 @@ class BaseSectionTask(BaseModel):
     requirements: list[str] = Field(
         ..., description="Specific constraints or bullets the worker must satisfy."
     )
+    forbidden_terms: list[str] = Field(
+        default_factory=list,
+        description="Terms that must NOT appear; advisory intent only.",
+    )
 
 
 class DraftSectionTask(BaseSectionTask):

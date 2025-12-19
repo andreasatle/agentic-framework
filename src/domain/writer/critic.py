@@ -1,3 +1,5 @@
+import re
+
 from agentic.agents.openai import OpenAIAgent
 from domain.writer.schemas import WriterCriticInput, WriterCriticOutput
 
@@ -101,34 +103,26 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
             section_name = getattr(critic_input.plan, "section_name", "") or ""
             node_desc = critic_input.node_description or getattr(critic_input.plan, "purpose", "")
 
-            # Requirement coverage
+            # Requirement coverage via semantic overlap (conceptual, not verbatim).
+            def requirement_satisfied(req: str, body: str) -> bool:
+                req_terms = {t for t in re.findall(r"\w+", req.lower()) if len(t) > 3}
+                if not req_terms:
+                    return False
+                body_terms = set(re.findall(r"\w+", body.lower()))
+                overlap = req_terms & body_terms
+                return len(overlap) >= max(2, len(req_terms) // 3)
+
             for req in getattr(critic_input.plan, "requirements", []) or []:
-                if req and req.lower() not in lower_text:
+                if not requirement_satisfied(req, text):
                     return WriterCriticOutput(
                         decision="REJECT",
                         feedback={
                             "kind": "TASK_INCOMPLETE",
-                            "message": f"Add coverage for requirement: '{req}'.",
+                            "message": f"Missing semantic coverage of requirement: '{req}'.",
                         },
                     ).model_dump_json()
 
-            # Scope containment
-            if section_name and section_name.lower() not in lower_text:
-                return WriterCriticOutput(
-                    decision="REJECT",
-                    feedback={
-                        "kind": "SCOPE_ERROR",
-                        "message": f"Focus on section '{section_name}' explicitly.",
-                    },
-                ).model_dump_json()
-            if node_desc and node_desc.lower() not in lower_text:
-                return WriterCriticOutput(
-                    decision="REJECT",
-                    feedback={
-                        "kind": "SCOPE_ERROR",
-                        "message": "Align text with the section description; remove off-topic content.",
-                    },
-                ).model_dump_json()
+            # Scope containment: enforce exclusions, not literal inclusion.
             forbidden_scope_terms = [
                 "future section",
                 "next section",
@@ -146,6 +140,15 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
                         feedback={
                             "kind": "SCOPE_ERROR",
                             "message": f"Remove meta or cross-section content (found '{term}').",
+                        },
+                    ).model_dump_json()
+            for term in getattr(critic_input.plan, "forbidden_terms", []) or []:
+                if term and term.lower() in lower_text:
+                    return WriterCriticOutput(
+                        decision="REJECT",
+                        feedback={
+                            "kind": "SCOPE_ERROR",
+                            "message": f"Remove forbidden term: '{term}'.",
                         },
                     ).model_dump_json()
 

@@ -10,6 +10,7 @@ from domain.writer.api import execute_document
 from domain.document.content import ContentStore
 from agentic.agent_dispatcher import AgentDispatcher
 from agentic.logging_config import get_logger
+from domain.document.schemas import DocumentPlannerOutput
 
 logger = get_logger("domain.document.main")
 
@@ -32,7 +33,7 @@ def main() -> None:
     load_dotenv(override=True)
 
     parser = argparse.ArgumentParser(
-        description="Run the document analysis supervisor (planner-only)."
+        description="Run document analysis followed by writer execution."
     )
     parser.add_argument(
         "--tone",
@@ -98,7 +99,8 @@ def main() -> None:
     if args.trace:
         print("Advisory: document intent observation =", getattr(run, "intent_observation", None))
 
-    planned_tree: DocumentTree = run.plan.document_tree
+    planner_output = DocumentPlannerOutput.model_validate(run.plan)
+    planned_tree: DocumentTree = planner_output.document_tree
 
     # Execute writer
     writer_dispatcher = make_writer_dispatcher(model="gpt-4.1-mini", max_retries=3)

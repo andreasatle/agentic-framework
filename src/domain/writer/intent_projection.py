@@ -8,6 +8,7 @@ def apply_advisory_intent(task: WriterTask, intent: IntentEnvelope | None) -> Wr
         return task
 
     requirements = list(task.requirements)
+    forbidden_terms = list(getattr(task, "forbidden_terms", []) or [])
 
     must_include = intent.semantic_constraints.must_include
     if must_include:
@@ -16,14 +17,14 @@ def apply_advisory_intent(task: WriterTask, intent: IntentEnvelope | None) -> Wr
             requirements.append(req)
 
     must_avoid = intent.semantic_constraints.must_avoid
-    if must_avoid:
-        req = f"Avoid mentioning: {', '.join(must_avoid)}"
-        if req not in requirements:
-            requirements.append(req)
+    for term in must_avoid:
+        if term not in forbidden_terms:
+            forbidden_terms.append(term)
 
     return task.__class__(
         **{
             **task.model_dump(),
             "requirements": requirements,
+            "forbidden_terms": forbidden_terms,
         }
     )
