@@ -24,6 +24,10 @@ class BaseSectionTask(BaseModel):
         default_factory=list,
         description="Terms that must NOT appear; advisory intent only.",
     )
+    applies_thesis_rule: bool | None = Field(
+        default=None,
+        description="When true, this section participates in thesis enforcement.",
+    )
 
 
 class DraftSectionTask(BaseSectionTask):

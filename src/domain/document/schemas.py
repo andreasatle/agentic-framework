@@ -17,3 +17,4 @@ class DocumentPlannerInput(BaseModel):
 
 class DocumentPlannerOutput(BaseModel):
     document_tree: DocumentTree
+    applies_thesis_rule: bool | None = None

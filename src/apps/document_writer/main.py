@@ -112,6 +112,7 @@ def main() -> None:
         dispatcher=writer_dispatcher,
         tool_registry=writer_tool_registry,
         intent=intent,
+        applies_thesis_rule=bool(planner_output.applies_thesis_rule),
     )
     if args.trace:
         print("Advisory: writer intent audit =", writer_result.intent_audit.model_dump())

@@ -30,7 +30,10 @@ INPUT:
 }
 
 OUTPUT (STRICT JSON):
-{ "document_tree": { "root": { ...DocumentNode... } } }
+{
+  "document_tree": { "root": { ...DocumentNode... } },
+  "applies_thesis_rule": true | null
+}
 
 RULES:
 1. Emit exactly one document_tree.
@@ -50,6 +53,15 @@ RULES:
 7. Never emit writer tasks directly; only structural trees.
 8. Do not mutate external state; decisions only.
 9. JSON only. No commentary.
+10. Thesis requirement (apply ONLY to linear reading docs: blog posts, reflective articles, explanatory essays):
+    - Produce exactly one thesis: a single declarative sentence expressing the central claim, suitable for quotation.
+    - Label it explicitly with "Thesis: ..." in the plan.
+    - Include distinct Introduction and Conclusion nodes when applying this rule.
+    - Place the thesis in the Introduction node description and ensure the introduction references it directly.
+    - The Conclusion node description must revisit the thesis without repeating it verbatim.
+    - Do NOT apply thesis requirements to reference documentation, logs/reports, or exploratory notes.
+    - Never emit multiple theses; if uncertain, pick the single best central claim and state it once.
+    - When this rule applies, set applies_thesis_rule=true; omit otherwise (keep null/absent).
 
 Valid init example:
 {

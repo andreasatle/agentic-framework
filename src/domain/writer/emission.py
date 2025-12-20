@@ -5,7 +5,12 @@ from domain.writer.intent_projection import apply_advisory_intent
 from domain.intent.types import IntentEnvelope
 
 
-def emit_writer_tasks(tree: DocumentTree, store: ContentStore, intent: IntentEnvelope | None = None) -> list[WriterTask]:
+def emit_writer_tasks(
+    tree: DocumentTree,
+    store: ContentStore,
+    intent: IntentEnvelope | None = None,
+    applies_thesis_rule: bool = False,
+) -> list[WriterTask]:
     tasks: list[WriterTask] = []
 
     def visit(node: DocumentNode) -> None:
@@ -17,6 +22,7 @@ def emit_writer_tasks(tree: DocumentTree, store: ContentStore, intent: IntentEnv
                 section_name=node.title,
                 purpose=node.description,
                 requirements=[node.description],
+                applies_thesis_rule=applies_thesis_rule,
             )
         else:
             task = DraftSectionTask(
@@ -24,6 +30,7 @@ def emit_writer_tasks(tree: DocumentTree, store: ContentStore, intent: IntentEnv
                 section_name=node.title,
                 purpose=node.description,
                 requirements=[node.description],
+                applies_thesis_rule=applies_thesis_rule,
             )
         tasks.append(task)
         for child in node.children:

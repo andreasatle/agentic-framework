@@ -55,8 +55,14 @@ def execute_document(
     tool_registry: ToolRegistry,
     max_refine_attempts: int = 1,
     intent: IntentEnvelope | None = None,
+    applies_thesis_rule: bool = False,
 ) -> WriterExecutionResult:
-    tasks = emit_writer_tasks(document_tree, content_store, intent=intent)
+    tasks = emit_writer_tasks(
+        document_tree,
+        content_store,
+        intent=intent,
+        applies_thesis_rule=applies_thesis_rule,
+    )
     for task in tasks:
         attempts = 0
         current_task: WriterTask = task
@@ -83,6 +89,7 @@ def execute_document(
                 section_name=current_task.section_name,
                 purpose=current_task.purpose,
                 requirements=current_task.requirements,
+                applies_thesis_rule=current_task.applies_thesis_rule,
             )
     intent_audit = audit_intent_satisfaction(
         document_tree=document_tree,

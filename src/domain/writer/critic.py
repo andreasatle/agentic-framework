@@ -1,6 +1,7 @@
 import re
 
 from agentic.agents.openai import OpenAIAgent
+from agentic.logging_config import get_logger
 from domain.writer.schemas import WriterCriticInput, WriterCriticOutput
 
 
@@ -69,6 +70,8 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
     """
     MVP critic: accepts any non-empty text and mirrors the writer decision schema.
     """
+    logger = get_logger("WriterCritic")
+
     base_agent = OpenAIAgent(
         name="WriterCritic",
         model=model,
@@ -102,6 +105,7 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
             lower_text = text.lower()
             section_name = getattr(critic_input.plan, "section_name", "") or ""
             node_desc = critic_input.node_description or getattr(critic_input.plan, "purpose", "")
+            applies_thesis_rule = getattr(critic_input.plan, "applies_thesis_rule", False)
 
             # Requirement coverage via semantic overlap (conceptual, not verbatim).
             def requirement_satisfied(req: str, body: str) -> bool:
@@ -152,6 +156,111 @@ def make_critic(model: str) -> OpenAIAgent[WriterCriticInput, WriterCriticOutput
                             "message": "Replace placeholder text with completed section prose.",
                         },
                     ).model_dump_json()
+
+            def _extract_thesis(plan) -> str | None:
+                """Pull a labeled thesis from plan fields, if present."""
+                search_fields = []
+                if hasattr(plan, "purpose"):
+                    search_fields.append(getattr(plan, "purpose"))
+                search_fields.extend(getattr(plan, "requirements", []) or [])
+                for field in search_fields:
+                    if not field:
+                        continue
+                    match = re.search(r"(?i)thesis\s*:\s*(.+)", field)
+                    if match:
+                        thesis_text = match.group(1).strip()
+                        thesis_text = thesis_text.splitlines()[0].strip()
+                        return thesis_text
+                return None
+
+            def _thesis_present(thesis: str, body: str) -> bool:
+                if not thesis:
+                    return False
+                if thesis in body:
+                    return True
+                thesis_terms = {t for t in re.findall(r"\w+", thesis.lower()) if len(t) > 3}
+                if not thesis_terms:
+                    return False
+                sentences = re.split(r"(?<=[.!?])\s+", body)
+                for sentence in sentences:
+                    terms = set(re.findall(r"\w+", sentence.lower()))
+                    if len(thesis_terms & terms) >= max(3, len(thesis_terms) // 2):
+                        return True
+                return False
+
+            def _candidate_thesis_sentences(body: str) -> list[str]:
+                sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", body) if s.strip()]
+                markers = [
+                    "thesis",
+                    "argues",
+                    "contends",
+                    "asserts",
+                    "central claim",
+                    "main claim",
+                    "this essay",
+                    "this article",
+                ]
+                return [s for s in sentences if any(m in s.lower() for m in markers)]
+
+            def _is_list_like(sentence: str) -> bool:
+                # List-like if it enumerates 3+ segments separated by commas/semicolons/and.
+                segments = [seg.strip() for seg in re.split(r",|;|\band\b", sentence) if seg.strip()]
+                return len(segments) >= 3
+
+            if applies_thesis_rule:
+                thesis_text = _extract_thesis(critic_input.plan)
+                if thesis_text:
+                    logger.debug("writer_critic_thesis_extracted", extra={"thesis": thesis_text})
+                section_lower = section_name.lower()
+                is_intro = section_lower.startswith("intro")
+                is_conclusion = "conclusion" in section_lower
+
+                if thesis_text and (is_intro or is_conclusion):
+                    candidates = _candidate_thesis_sentences(text)
+                    if is_intro:
+                        if not _thesis_present(thesis_text, text):
+                            return WriterCriticOutput(
+                                decision="REJECT",
+                                feedback={
+                                    "kind": "MISSING_THESIS",
+                                    "message": "State the single thesis explicitly in the introduction.",
+                                },
+                            ).model_dump_json()
+                        if len(candidates) > 1:
+                            return WriterCriticOutput(
+                                decision="REJECT",
+                                feedback={
+                                    "kind": "WEAK_THESIS",
+                                    "message": "Keep exactly one thesis; remove competing claims in the introduction.",
+                                },
+                            ).model_dump_json()
+                        if candidates:
+                            thesis_sentence = candidates[0]
+                            if len(thesis_sentence.split()) < 8 or _is_list_like(thesis_sentence):
+                                return WriterCriticOutput(
+                                    decision="REJECT",
+                                    feedback={
+                                        "kind": "WEAK_THESIS",
+                                        "message": "Strengthen the thesis into a single declarative central claim.",
+                                    },
+                                ).model_dump_json()
+                    if is_conclusion:
+                        if not _thesis_present(thesis_text, text):
+                            return WriterCriticOutput(
+                                decision="REJECT",
+                                feedback={
+                                    "kind": "MISSING_THESIS",
+                                    "message": "Revisit the thesis in the conclusion; make the connection explicit.",
+                                },
+                            ).model_dump_json()
+                        if thesis_text in text:
+                            return WriterCriticOutput(
+                                decision="REJECT",
+                                feedback={
+                                    "kind": "WEAK_THESIS",
+                                    "message": "Paraphrase the thesis in the conclusion; do not repeat it verbatim.",
+                                },
+                            ).model_dump_json()
 
             def _has_section_identity(name: str, body: str) -> bool:
                 if not name:

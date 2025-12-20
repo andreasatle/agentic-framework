@@ -116,7 +116,8 @@ def main() -> None:
     )
     if args.trace:
         print("Advisory: document intent observation =", getattr(analysis, "intent_observation", None))
-    planned_tree: DocumentTree = DocumentPlannerOutput.model_validate(analysis.plan).document_tree
+    planner_output = DocumentPlannerOutput.model_validate(analysis.plan)
+    planned_tree: DocumentTree = planner_output.document_tree
 
     # Writer execution
     writer_dispatcher = make_writer_dispatcher(model="gpt-4.1-mini", max_retries=3)
@@ -128,6 +129,7 @@ def main() -> None:
         dispatcher=writer_dispatcher,
         tool_registry=writer_tool_registry,
         intent=intent,
+        applies_thesis_rule=bool(planner_output.applies_thesis_rule),
     )
     if args.trace:
         print("Advisory: writer intent audit =", writer_result.intent_audit.model_dump())
