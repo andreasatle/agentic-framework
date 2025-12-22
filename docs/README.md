@@ -1,14 +1,14 @@
 # Documentation Structure
 
-This directory contains **two distinct classes of documentation** with different purposes and guarantees.
+This repo contains **two distinct classes of documentation** with different purposes and guarantees.
 
 Understanding this split is essential to understanding the project.
 
 ---
 
-## 1. `contracts/` — Normative, Enforced Documentation
+## 1. `docs/` — Normative, Enforced Documentation
 
-The `contracts/` directory contains **authoritative documents** that define how the system is allowed to behave.
+The `docs/` directory contains **authoritative documents** that define how the system is allowed to behave.
 
 These documents are:
 
@@ -17,7 +17,7 @@ These documents are:
 - Stable and intentionally minimal
 - Used as guardrails for future development
 
-If code, prompts, or behavior conflict with anything in `contracts/`,
+If code, prompts, or behavior conflict with anything in `docs/`,
 **the contract documents take precedence**.
 
 Changes here represent architectural decisions.
@@ -30,9 +30,9 @@ Typical contents include:
 
 ---
 
-## 2. `_drafts/` — Exploratory, Non-Authoritative Material
+## 2. `docs_drafts/` — Exploratory, Non-Authoritative Material
 
-The `_drafts/` directory is reserved for **working material**, such as:
+The `docs_drafts/` directory is reserved for **working material**, such as:
 
 - Task dumps
 - Planning notes
@@ -46,13 +46,6 @@ These documents:
 - May be inconsistent or incomplete
 - May contradict each other or current behavior
 - Exist to support thinking, not enforcement
-
-### Important
-
-Files under `_drafts/` are **not committed to the repository**.
-
-They are intentionally excluded to prevent exploratory material from being
-mistaken for architectural truth.
 
 ---
 
@@ -68,7 +61,7 @@ Only one of these is allowed to constrain the system.
 
 ---
 
-If a rule or guarantee is not documented under `contracts/`,
+If a rule or guarantee is not documented under `docs/`,
 it is not considered binding.
 
 ## Text Prompt Refiner (Contract)
