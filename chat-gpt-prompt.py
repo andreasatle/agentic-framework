@@ -1,42 +1,27 @@
-"""
-This module injects a project-specific bootstrap prompt into ChatGPT at the
-start of a session. Its purpose is to establish a *behavioral contract* that
-governs how the model should reason, respond, and produce artifacts for this
-project.
-
-What this module does:
-- Defines and supplies a bootstrap prompt that constrains tone, rigor, and scope
-- Enforces interaction discipline (no hallucination, no unrequested brainstorming,
-  crisp technical answers, explicit clarification when ambiguous)
-- Aligns ChatGPT’s vocabulary and assumptions with the project’s architecture
-- Makes executable artifacts (e.g. Codex prompts, commit messages) deterministic
-  in both content *and* formatting
-
-What is project-dependent:
-- The project description (what the system is being built for)
-- Core architectural invariants (e.g. Controller must remain domain-independent)
-- Terminology used by the codebase (e.g. “Controller” vs legacy names)
-- Rules about which artifacts may be produced and in what exact format
-
-What is intentionally NOT project-dependent:
-- The expectation of precision, minimalism, and critical reasoning
-- The prohibition against inventing architecture or drifting scope
-- The preference for surgical changes over broad rewrites
-
-This module should be updated whenever:
-- Core concepts are renamed in the codebase
-- Architectural invariants change
-- Artifact-format contracts are tightened or extended
-
-The bootstrap prompt is part of the system, not documentation.
-If it drifts from the code or the project’s real constraints, the system will
-silently degrade.
-"""
-
 #!/usr/bin/env python3
-import pathlib
+"""
+This module injects a project-specific bootstrap prompt into ChatGPT and
+builds a *selective, authoritative snapshot* of the codebase.
 
-# The bootstrap prompt inserted verbatim at the top of the output file
+The snapshot is intentionally PARTIAL:
+- Architecturally normative modules are always included
+- Domain code is opt-in via --domain
+- App code is opt-in via --app
+- Anything not included must be treated as unknown
+
+If this module drifts from actual architecture, the system will silently degrade.
+"""
+
+from __future__ import annotations
+
+import argparse
+import pathlib
+from typing import Iterable
+
+# ---------------------------------------------------------------------
+# BOOTSTRAP PROMPT (VERBATIM)
+# ---------------------------------------------------------------------
+
 BOOTSTRAP_PROMPT = '''AGENTIC PROJECT BOOTSTRAP PROMPT (PASTE AT START OF NEW SESSION)
 
 INITIALIZATION — DO NOT MODIFY
@@ -77,27 +62,76 @@ Never assume brainstorming unless I explicitly say “brainstorm.”
 END OF BOOTSTRAP PROMPT
 '''
 
-def build_snapshot() -> None:
-    # Fixed root directory
-    src_dir = pathlib.Path("src")
-    py_files = sorted(src_dir.rglob("*.py"))
+# ---------------------------------------------------------------------
+# SELECTION POLICY (NORMATIVE)
+# ---------------------------------------------------------------------
 
-    # Always output Markdown
+ARCH_CORE = [
+    "src/agentic/controller.py",
+    "src/agentic/supervisor.py",
+    "src/agentic/agent_dispatcher.py",
+    "src/agentic/tool_registry.py",
+]
+
+SCHEMA_GLOBS = [
+    "src/agentic/schemas/*.py",
+    "src/domain/*/schemas.py",
+]
+
+# ---------------------------------------------------------------------
+# COLLECTION HELPERS
+# ---------------------------------------------------------------------
+
+def _existing(paths: Iterable[pathlib.Path]) -> list[pathlib.Path]:
+    return sorted({p for p in paths if p.exists()})
+
+
+def collect_arch_files() -> list[pathlib.Path]:
+    files = [pathlib.Path(p) for p in ARCH_CORE]
+    for pattern in SCHEMA_GLOBS:
+        files.extend(pathlib.Path(".").glob(pattern))
+    return _existing(files)
+
+
+def collect_domain_files(domains: list[str]) -> list[pathlib.Path]:
+    files: list[pathlib.Path] = []
+    for domain in domains:
+        root = pathlib.Path("src/domain") / domain
+        if not root.exists():
+            raise FileNotFoundError(f"Domain not found: {root}")
+        files.extend(root.rglob("*.py"))
+    return _existing(files)
+
+
+def collect_app_files(apps: list[str]) -> list[pathlib.Path]:
+    files: list[pathlib.Path] = []
+    for app in apps:
+        root = pathlib.Path("src/apps") / app
+        if not root.exists():
+            raise FileNotFoundError(f"App not found: {root}")
+        files.extend(root.rglob("*.py"))
+    return _existing(files)
+
+
+# ---------------------------------------------------------------------
+# SNAPSHOT ASSEMBLY
+# ---------------------------------------------------------------------
+
+def build_snapshot(domains: list[str], apps: list[str]) -> None:
     out_file = pathlib.Path("combined_project_snapshot.md")
 
-    # Minimal authoritative header
     header = (
         "# === AGENTIC PROJECT SNAPSHOT ===\n"
-        "*authoritative_state: true*\n\n"
-        "> ChatGPT must reconstruct all architectural understanding **ONLY** from the code below.\n"
-        "> No metadata, summaries, or prior sessions may be referenced.\n"
-        "> The code in this file is the single source of truth for project structure and behavior.\n\n"
+        "*authoritative_scope: partial*\n\n"
+        "> ChatGPT must reason **only** from the files included below.\n"
+        "> Any module, behavior, or dependency not shown here must be treated as unknown.\n"
+        "> Architectural assumptions beyond this snapshot are forbidden.\n\n"
         "---\n\n"
     )
 
-    sections = []
+    sections: list[str] = []
 
-    # If pyproject.toml exists, include it first
+    # pyproject.toml (always first, if present)
     pyproject = pathlib.Path("pyproject.toml")
     if pyproject.exists():
         sections.append("## FILE: `pyproject.toml`\n\n")
@@ -105,20 +139,67 @@ def build_snapshot() -> None:
         sections.append(pyproject.read_text())
         sections.append("\n```\n\n")
 
-    # Add all Python source files
-    for f in py_files:
-        relative = f.relative_to(pathlib.Path("."))
-        sections.append(f"## FILE: `{relative}`\n\n")
+    # Core architecture
+    for f in collect_arch_files():
+        rel = f.relative_to(pathlib.Path("."))
+        sections.append(f"## FILE: `{rel}`\n\n")
         sections.append("```python\n")
         sections.append(f.read_text())
         sections.append("\n```\n\n")
 
-    # Write output
+    # Optional domains
+    if domains:
+        for f in collect_domain_files(domains):
+            rel = f.relative_to(pathlib.Path("."))
+            sections.append(f"## FILE: `{rel}`\n\n")
+            sections.append("```python\n")
+            sections.append(f.read_text())
+            sections.append("\n```\n\n")
+
+    # Optional apps
+    if apps:
+        for f in collect_app_files(apps):
+            rel = f.relative_to(pathlib.Path("."))
+            sections.append(f"## FILE: `{rel}`\n\n")
+            sections.append("```python\n")
+            sections.append(f.read_text())
+            sections.append("\n```\n\n")
+
     content = BOOTSTRAP_PROMPT + header + "".join(sections)
     out_file.write_text(content)
 
-    print(f"Wrote {len(py_files)} Python files + optional pyproject.toml to {out_file}")
+    print(
+        f"Wrote snapshot to {out_file}\n"
+        f"- Core files: {len(collect_arch_files())}\n"
+        f"- Domains: {domains or 'none'}\n"
+        f"- Apps: {apps or 'none'}"
+    )
+
+
+# ---------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Build a selective, authoritative project snapshot for ChatGPT."
+    )
+    parser.add_argument(
+        "--domain",
+        action="append",
+        default=[],
+        help="Include a domain (e.g. writer). May be specified multiple times.",
+    )
+    parser.add_argument(
+        "--app",
+        action="append",
+        default=[],
+        help="Include an app (e.g. document_writer). May be specified multiple times.",
+    )
+
+    args = parser.parse_args()
+    build_snapshot(domains=args.domain, apps=args.app)
 
 
 if __name__ == "__main__":
-    build_snapshot()
+    main()
