@@ -1,16 +1,9 @@
 import argparse
 from pathlib import Path
 from dotenv import load_dotenv
-from domain.document.planner import make_planner
-from domain.document.types import DocumentTree, DocumentNode
-from domain.document.api import analyze
 from domain.intent import load_intent_from_file
-from domain.writer import make_agent_dispatcher as make_writer_dispatcher, make_tool_registry as make_writer_tool_registry
-from domain.writer.api import execute_document
-from domain.document.content import ContentStore
-from agentic.agent_dispatcher import AgentDispatcher
 from agentic.logging_config import get_logger
-from domain.document.schemas import DocumentPlannerOutput
+from apps.document_writer.service import generate_document
 
 logger = get_logger("domain.document.main")
 
@@ -74,71 +67,17 @@ def main() -> None:
     intent = load_intent_from_file(args.intent) if args.intent else None
     out_path = Path(args.out) if args.out else None
 
-    # --- Planner-only dispatcher ---
-    planner = make_planner(model="gpt-4.1-mini")
-    dispatcher = AgentDispatcher(
-        planner=planner,
-        workers={},      # REQUIRED: empty, analysis-only
-        critic=None,     # type: ignore[arg-type]
-    )
-
-    # --- Initial document state ---
-    # For now, start with no tree (first planning step).
-    document_tree: DocumentTree | None = None
-
-    run = analyze(
-        document_tree=document_tree,
-        tone=args.tone,
-        audience=args.audience,
+    result = generate_document(
         goal=args.goal,
+        audience=args.audience,
+        tone=args.tone,
         intent=intent,
-        dispatcher=dispatcher,
+        trace=args.trace,
     )
-
-    _pretty_print_run(run)
-    if args.trace:
-        print("Advisory: document intent observation =", getattr(run, "intent_observation", None))
-
-    planner_output = DocumentPlannerOutput.model_validate(run.plan)
-    planned_tree: DocumentTree = planner_output.document_tree
-
-    # Execute writer
-    writer_dispatcher = make_writer_dispatcher(model="gpt-4.1-mini", max_retries=3)
-    writer_tool_registry = make_writer_tool_registry()
-    content_store = ContentStore()
-    writer_result = execute_document(
-        document_tree=planned_tree,
-        content_store=content_store,
-        dispatcher=writer_dispatcher,
-        tool_registry=writer_tool_registry,
-        intent=intent,
-        applies_thesis_rule=bool(planner_output.applies_thesis_rule),
-    )
-    if args.trace:
-        print("Advisory: writer intent audit =", writer_result.intent_audit.model_dump())
-
-    def assemble_markdown(node: DocumentNode, store: ContentStore, depth: int = 0) -> list[str]:
-        lines: list[str] = []
-        heading_prefix = "#" * (depth + 1)
-        lines.append(f"{heading_prefix} {node.title}".strip())
-        text = store.by_node_id.get(node.id)
-        if text:
-            text_lines = text.splitlines()
-            filtered_lines: list[str] = []
-            first_non_empty_seen = False
-            for line in text_lines:
-                if not first_non_empty_seen and line.strip():
-                    first_non_empty_seen = True
-                    if line == f"{node.title}:":
-                        continue
-                filtered_lines.append(line)
-            lines.append("\n".join(filtered_lines).strip())
-        for child in node.children:
-            lines.extend(assemble_markdown(child, store, depth + 1))
-        return lines
-
-    markdown_lines = assemble_markdown(planned_tree.root, writer_result.content_store)
-    output_text = "\n\n".join(markdown_lines)
+    if args.trace and result.trace is not None:
+        _pretty_print_run({"planner_input": None, "plan": None, "trace": result.trace}, trace=True)
+        print("Advisory: writer intent audit =", getattr(result.intent_audit, "model_dump", lambda: result.intent_audit)())
+    output_text = result.markdown
 
     if out_path:
         out_path.write_text(output_text)
