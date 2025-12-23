@@ -1,4 +1,5 @@
 let currentIntent = null;
+let currentMarkdown = null;
 
 const intentFields = {
   document_goal: document.getElementById("document-goal"),
@@ -164,9 +165,10 @@ async function generateDocument() {
       return;
     }
     const data = await resp.json();
+    currentMarkdown = data.markdown || "";
     const articleArea = document.getElementById("article-text");
     if (articleArea) {
-      articleArea.textContent = data.markdown || "";
+      articleArea.textContent = currentMarkdown;
     }
     setError("");
   } catch (err) {
@@ -175,9 +177,7 @@ async function generateDocument() {
 }
 
 async function saveDocument() {
-  const articleArea = document.getElementById("article-text");
-  const articleText = articleArea ? articleArea.textContent : "";
-  if (!articleText) {
+  if (!currentMarkdown) {
     setError("No article to save. Generate first.");
     return;
   }
@@ -187,7 +187,7 @@ async function saveDocument() {
     const resp = await fetch("/document/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown: articleText, filename }),
+      body: JSON.stringify({ markdown: currentMarkdown, filename }),
     });
     if (!resp.ok) {
       const detail = await resp.text();
