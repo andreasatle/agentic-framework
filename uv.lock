@@ -18,6 +18,7 @@ dependencies = [
     { name = "pytest" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -29,6 +30,7 @@ requires-dist = [
     { name = "pytest", specifier = ">=9.0.1" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 
 [[package]]

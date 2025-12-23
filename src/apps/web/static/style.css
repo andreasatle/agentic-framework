@@ -1,0 +1,5 @@
+/* Document Writer Web UI styles */
+#errors {
+  color: red;
+  white-space: pre-wrap;
+}

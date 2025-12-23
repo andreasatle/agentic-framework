@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document Writer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Document Writer</h1>
+
+    <section id="intent-upload">
+        <h2>Upload / Paste Intent YAML</h2>
+        <p>Load an existing IntentEnvelope (optional).</p>
+        <input type="file" id="intent-file" />
+    </section>
+
+    <section id="intent-form">
+        <h2>Intent Form</h2>
+        <div class="field-group">
+            <label for="document-goal">Document Goal</label>
+            <input type="text" id="document-goal" />
+        </div>
+        <div class="field-group">
+            <label for="audience">Audience</label>
+            <input type="text" id="audience" />
+        </div>
+        <div class="field-group">
+            <label for="tone">Tone</label>
+            <input type="text" id="tone" />
+        </div>
+        <div class="field-group">
+            <label for="required-sections">Required Sections</label>
+            <textarea id="required-sections"></textarea>
+        </div>
+        <div class="field-group">
+            <label for="forbidden-sections">Forbidden Sections</label>
+            <textarea id="forbidden-sections"></textarea>
+        </div>
+        <div class="field-group">
+            <label for="must-include">Must Include</label>
+            <textarea id="must-include"></textarea>
+        </div>
+        <div class="field-group">
+            <label for="must-avoid">Must Avoid</label>
+            <textarea id="must-avoid"></textarea>
+        </div>
+        <div class="field-group">
+            <label for="required-mentions">Required Mentions</label>
+            <textarea id="required-mentions"></textarea>
+        </div>
+        <div class="field-group">
+            <label for="humor-level">Humor Level</label>
+            <input type="text" id="humor-level" />
+        </div>
+        <div class="field-group">
+            <label for="formality">Formality</label>
+            <input type="text" id="formality" />
+        </div>
+        <div class="field-group">
+            <label for="narrative-voice">Narrative Voice</label>
+            <input type="text" id="narrative-voice" />
+        </div>
+    </section>
+
+    <section id="save-intent">
+        <h2>Save Intent</h2>
+        <input type="text" id="intent-filename" placeholder="intent.yaml" />
+        <button onclick="saveIntent()">Save Intent</button>
+    </section>
+
+    <section id="generate-document">
+        <h2>Generate Document</h2>
+        <button onclick="generateDocument()">Generate Article</button>
+    </section>
+
+    <section id="article-output">
+        <h2>Article Output</h2>
+        <pre id="article-text"></pre>
+    </section>
+
+    <section id="save-article">
+        <h2>Save Article</h2>
+        <input type="text" id="article-filename" placeholder="article.md" />
+        <button onclick="saveDocument()">Save Article</button>
+    </section>
+
+    <section id="errors">
+        <pre id="error-area"></pre>
+    </section>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
