@@ -1,5 +1,4 @@
 let currentIntent = null;
-let currentArticle = null;
 
 const intentFields = {
   document_goal: document.getElementById("document-goal"),
@@ -75,7 +74,7 @@ function readIntentFromForm() {
   };
 }
 
-function handleIntentFileChange(event) {
+function uploadIntent(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) {
     return;
@@ -99,9 +98,9 @@ function handleIntentFileChange(event) {
       renderIntent(currentIntent);
       setError("");
     } catch (err) {
-      setError(err?.message || "Error loading intent.");
-    }
-  };
+    setError(err?.message || "Error loading intent.");
+  }
+};
   reader.readAsText(file);
 }
 
@@ -165,10 +164,9 @@ async function generateDocument() {
       return;
     }
     const data = await resp.json();
-    currentArticle = data.markdown || "";
     const articleArea = document.getElementById("article-text");
     if (articleArea) {
-      articleArea.textContent = currentArticle;
+      articleArea.textContent = data.markdown || "";
     }
     setError("");
   } catch (err) {
@@ -177,7 +175,9 @@ async function generateDocument() {
 }
 
 async function saveDocument() {
-  if (!currentArticle) {
+  const articleArea = document.getElementById("article-text");
+  const articleText = articleArea ? articleArea.textContent : "";
+  if (!articleText) {
     setError("No article to save. Generate first.");
     return;
   }
@@ -187,7 +187,7 @@ async function saveDocument() {
     const resp = await fetch("/document/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown: currentArticle, filename }),
+      body: JSON.stringify({ markdown: articleText, filename }),
     });
     if (!resp.ok) {
       const detail = await resp.text();
@@ -212,7 +212,7 @@ async function saveDocument() {
 document.addEventListener("DOMContentLoaded", () => {
   const input = document.getElementById("intent-file");
   if (input) {
-    input.addEventListener("change", handleIntentFileChange);
+    input.addEventListener("change", uploadIntent);
   }
   const intentForm = document.getElementById("intent-form");
   if (intentForm) {
