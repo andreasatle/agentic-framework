@@ -1,0 +1,60 @@
+from datetime import datetime, timezone
+import re
+from pathlib import Path
+
+import yaml
+
+from apps.blog.types import BlogPostMeta
+
+
+def _slugify(title: str) -> str:
+    slug = title.lower()
+    slug = slug.replace(" ", "-")
+    slug = re.sub(r"[^a-z0-9\-]", "", slug)
+    slug = re.sub(r"-{2,}", "-", slug)
+    slug = slug.strip("-")
+    return slug or "post"
+
+
+def create_post(
+    *,
+    title: str,
+    author: str,
+    intent: dict,
+    content: str,
+    posts_root: str = "posts",
+) -> str:
+    """
+    Creates a new blog post directory and writes meta.yaml, intent.yaml, content.md.
+
+    Returns the absolute path to the created post directory.
+    """
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0)
+    ts_str = timestamp.strftime("%Y-%m-%dT%H-%M-%S")
+    slug = _slugify(title)
+    post_id = f"{ts_str}-{slug}"
+
+    root = Path(posts_root)
+    post_dir = root / post_id
+    if post_dir.exists():
+        raise FileExistsError(f"Post directory already exists: {post_dir}")
+
+    meta = BlogPostMeta(
+        post_id=post_id,
+        title=title,
+        author=author,
+        created_at=timestamp,
+        status="draft",
+    )
+
+    post_dir.mkdir(parents=True, exist_ok=False)
+
+    meta_path = post_dir / "meta.yaml"
+    intent_path = post_dir / "intent.yaml"
+    content_path = post_dir / "content.md"
+
+    meta_path.write_text(yaml.safe_dump(meta.model_dump(), sort_keys=False, default_flow_style=False))
+    intent_path.write_text(yaml.safe_dump(intent, sort_keys=False, default_flow_style=False))
+    content_path.write_text(content)
+
+    return str(post_dir.resolve())
