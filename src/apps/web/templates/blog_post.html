@@ -3,15 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ meta.title }}</title>
-    <script>
-      tailwind = {
-        config: {
-          plugins: [tailwindcssTypography],
-        }
-      }
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/typography@0.5.10/dist/typography.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/tailwind.css">
 </head>
 <body class="bg-gray-50 font-sans">
     <main class="max-w-4xl mx-auto p-6 space-y-6">
@@ -21,7 +13,7 @@
             <a href="/blog?include_drafts={{ 'true' if include_drafts else 'false' }}" class="text-blue-600 hover:underline text-sm">Back to Blog</a>
         </header>
         <section class="bg-white border rounded-lg shadow-sm p-4">
-            <div class="prose max-w-none whitespace-pre-wrap">{{ content }}</div>
+            <div class="prose prose-lg max-w-none">{{ content_html | safe }}</div>
         </section>
         <section class="bg-white border rounded-lg shadow-sm p-4">
             <details>

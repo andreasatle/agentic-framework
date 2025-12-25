@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.75.0",
     "gradio>=6.2.0",
+    "markdown>=3.10",
     "openai>=2.8.1",
     "pydantic>=2.12.4",
     "pytest>=9.0.1",
@@ -29,6 +30,7 @@ agentic-document = "domain.document.main:main"
 agentic-document-writer = "apps.document_writer.main:main"
 agentic-document-writer-ui = "apps.document_writer.ui:main"
 agentic-document-from-text = "apps.document_from_text.main:main"
+blog = "apps.blog.cli:main"
 
 [tool.poetry.scripts]
 arithmetic = "domain.arithmetic.main:main"

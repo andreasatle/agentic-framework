@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import yaml
+import markdown
 from pathlib import Path
 
 from apps.document_writer.service import generate_document
@@ -106,12 +107,16 @@ def get_blog_post(request: Request, post_id: str, include_drafts: bool = False, 
         raise HTTPException(status_code=404, detail=str(exc))
 
     if format == "html":
+        content_html = markdown.markdown(
+            content,
+            extensions=["fenced_code", "tables"],
+        )
         return templates.TemplateResponse(
             "blog_post.html",
             {
                 "request": request,
                 "meta": meta,
-                "content": content,
+                "content_html": content_html,
                 "intent": intent,
                 "include_drafts": include_drafts,
             },
