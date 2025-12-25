@@ -84,6 +84,18 @@ section {
   margin: 0;
 }
 
+.intent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.intent-header h2 {
+  margin: 0;
+}
+
 .compact {
   margin-bottom: 0.5rem;
   padding-bottom: 0.5rem;
