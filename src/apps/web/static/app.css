@@ -212,3 +212,31 @@ section {
     align-items: stretch;
   }
 }
+
+.header-inner {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 1rem;
+}
+
+.toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  background: var(--pico-secondary-background);
+  color: var(--pico-secondary-inverse);
+  border: 1px solid var(--pico-secondary-border);
+  border-radius: var(--pico-border-radius);
+  text-decoration: none;
+}
+
+.toggle-btn:hover {
+  filter: brightness(0.95);
+}
+#to-content,
+#to-intent {
+  width: auto !important;
+  justify-self: start;
+}
