@@ -13,152 +13,172 @@
             <h1>Document Writer</h1>
         </header>
 
-        <section id="intent-form" data-phase="intent">
-            <header class="intent-header">
-                <h2>Intent Form</h2>
-                <label class="file-upload">
-                    Load Intent YAML File
-                    <input type="file" id="intent-file" hidden>
-                </label>
-            </header>
-
-            <div class="form-row stretch">
-                <label class="fill">
-                    Document Goal
-                    <textarea id="document-goal"></textarea>
-                </label>
-                <div class="stack">
-                    <label>
-                        Audience
-                        <input list="audience-options" type="text" id="audience" />
-                        <datalist id="audience-options">
-                            <option value="engineers" />
-                            <option value="general public" />
-                            <option value="technical leadership" />
-                            <option value="product managers" />
-                            <option value="researchers" />
-                            <option value="students" />
-                        </datalist>
+        <!-- ===================== -->
+        <!-- INTENT VIEW -->
+        <!-- ===================== -->
+        <section id="intent-view">
+            <section id="intent-form">
+                <header class="intent-header">
+                    <h2>Intent Form</h2>
+                    <button id="to-content" class="secondary">View Generated</button>
+                    <label class="file-upload">
+                        Load Intent YAML File
+                        <input type="file" id="intent-file" hidden>
                     </label>
-                    <label>
-                        Tone
-                        <input list="tone-options" type="text" id="tone" />
-                        <datalist id="tone-options">
-                            <option value="informative" />
-                            <option value="reflective" />
-                            <option value="analytical" />
-                            <option value="conversational" />
-                            <option value="technical" />
-                            <option value="neutral" />
-                        </datalist>
-                    </label>
-                </div>
-            </div>
+                </header>
 
-            <div class="form-row">
-                <label>
-                    Required Sections
-                    <textarea id="required-sections"></textarea>
-                </label>
-                <label>
-                    Forbidden Sections
-                    <textarea id="forbidden-sections"></textarea>
-                </label>
-            </div>
-
-            <div class="form-row">
-                <label>
-                    Must Include
-                    <textarea id="must-include"></textarea>
-                </label>
-                <label>
-                    Must Avoid
-                    <textarea id="must-avoid"></textarea>
-                </label>
-            </div>
-
-            <div class="form-row stretch">
-                <label class="fill">
-                    Required Mentions
-                    <textarea id="required-mentions"></textarea>
-                </label>
-                <div class="stack">
-                    <label>
-                        Humor Level
-                        <input list="humor-options" type="text" id="humor-level" />
-                        <datalist id="humor-options">
-                            <option value="none" />
-                            <option value="light" />
-                            <option value="moderate" />
-                            <option value="dry" />
-                        </datalist>
+                <div class="form-row stretch">
+                    <label class="fill">
+                        Document Goal
+                        <textarea id="document-goal"></textarea>
                     </label>
-                    <label>
-                        Formality
-                        <input list="formality-options" type="text" id="formality" />
-                        <datalist id="formality-options">
-                            <option value="casual" />
-                            <option value="neutral" />
-                            <option value="formal" />
-                            <option value="academic" />
-                        </datalist>
-                    </label>
-                    <label>
-                        Narrative Voice
-                        <input list="narrative-voice-options" type="text" id="narrative-voice" />
-                        <datalist id="narrative-voice-options">
-                            <option value="first-person" />
-                            <option value="third-person" />
-                            <option value="second-person" />
-                        </datalist>
-                    </label>
-                </div>
-            </div>
-
-            <section class="action-row">
-                <div class="actions-left">
-                    <span class="save-label">Save Intent</span>
-                    <div class="inline-controls">
-                        <input
-                          type="text"
-                          id="intent-filename"
-                          placeholder="intent.yaml"
-                          aria-label="Intent filename"
-                        />
-                        <button class="action-btn" id="save-intent-btn" onclick="saveIntent()">Save</button>
+                    <div class="stack">
+                        <label>
+                            Audience
+                            <input list="audience-options" type="text" id="audience" />
+                            <datalist id="audience-options">
+                                <option value="engineers" />
+                                <option value="general public" />
+                                <option value="technical leadership" />
+                                <option value="product managers" />
+                                <option value="researchers" />
+                                <option value="students" />
+                            </datalist>
+                        </label>
+                        <label>
+                            Tone
+                            <input list="tone-options" type="text" id="tone" />
+                            <datalist id="tone-options">
+                                <option value="informative" />
+                                <option value="reflective" />
+                                <option value="analytical" />
+                                <option value="conversational" />
+                                <option value="technical" />
+                                <option value="neutral" />
+                            </datalist>
+                        </label>
                     </div>
                 </div>
-                <div class="actions-right">
-                    <button class="action-btn" id="generate-document-btn" onclick="generateDocument()">Generate Document</button>
+
+                <div class="form-row">
+                    <label>
+                        Required Sections
+                        <textarea id="required-sections"></textarea>
+                    </label>
+                    <label>
+                        Forbidden Sections
+                        <textarea id="forbidden-sections"></textarea>
+                    </label>
                 </div>
+
+                <div class="form-row">
+                    <label>
+                        Must Include
+                        <textarea id="must-include"></textarea>
+                    </label>
+                    <label>
+                        Must Avoid
+                        <textarea id="must-avoid"></textarea>
+                    </label>
+                </div>
+
+                <div class="form-row stretch">
+                    <label class="fill">
+                        Required Mentions
+                        <textarea id="required-mentions"></textarea>
+                    </label>
+                    <div class="stack">
+                        <label>
+                            Humor Level
+                            <input list="humor-options" type="text" id="humor-level" />
+                            <datalist id="humor-options">
+                                <option value="none" />
+                                <option value="light" />
+                                <option value="moderate" />
+                                <option value="dry" />
+                            </datalist>
+                        </label>
+                        <label>
+                            Formality
+                            <input list="formality-options" type="text" id="formality" />
+                            <datalist id="formality-options">
+                                <option value="casual" />
+                                <option value="neutral" />
+                                <option value="formal" />
+                                <option value="academic" />
+                            </datalist>
+                        </label>
+                        <label>
+                            Narrative Voice
+                            <input list="narrative-voice-options" type="text" id="narrative-voice" />
+                            <datalist id="narrative-voice-options">
+                                <option value="first-person" />
+                                <option value="third-person" />
+                                <option value="second-person" />
+                            </datalist>
+                        </label>
+                    </div>
+                </div>
+
+                <section class="action-row">
+                    <div class="actions-left">
+                        <span class="save-label">Save Intent</span>
+                        <div class="inline-controls">
+                            <input
+                                type="text"
+                                id="intent-filename"
+                                placeholder="intent.yaml"
+                                aria-label="Intent filename"
+                            />
+                            <button
+                                class="action-btn"
+                                id="save-intent-btn"
+                                onclick="saveIntent()"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                    <div class="actions-right">
+                        <button
+                            class="action-btn"
+                            id="generate-document-btn"
+                            onclick="generateDocument()"
+                        >
+                            Generate Document
+                        </button>
+                    </div>
+                </section>
+
+                <pre id="error-area"></pre>
             </section>
         </section>
 
-        <section id="generate-document" data-phase="structure">
-            <h2>Generate Document</h2>
-            <button id="generate-document-btn" onclick="generateDocument()">Generate Article</button>
-        </section>
+        <!-- ===================== -->
+        <!-- CONTENT VIEW -->
+        <!-- ===================== -->
+        <section id="content-view" hidden>
+            <header class="document-header">
+              <div class="header-inner">
+                <h2>Generated Document</h2>
+                <button id="to-intent" class="secondary">Edit Intent</button>
+              </div>
+            </header>
 
-        <section id="article-output" data-phase="content">
-            <h2>Article Output</h2>
             <article id="article-text"></article>
-        </section>
 
-        <section id="save-article" data-phase="content">
-            <h2>Save Article</h2>
-            <div class="inline-controls">
-                <input
-                    type="text"
-                    id="article-filename"
-                    placeholder="article.md"
-                    aria-label="Article filename"
-                />
-                <button onclick="saveDocument()">Save Article</button>
-            </div>
-        </section>
-
-        <section id="errors" data-phase="export">
-            <pre id="error-area"></pre>
+            <section id="save-article">
+                <h2>Save Article</h2>
+                <div class="inline-controls">
+                    <input
+                        type="text"
+                        id="article-filename"
+                        placeholder="article.md"
+                        aria-label="Article filename"
+                    />
+                    <button onclick="saveDocument()">Save Article</button>
+                </div>
+            </section>
         </section>
 
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

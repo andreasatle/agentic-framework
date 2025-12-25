@@ -1,22 +1,72 @@
-let currentPhase = "intent";
 let currentIntent = null;
 let currentMarkdown = null;
+let currentView = "intent";
+let isGenerating = false;
+
+function $(id) {
+  return document.getElementById(id);
+}
 
 const intentFields = {
-  document_goal: document.getElementById("document-goal"),
-  audience: document.getElementById("audience"),
-  tone: document.getElementById("tone"),
-  required_sections: document.getElementById("required-sections"),
-  forbidden_sections: document.getElementById("forbidden-sections"),
-  must_include: document.getElementById("must-include"),
-  must_avoid: document.getElementById("must-avoid"),
-  required_mentions: document.getElementById("required-mentions"),
-  humor_level: document.getElementById("humor-level"),
-  formality: document.getElementById("formality"),
-  narrative_voice: document.getElementById("narrative-voice"),
+  document_goal: $("document-goal"),
+  audience: $("audience"),
+  tone: $("tone"),
+  required_sections: $("required-sections"),
+  forbidden_sections: $("forbidden-sections"),
+  must_include: $("must-include"),
+  must_avoid: $("must-avoid"),
+  required_mentions: $("required-mentions"),
+  humor_level: $("humor-level"),
+  formality: $("formality"),
+  narrative_voice: $("narrative-voice"),
 };
 
-const errorArea = document.getElementById("error-area");
+const errorArea = $("error-area");
+
+function setError(message) {
+  if (errorArea) {
+    errorArea.textContent = message || "";
+  }
+}
+
+function setIntentDisabled(flag) {
+  Object.values(intentFields).forEach((el) => {
+    if (el) {
+      el.disabled = flag;
+      el.classList.toggle("opacity-60", flag);
+      el.classList.toggle("cursor-not-allowed", flag);
+    }
+  });
+  const fileInput = $("intent-file");
+  if (fileInput) {
+    fileInput.disabled = flag;
+    fileInput.classList.toggle("opacity-60", flag);
+    fileInput.classList.toggle("cursor-not-allowed", flag);
+  }
+  const generateBtn = $("generate-document-btn");
+  if (generateBtn) {
+    generateBtn.disabled = flag;
+    generateBtn.textContent = flag ? "Generating…" : "Generate Document";
+    generateBtn.classList.toggle("bg-green-700", flag);
+    generateBtn.classList.toggle("cursor-not-allowed", flag);
+    generateBtn.classList.toggle("opacity-80", flag);
+  }
+}
+
+function setView(view) {
+  currentView = view;
+  const intentView = $("intent-view");
+  const contentView = $("content-view");
+  if (intentView) intentView.hidden = view !== "intent";
+  if (contentView) contentView.hidden = view !== "content";
+}
+
+function setArticleStatus(text) {
+  const article = $("article-text");
+  if (article) {
+    article.textContent = text;
+  }
+}
 
 function renderIntent(intent) {
   const s = intent.structural_intent || {};
@@ -33,34 +83,6 @@ function renderIntent(intent) {
   intentFields.humor_level.value = sty.humor_level || "";
   intentFields.formality.value = sty.formality || "";
   intentFields.narrative_voice.value = sty.narrative_voice || "";
-}
-
-function setError(message) {
-  errorArea.textContent = message || "";
-}
-
-function setIntentDisabled(flag) {
-  Object.values(intentFields).forEach((el) => {
-    if (el) {
-      el.disabled = flag;
-      el.classList.toggle("opacity-60", flag);
-      el.classList.toggle("cursor-not-allowed", flag);
-    }
-  });
-  const fileInput = document.getElementById("intent-file");
-  if (fileInput) {
-    fileInput.disabled = flag;
-    fileInput.classList.toggle("opacity-60", flag);
-    fileInput.classList.toggle("cursor-not-allowed", flag);
-  }
-  const generateBtn = document.getElementById("generate-document-btn");
-  if (generateBtn) {
-    generateBtn.disabled = flag;
-    generateBtn.textContent = flag ? "Generating…" : "Generate Document";
-    generateBtn.classList.toggle("bg-green-700", flag);
-    generateBtn.classList.toggle("cursor-not-allowed", flag);
-    generateBtn.classList.toggle("opacity-80", flag);
-  }
 }
 
 function readIntentFromForm() {
@@ -124,9 +146,9 @@ function uploadIntent(event) {
       renderIntent(currentIntent);
       setError("");
     } catch (err) {
-    setError(err?.message || "Error loading intent.");
-  }
-};
+      setError(err?.message || "Error loading intent.");
+    }
+  };
   reader.readAsText(file);
 }
 
@@ -146,7 +168,7 @@ async function saveIntent() {
     return;
   }
   try {
-    const filenameInput = document.getElementById("intent-filename");
+    const filenameInput = $("intent-filename");
     const filenameRaw = (filenameInput?.value || "").trim();
     const filename = filenameRaw || "intent.yaml";
     const resp = await fetch("/intent/save", {
@@ -179,11 +201,10 @@ async function generateDocument() {
     setError("No intent to generate from. Load or apply changes first.");
     return;
   }
-  setIntentDisabled(true, { allowOutput: true });
-  const articleArea = document.getElementById("article-text");
-  if (articleArea) {
-    articleArea.textContent = "Generating...";
-  }
+  setIntentDisabled(true);
+  setView("content");
+  setArticleStatus("Generating…");
+  isGenerating = true;
   try {
     const resp = await fetch("/document/generate", {
       method: "POST",
@@ -192,19 +213,24 @@ async function generateDocument() {
     });
     if (!resp.ok) {
       const detail = await resp.text();
+      setArticleStatus("Failed to generate document. See error.");
       setError(detail || "Failed to generate document.");
+      setView("intent");
       return;
     }
     const data = await resp.json();
     currentMarkdown = data.markdown || "";
+    const articleArea = $("article-text");
     if (articleArea) {
-      articleArea.innerHTML = marked.parse(data.markdown || "");
+      articleArea.innerHTML = marked.parse(currentMarkdown);
     }
-    setActivePhase("content");
     setError("");
   } catch (err) {
+    setArticleStatus("Failed to generate document. See error.");
     setError(err?.message || "Error generating document.");
+    setView("intent");
   } finally {
+    isGenerating = false;
     setIntentDisabled(false);
   }
 }
@@ -215,7 +241,7 @@ async function saveDocument() {
     return;
   }
   try {
-    const filenameInput = document.getElementById("article-filename");
+    const filenameInput = $("article-filename");
     const filename = (filenameInput?.value || "").trim();
     const resp = await fetch("/document/save", {
       method: "POST",
@@ -242,21 +268,27 @@ async function saveDocument() {
   }
 }
 
-function setActivePhase(phase) {
-  currentPhase = phase;
-  document.querySelectorAll("[data-phase]").forEach((el) => {
-    el.style.display = el.dataset.phase === phase ? "block" : "none";
-  });
-}
-
 document.addEventListener("DOMContentLoaded", () => {
-  const input = document.getElementById("intent-file");
+  const input = $("intent-file");
   if (input) {
     input.addEventListener("change", uploadIntent);
   }
-  const intentForm = document.getElementById("intent-form");
+  const intentForm = $("intent-form");
   if (intentForm) {
     intentForm.addEventListener("input", applyIntentChanges);
   }
-  setActivePhase("intent");
+  $("to-content")?.addEventListener("click", () => setView("content"));
+  $("to-intent")?.addEventListener("click", () => setView("intent"));
+  setView("intent");
+  setArticleStatus("No document generated yet. Click Generate Document.");
 });
+
+function setView(view) {
+  const intent = document.getElementById("intent-view");
+  const content = document.getElementById("content-view");
+
+  if (!intent || !content) return;
+
+  intent.hidden = view !== "intent";
+  content.hidden = view !== "content";
+}

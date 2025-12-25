@@ -241,3 +241,37 @@ section {
   margin: 0;
   align-self: stretch;
 }
+
+
+.header-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+}
+
+.header-row h2 {
+  margin: 0;
+}
+
+.document-header {
+  margin-bottom: 0.5rem;
+}
+
+.header-center {
+  justify-self: center;
+}
+.document-header {
+  margin-bottom: 0.5rem;
+}
+
+.header-inner {
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+/* Center button relative to content block */
+.header-inner button {
+  justify-self: center;
+}
