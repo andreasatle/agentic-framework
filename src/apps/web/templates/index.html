@@ -1,10 +1,131 @@
+<!--
+====================================================
+INTENT UI CONTRACT — MUST READ BEFORE EDITING
+====================================================
+
+PURPOSE
+-------
+This UI is schema-driven and deterministic.
+Layout authority is explicit, local, and owned by CSS.
+No framework, browser default, or semantic tag may imply layout.
+
+This contract exists to prevent hidden defaults, layout drift,
+and assistant-invented structure.
+
+----------------------------------------------------
+AUTHORITY RULES (NON-NEGOTIABLE)
+----------------------------------------------------
+
+1. CSS owns layout. HTML never implies layout.
+   - No layout assumptions via tags (label, button, etc.)
+   - No reliance on framework defaults
+
+2. One class = one responsibility
+   - Containers define layout (flex / grid)
+   - Elements never self-position
+
+3. No global overrides
+   - No `button {}`, `label {}` rules for layout
+   - Only class-scoped rules
+
+4. No implicit width
+   - Width is never inherited
+   - If width matters, it must be declared explicitly
+
+5. No `!important`
+   - If required, the design is wrong
+
+----------------------------------------------------
+ALLOWED LAYOUT PRIMITIVES (ONLY THESE)
+----------------------------------------------------
+
+A. Horizontal label + help button row
+
+.intent-label-row {
+  display: flex;
+  align-items: center;
+}
+
+.intent-label-row label {
+  flex: 1;
+}
+
+.intent-help {
+  flex: none;
+}
+
+B. Vertical field stack
+
+.intent-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+C. Explicit multi-column rows
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+No other layout patterns may be introduced without explicit instruction.
+
+----------------------------------------------------
+FORBIDDEN PATTERNS
+----------------------------------------------------
+
+DO NOT introduce:
+- CSS frameworks (Pico, Tailwind, Bootstrap, etc.)
+- Tag-based layout rules (label {}, button {} for layout)
+- Absolute positioning for alignment
+- width: 100% used to force alignment
+- Inline styles
+- !important
+- Wrapper divs added “for convenience”
+
+Any change that introduces these is INVALID.
+
+----------------------------------------------------
+HTML STRUCTURE CONTRACT
+----------------------------------------------------
+
+HTML structure is fixed unless explicitly requested.
+
+Canonical pattern:
+
+<div class="intent-field">
+  <div class="intent-label-row">
+    <label for="x">Label</label>
+    <button type="button" class="intent-help">?</button>
+  </div>
+  <textarea id="x"></textarea>
+</div>
+
+Do not reorder, wrap, or restyle this structure implicitly.
+
+----------------------------------------------------
+CODING INSTRUCTION
+----------------------------------------------------
+
+If a requested change conflicts with this contract:
+STOP.
+Report the conflict.
+Do NOT guess or “fix” creatively.
+
+====================================================
+END OF INTENT UI CONTRACT
+====================================================
+-->
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>Document Writer</title>
-    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css" />
     <link rel="stylesheet" href="/static/app.css" />
+    <link rel="stylesheet" href="/static/theme-dark.css" />
   </head>
   <body>
     <main class="container">
@@ -16,22 +137,46 @@
       <section id="intent-view">
         <section id="intent-form">
           <header class="intent-header">
-            <h2>Intent Form</h2>
-            <a id="to-content" role="button" class="toggle-btn">View Generated</a>
-            <label class="file-upload">
-              Load Intent YAML File
-              <input type="file" id="intent-file" hidden />
-            </label>
+            <div class="intent-header-left">
+              <h2>Intent Form</h2>
+            </div>
+            <div class="intent-header-right">
+              <label class="file-upload btn">
+                Load Intent YAML File
+                <input type="file" id="intent-file" hidden />
+              </label>
+              <a id="to-content" class="btn btn--ghost">View Generated</a>
+            </div>
           </header>
 
           <div class="form-row stretch">
-            <label class="fill">
-              Document Goal
+            <div class="intent-field fill">
+              <div class="intent-label-row">
+                <label for="document-goal" class="intent-label-text">Document Goal</label>
+                <button
+                  type="button"
+                  class="intent-help"
+                  data-help="High-level purpose of the document. Not a plan, outline, or instructions. Example: 'Explain why constraining agents improves predictability.'"
+                  aria-label="Help for Document Goal"
+                >
+                  ?
+                </button>
+              </div>
               <textarea id="document-goal"></textarea>
-            </label>
+            </div>
             <div class="stack">
-              <label>
-                Audience
+              <div class="intent-field">
+                <div class="intent-label-row">
+                  <label for="audience" class="intent-label-text">Audience</label>
+                  <button
+                    type="button"
+                    class="intent-help"
+                    data-help="Who this is written for. Use a description, not a role or persona. Example: 'Senior engineers skeptical of autonomous agents.'"
+                    aria-label="Help for Audience"
+                  >
+                    ?
+                  </button>
+                </div>
                 <input list="audience-options" type="text" id="audience" />
                 <datalist id="audience-options">
                   <option value="engineers" />
@@ -41,9 +186,19 @@
                   <option value="researchers" />
                   <option value="students" />
                 </datalist>
-              </label>
-              <label>
-                Tone
+              </div>
+              <div class="intent-field">
+                <div class="intent-label-row">
+                  <label for="tone" class="intent-label-text">Tone</label>
+                  <button
+                    type="button"
+                    class="intent-help"
+                    data-help="Overall tone of the document. Advisory only. Example: 'Analytical, restrained, critical.'"
+                    aria-label="Help for Tone"
+                  >
+                    ?
+                  </button>
+                </div>
                 <input list="tone-options" type="text" id="tone" />
                 <datalist id="tone-options">
                   <option value="informative" />
@@ -53,40 +208,100 @@
                   <option value="technical" />
                   <option value="neutral" />
                 </datalist>
-              </label>
+              </div>
             </div>
           </div>
 
           <div class="form-row">
-            <label>
-              Required Sections
+            <div class="intent-field">
+              <div class="intent-label-row">
+                <label for="required-sections" class="intent-label-text">Required Sections</label>
+                <button
+                  type="button"
+                  class="intent-help"
+                  data-help="Section labels you expect to appear. These are names, not instructions. Example: 'Introduction', 'Failure Modes', 'Conclusion'."
+                  aria-label="Help for Required Sections"
+                >
+                  ?
+                </button>
+              </div>
               <textarea id="required-sections"></textarea>
-            </label>
-            <label>
-              Forbidden Sections
+            </div>
+            <div class="intent-field">
+              <div class="intent-label-row">
+                <label for="forbidden-sections" class="intent-label-text">Forbidden Sections</label>
+                <button
+                  type="button"
+                  class="intent-help"
+                  data-help="Section labels you explicitly want to avoid. Example: 'Marketing', 'Use Cases'."
+                  aria-label="Help for Forbidden Sections"
+                >
+                  ?
+                </button>
+              </div>
               <textarea id="forbidden-sections"></textarea>
-            </label>
+            </div>
           </div>
 
           <div class="form-row">
-            <label>
-              Must Include
+            <div class="intent-field">
+              <div class="intent-label-row">
+                <label for="must-include" class="intent-label-text">Must Include</label>
+                <button
+                  type="button"
+                  class="intent-help"
+                  data-help="Concepts or ideas that must appear somewhere in the text. No placement or emphasis is implied."
+                  aria-label="Help for Must Include"
+                >
+                  ?
+                </button>
+              </div>
               <textarea id="must-include"></textarea>
-            </label>
-            <label>
-              Must Avoid
+            </div>
+            <div class="intent-field">
+              <div class="intent-label-row">
+                <label for="must-avoid" class="intent-label-text">Must Avoid</label>
+                <button
+                  type="button"
+                  class="intent-help"
+                  data-help="Topics, claims, or language that should not appear anywhere."
+                  aria-label="Help for Must Avoid"
+                >
+                  ?
+                </button>
+              </div>
               <textarea id="must-avoid"></textarea>
-            </label>
+            </div>
           </div>
 
           <div class="form-row stretch">
-            <label class="fill">
-              Required Mentions
+            <div class="intent-field fill">
+              <div class="intent-label-row">
+                <label for="required-mentions" class="intent-label-text">Required Mentions</label>
+                <button
+                  type="button"
+                  class="intent-help"
+                  data-help="Specific entities or topics that should be mentioned at least once. Example: 'Planner–Worker–Critic'."
+                  aria-label="Help for Required Mentions"
+                >
+                  ?
+                </button>
+              </div>
               <textarea id="required-mentions"></textarea>
-            </label>
+            </div>
             <div class="stack">
-              <label>
-                Humor Level
+              <div class="intent-field">
+                <div class="intent-label-row">
+                  <label for="humor-level" class="intent-label-text">Humor Level</label>
+                  <button
+                    type="button"
+                    class="intent-help"
+                    data-help="Desired amount of humor, if any. Advisory only. Example: 'None', 'Dry', 'Light'."
+                    aria-label="Help for Humor Level"
+                  >
+                    ?
+                  </button>
+                </div>
                 <input list="humor-options" type="text" id="humor-level" />
                 <datalist id="humor-options">
                   <option value="none" />
@@ -94,9 +309,19 @@
                   <option value="moderate" />
                   <option value="dry" />
                 </datalist>
-              </label>
-              <label>
-                Formality
+              </div>
+              <div class="intent-field">
+                <div class="intent-label-row">
+                  <label for="formality" class="intent-label-text">Formality</label>
+                  <button
+                    type="button"
+                    class="intent-help"
+                    data-help="Overall formality level. Informal → neutral → formal."
+                    aria-label="Help for Formality"
+                  >
+                    ?
+                  </button>
+                </div>
                 <input list="formality-options" type="text" id="formality" />
                 <datalist id="formality-options">
                   <option value="casual" />
@@ -104,16 +329,26 @@
                   <option value="formal" />
                   <option value="academic" />
                 </datalist>
-              </label>
-              <label>
-                Narrative Voice
+              </div>
+              <div class="intent-field">
+                <div class="intent-label-row">
+                  <label for="narrative-voice" class="intent-label-text">Narrative Voice</label>
+                  <button
+                    type="button"
+                    class="intent-help"
+                    data-help="Preferred narrative voice, if relevant. Example: 'First person', 'Third person'."
+                    aria-label="Help for Narrative Voice"
+                  >
+                    ?
+                  </button>
+                </div>
                 <input list="narrative-voice-options" type="text" id="narrative-voice" />
                 <datalist id="narrative-voice-options">
                   <option value="first-person" />
                   <option value="third-person" />
                   <option value="second-person" />
                 </datalist>
-              </label>
+              </div>
             </div>
           </div>
 
@@ -127,11 +362,11 @@
                   placeholder="intent.yaml"
                   aria-label="Intent filename"
                 />
-                <button class="action-btn" id="save-intent-btn" onclick="saveIntent()">Save</button>
+                <button class="btn" id="save-intent-btn" onclick="saveIntent()">Save</button>
               </div>
             </div>
             <div class="actions-right">
-              <button class="action-btn" id="generate-document-btn" onclick="generateDocument()">
+              <button class="btn" id="generate-document-btn" onclick="generateDocument()">
                 Generate Document
               </button>
             </div>
@@ -144,7 +379,7 @@
         <header class="document-header">
           <div class="header-inner">
             <h2>Generated Document</h2>
-            <a id="to-intent" role="button" class="toggle-btn">Edit Intent</a>
+            <a id="to-intent" class="btn btn--ghost">Edit Intent</a>
           </div>
         </header>
         <article id="article-text"></article>
@@ -158,7 +393,7 @@
               placeholder="article.md"
               aria-label="Article filename"
             />
-            <button onclick="saveDocument()">Save Article</button>
+            <button class="btn" onclick="saveDocument()">Save Article</button>
           </div>
         </section>
       </section>

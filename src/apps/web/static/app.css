@@ -1,40 +1,103 @@
 /* ==============================
-   Base tweaks / Pico overrides
+   BASE RESET
    ============================== */
 
-#article-text {
-  max-height: 60vh;
-  overflow-y: auto;
+* {
+  box-sizing: border-box;
 }
 
-form,
-section {
-  --pico-form-element-spacing-vertical: 0.25rem;
-  --pico-form-element-spacing-horizontal: 0.5rem;
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+main.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.primary-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.intent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.intent-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.intent-header-left {
+  flex: 0 0 auto;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* ==============================
+   FORM ELEMENTS
+   ============================== */
+
+label {
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 input,
-select,
-textarea {
+textarea,
+select {
+  width: 100%;
   font-size: 0.9rem;
+  padding: 0.4rem;
 }
 
 textarea {
   min-height: 6rem;
 }
 
-label {
+/* ==============================
+   INTENT LABEL ROW (CRITICAL)
+   ============================== */
+
+.intent-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 0.25rem;
-  font-weight: 500;
 }
 
-section {
-  margin-bottom: 1rem;
+.intent-label-text {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
+.intent-help {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  border-radius: 4px;
+  cursor: pointer;
+}
 
 /* ==============================
-   Form layout
+   LAYOUT HELPERS
    ============================== */
 
 .form-row {
@@ -47,90 +110,32 @@ section {
   grid-template-columns: repeat(3, 1fr);
 }
 
-.form-row .stack {
+.stack {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.form-row.stretch {
-  align-items: stretch;
+.intent-field {
+  width: 100%;
 }
 
-.form-row.stretch label.fill {
+/* ==============================
+   ACTIONS
+   ============================== */
+
+.action-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.actions-left {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
-
-.form-row.stretch label.fill textarea {
-  flex: 1;
-  resize: vertical;
-}
-
-
-/* ==============================
-   Page / section headers
-   ============================== */
-
-.page-header {
-  margin-bottom: 0.5rem;
-}
-
-.page-header h1 {
-  margin-bottom: 0.25rem;
-}
-
-.compact {
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-
-.compact h1,
-.compact p {
-  margin-bottom: 0.25rem;
-}
-
-.compact + section {
-  margin-top: 0.5rem;
-}
-
-.intent-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.intent-header h2 {
-  margin: 0;
-}
-
-.document-header {
-  margin-bottom: 0.5rem;
-}
-
-
-/* Header layout used for content view */
-.header-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-}
-
-.header-row h2 {
-  margin: 0;
-}
-
-.header-center {
-  justify-self: center;
-}
-
-
-/* ==============================
-   Inline controls & actions
-   ============================== */
 
 .inline-controls {
   display: flex;
@@ -139,57 +144,15 @@ section {
 }
 
 .inline-controls input {
-  max-width: 12rem;
+  flex: 1 1 auto;
 }
 
-.action-row {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
+.inline-controls button {
+  flex: 0 0 auto;
 }
-
-.actions-left {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.actions-right {
-  display: flex;
-  align-items: center;
-}
-
-.action-btn,
-.inline-controls input {
-  height: 2.5rem;
-  line-height: 2.5rem;
-  padding: 0 1rem;
-  margin: 0;
-}
-
 
 /* ==============================
-   File upload button
-   ============================== */
-
-.file-upload {
-  display: inline-block;
-  padding: 0.4rem 0.75rem;
-  border-radius: var(--pico-border-radius);
-  background: var(--pico-primary);
-  color: var(--pico-primary-inverse);
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.file-upload:hover {
-  opacity: 0.9;
-}
-
-
-/* ==============================
-   Responsive
+   RESPONSIVE
    ============================== */
 
 @media (max-width: 768px) {
@@ -197,46 +160,4 @@ section {
   .form-row.three {
     grid-template-columns: 1fr;
   }
-
-  .inline-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .inline-controls input {
-    max-width: 100%;
-  }
-
-  .action-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.header-inner {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  column-gap: 1rem;
-}
-
-.toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.875rem;
-  background: var(--pico-secondary-background);
-  color: var(--pico-secondary-inverse);
-  border: 1px solid var(--pico-secondary-border);
-  border-radius: var(--pico-border-radius);
-  text-decoration: none;
-}
-
-.toggle-btn:hover {
-  filter: brightness(0.95);
-}
-#to-content,
-#to-intent {
-  width: auto !important;
-  justify-self: start;
 }

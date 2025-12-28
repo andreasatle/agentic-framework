@@ -283,6 +283,16 @@ document.addEventListener("DOMContentLoaded", () => {
   setArticleStatus("No document generated yet. Click Generate Document.");
 });
 
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (!target.classList.contains("intent-help")) return;
+  const help = target.getAttribute("data-help");
+  if (help) {
+    alert(help);
+  }
+});
+
 function setView(view) {
   const intent = document.getElementById("intent-view");
   const content = document.getElementById("content-view");

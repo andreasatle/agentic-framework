@@ -1,0 +1,174 @@
+/* ==============================
+   Dark UI Theme (explicit)
+   ============================== */
+
+:root {
+  --bg-main: #0b0b0c;
+  --bg-panel: #121214;
+  --bg-input: #1a1a1d;
+
+  --text-main: #e6e6eb;
+  --text-muted: #a0a0a8;
+
+  --border-subtle: #2a2a30;
+
+  --accent-blue: #2f80ff;
+  --accent-blue-hover: #1f6fe0;
+}
+
+/* Page */
+body {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* Links — explicit, dark-safe */
+a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+a:visited {
+  color: var(--accent-blue);
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+a:active {
+  color: var(--accent-blue-hover);
+}
+
+/* Containers / sections */
+main,
+section {
+  background: transparent;
+}
+
+/* Headings */
+h1, h2, h3 {
+  color: var(--text-main);
+}
+
+/* Labels */
+label {
+  color: var(--text-muted);
+}
+
+/* Inputs */
+.intent-field input,
+.intent-field textarea,
+.intent-field select {
+  background: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}
+
+.intent-field input:focus,
+.intent-field textarea:focus,
+.intent-field select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+/* Help button */
+.intent-help {
+  background: transparent;
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.intent-help:hover {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+/* Primary action buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-blue);
+  color: #fff;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+}
+
+.btn:hover {
+  background: var(--accent-blue-hover);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
+}
+
+.btn--ghost:hover {
+  background: rgba(47, 128, 255, 0.15);
+}
+
+/* Ensure anchor buttons keep button text color */
+a.btn,
+a.btn:visited {
+  color: #fff;
+}
+
+/* Error output */
+#error-area {
+  color: #ff6b6b;
+  background: transparent;
+}
+
+/* --------------------------------
+   Blog readability tuning (scoped)
+   -------------------------------- */
+
+/* Blog index + blog post containers */
+main.container article,
+main.container ul {
+  color: #c2c6cc;
+  line-height: 1.6;
+}
+
+/* Blog post body text */
+main.container article p,
+main.container article li {
+  color: #c2c6cc;
+}
+
+/* Blog titles */
+main.container article h1,
+main.container article h2,
+main.container article h3,
+main.container ul li > a {
+  color: #e6e6eb;
+}
+
+/* Blog metadata */
+main.container article header,
+main.container ul li div {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Blog links (index + article) */
+main.container article a,
+main.container ul li > a {
+  color: #9bbcff;
+}
+
+main.container article a:hover,
+main.container ul li > a:hover {
+  text-decoration: underline;
+}
