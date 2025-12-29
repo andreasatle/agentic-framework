@@ -65,6 +65,20 @@ def persist_generation(
             os.path.join(output_dir, "meta.json"),
             json.dumps(meta, indent=2).encode("utf-8"),
         )
+        index_entry = {
+            "id": dir_name,
+            "timestamp_utc": timestamp,
+            "intent_sha256": intent_sha256,
+            "document_sha256": document_sha256,
+            "request_ip": request_meta.get("request_ip"),
+            "user_agent": request_meta.get("user_agent"),
+        }
+        try:
+            index_path = os.path.join(_ROOT_DIR, "index.jsonl")
+            with open(index_path, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps(index_entry) + "\n")
+        except Exception:
+            _LOGGER.exception("Failed to append generation index")
     except Exception:
         _LOGGER.exception("Failed to persist generation")
         return
