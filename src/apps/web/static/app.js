@@ -283,7 +283,7 @@ document.addEventListener("click", (event) => {
   if (!target.classList.contains("intent-help")) return;
   const help = target.getAttribute("data-help");
   if (help) {
-    alert(help);
+    showHelp(target, help);
   }
 });
 
@@ -326,3 +326,37 @@ function openIntentFile() {
 }
 
 window.openIntentFile = openIntentFile;
+
+function showHelp(anchor, text) {
+  const existing = document.querySelector(".help-tooltip");
+  if (existing) {
+    existing.remove();
+    if (existing._anchor === anchor) return;
+  }
+
+  const tip = document.createElement("div");
+  tip.className = "help-tooltip";
+  tip.textContent = text;
+  tip._anchor = anchor;
+
+  document.body.appendChild(tip);
+
+  const rect = anchor.getBoundingClientRect();
+  const width = 320;
+  const margin = 12;
+
+  let left = rect.left + window.scrollX;
+  const maxLeft = window.scrollX + window.innerWidth - width - margin;
+  if (left > maxLeft) left = maxLeft;
+
+  tip.style.top = `${rect.bottom + 6 + window.scrollY}px`;
+  tip.style.left = `${Math.max(left, margin + window.scrollX)}px`;
+
+  function cleanup(e) {
+    if (anchor.contains(e.target)) return;
+    tip.remove();
+    document.removeEventListener("click", cleanup);
+  }
+
+  setTimeout(() => document.addEventListener("click", cleanup), 0);
+}
