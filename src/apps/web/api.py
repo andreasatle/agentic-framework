@@ -17,6 +17,7 @@ from apps.web.schemas import (
     IntentParseRequest,
     IntentSaveRequest,
 )
+from apps.web.persistence import persist_generation
 from apps.web.security import require_admin
 from domain.intent import load_intent_from_yaml
 
@@ -65,6 +66,7 @@ def save_intent(payload: IntentSaveRequest):
 def generate_document_route(
     payload: DocumentGenerateRequest,
     _: None = Depends(require_admin),
+    request: Request,
     ) -> dict[str, str]:
     intent = payload.intent
     result = generate_document(
@@ -73,6 +75,14 @@ def generate_document_route(
         tone=intent.structural_intent.tone,
         intent=intent,
         trace=False,
+    )
+    persist_generation(
+        intent=intent,
+        markdown=result.markdown,
+        request_meta={
+            "request_ip": request.client.host if request.client else None,
+            "user_agent": request.headers.get("user-agent"),
+        },
     )
     return {"markdown": result.markdown}
 
