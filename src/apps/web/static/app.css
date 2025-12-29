@@ -63,6 +63,8 @@ select {
   width: 100%;
   font-size: 0.9rem;
   padding: 0.4rem;
+  box-sizing: border-box;
+  height: 2rem;
 }
 
 textarea {
@@ -87,13 +89,15 @@ textarea {
 }
 
 .intent-help {
-  flex: 0 0 auto;
-  width: auto;
-  padding: 0.15rem 0.4rem;
+  height: 1.4rem;
+  width: 1.4rem;
+  padding: 0;
   font-size: 0.7rem;
   line-height: 1;
-  border-radius: 4px;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 /* ==============================

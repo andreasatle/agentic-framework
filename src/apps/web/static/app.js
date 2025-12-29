@@ -54,14 +54,6 @@ function setIntentDisabled(flag) {
   }
 }
 
-function setView(view) {
-  currentView = view;
-  const intentView = $("intent-view");
-  const contentView = $("content-view");
-  if (intentView) intentView.hidden = view !== "intent";
-  if (contentView) contentView.hidden = view !== "content";
-}
-
 function setArticleStatus(text) {
   const article = $("article-text");
   if (article) {
