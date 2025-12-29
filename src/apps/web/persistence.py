@@ -10,7 +10,8 @@ import yaml
 
 
 _LOGGER = logging.getLogger(__name__)
-_ROOT_DIR = "/opt/agentic/data/generated"
+# Persistence root can be overridden via AGENTIC_GENERATED_DIR.
+_ROOT_DIR = os.environ.get("AGENTIC_GENERATED_DIR") or "/opt/agentic/data/generated"
 
 
 def _safe_yaml_dump(intent: Any) -> str:
