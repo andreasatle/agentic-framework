@@ -6,10 +6,22 @@
   box-sizing: border-box;
 }
 
+:root {
+  --control-height: 1.6rem;
+}
+
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   margin: 0;
   padding: 0;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 main.container {
@@ -57,6 +69,23 @@ label {
   font-size: 0.9rem;
 }
 
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-height);
+  padding: 0 0.75rem;
+  box-sizing: border-box;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+}
+
 input,
 textarea,
 select {
@@ -64,7 +93,15 @@ select {
   font-size: 0.9rem;
   padding: 0.4rem;
   box-sizing: border-box;
-  height: 2rem;
+  height: var(--control-height);
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.intent-field input:focus,
+.intent-field textarea:focus,
+.intent-field select:focus {
+  outline: none;
 }
 
 textarea {
@@ -95,6 +132,7 @@ textarea {
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.25rem;
+  height: var(--control-height);
 }
 
 .intent-label-text {
@@ -103,7 +141,6 @@ textarea {
 }
 
 .intent-help {
-  height: 1.4rem;
   width: 1.4rem;
   padding: 0;
   font-size: 0.7rem;
@@ -112,6 +149,10 @@ textarea {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  height: 100%;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
 }
 
 /* ==============================
@@ -138,6 +179,21 @@ textarea {
   width: 100%;
 }
 
+main.container article,
+main.container ul {
+  line-height: 1.6;
+}
+
+main.container article header,
+main.container ul li div {
+  font-size: 0.85rem;
+}
+
+main.container article a:hover,
+main.container ul li > a:hover {
+  text-decoration: underline;
+}
+
 /* ==============================
    ACTIONS
    ============================== */
@@ -145,7 +201,7 @@ textarea {
 .action-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 1rem;
   margin-top: 1rem;
 }

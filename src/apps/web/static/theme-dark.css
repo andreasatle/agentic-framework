@@ -27,15 +27,10 @@ body {
 /* Links — explicit, dark-safe */
 a {
   color: var(--accent-blue);
-  text-decoration: none;
 }
 
 a:visited {
   color: var(--accent-blue);
-}
-
-a:hover {
-  text-decoration: underline;
 }
 
 a:active {
@@ -64,14 +59,12 @@ label {
 .intent-field select {
   background: var(--bg-input);
   color: var(--text-main);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
+  border-color: var(--border-subtle);
 }
 
 .intent-field input:focus,
 .intent-field textarea:focus,
 .intent-field select:focus {
-  outline: none;
   border-color: var(--accent-blue);
 }
 
@@ -79,30 +72,12 @@ label {
 .intent-help {
   background: transparent;
   color: var(--accent-blue);
-  border: 1px solid var(--accent-blue);
-  border-radius: 999px;
-  cursor: pointer;
+  border-color: var(--accent-blue);
 }
 
 .intent-help:hover {
   background: var(--accent-blue);
   color: #fff;
-}
-
-/* Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  line-height: 1;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  text-decoration: none;
-  user-select: none;
 }
 
 .btn--primary {
@@ -128,7 +103,7 @@ label {
 .btn--danger {
   background: var(--accent-red);
   color: #fff;
-  border: none;
+  border-color: transparent;
 }
 
 .btn--danger:hover {
@@ -149,7 +124,6 @@ label {
 main.container article,
 main.container ul {
   color: #c2c6cc;
-  line-height: 1.6;
 }
 
 /* Blog post body text */
@@ -170,16 +144,10 @@ main.container ul li > a {
 main.container article header,
 main.container ul li div {
   color: var(--text-muted);
-  font-size: 0.85rem;
 }
 
 /* Blog links (index + article) */
 main.container article a,
 main.container ul li > a {
   color: #9bbcff;
-}
-
-main.container article a:hover,
-main.container ul li > a:hover {
-  text-decoration: underline;
 }
