@@ -12,51 +12,63 @@
             <h1>Andreas Atle</h1>
 
             <h2>
-                Agentic AI platform architect focused on deterministic orchestration,
-                explicit constraints, and operational guardrails.
+                Senior AI / Platform Engineer focused on
+                deterministic agent orchestration, explicit constraints,
+                and production-grade control planes.
             </h2>
+
+            <p>
+                I design and implement <strong>agentic systems that are governed,
+                auditable, and predictable</strong>. My work prioritizes
+                execution correctness, cost control, and failure containment
+                over autonomous behavior or prompt cleverness.
+            </p>
 
             <ul>
                 <li>
-                    <strong>Agent orchestration:</strong>
-                    Planner–worker coordination with explicit state transitions
+                    <strong>Agent orchestration & control:</strong>
+                    Planner–Worker–Critic execution with explicit FSM
+                    (PLAN → WORK → TOOL → CRITIC → END)
                 </li>
                 <li>
-                    <strong>Constraints &amp; guardrails:</strong>
-                    Schema validation, bounded tools, explicit failure semantics
+                    <strong>Constraints & guardrails:</strong>
+                    Schema-validated I/O, bounded retries, isolated side effects,
+                    deterministic termination
                 </li>
                 <li>
-                    <strong>System evaluation:</strong>
-                    Detect and prevent hallucination, drift, and runaway execution
+                    <strong>Platform architecture:</strong>
+                    Controller-driven execution, untrusted agents,
+                    typed tool registries, immutable traces
                 </li>
                 <li>
                     <strong>Operational readiness:</strong>
-                    Observability, reproducibility, and governance-first design
+                    Traceability, auditability, cost predictability,
+                    and explicit failure modes
                 </li>
             </ul>
 
             <p>
                 <em>
-                    No autonomous looping, uncontrolled tool execution,
-                    or free-form agent spawning.
+                    No autonomous looping. No agent-owned tools.
+                    No hidden control flow. No silent degradation.
                 </em>
-            </p>
-
-            <p>
-                This site demonstrates these principles through an intent-driven
-                document writer and a simple publishing workflow.
             </p>
         </header>
 
         <section>
-            <h2>What you can do</h2>
+            <h2>What this site demonstrates</h2>
             <ul>
                 <li>
-                    Create intent envelopes and generate documents via the
-                    Document Writer UI.
+                    A working <strong>agentic control plane</strong> implemented
+                    with strict architectural boundaries
                 </li>
                 <li>
-                    Browse published outputs in the Blog.
+                    An <strong>intent-driven document system</strong> that treats
+                    human intent as structured input, not free-form prompts
+                </li>
+                <li>
+                    How to reason about <strong>failure modes</strong>,
+                    not just features, in AI systems
                 </li>
             </ul>
         </section>
@@ -65,15 +77,22 @@
             <button
                 type="button"
                 class="btn btn--primary"
+                onclick="window.location.href='/architecture'">
+                Architecture
+            </button>
+
+            <button
+                type="button"
+                class="btn btn--primary"
                 onclick="window.location.href='/writer'">
-                Go to Document Writer
+                Document Writer
             </button>
 
             <button
                 type="button"
                 class="btn btn--primary"
                 onclick="window.location.href='/blog'">
-                Go to Blog
+                Blog
             </button>
 
             <button
@@ -81,13 +100,6 @@
                 class="btn btn--primary"
                 onclick="window.location.href='/me'">
                 About Me
-            </button>
-
-            <button
-                type="button"
-                class="btn btn--primary"
-                onclick="window.location.href='/architecture'">
-                Architecture
             </button>
         </section>
     </main>
