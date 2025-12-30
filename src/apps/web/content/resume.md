@@ -6,7 +6,7 @@ Houston, TX (Remote)
 - Email: [atle.andreas@gmail.com](mailto:atle.andreas@gmail.com)
 - GitHub: [https://github.com/andreasatle](https://github.com/andreasatle)
 - LinkedIn: [https://linkedin.com/in/andreasatle/](https://linkedin.com/in/andreasatle/)
-- Website: [https:/atle.dev](https:/atle.dev)
+- Website: [https://atle.dev](https://atle.dev)
 
 ---
 
