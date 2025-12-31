@@ -2,12 +2,12 @@
 import argparse
 from dotenv import load_dotenv
 
-from domain.coder import make_agent_dispatcher, make_tool_registry
+from experiments.coder import make_agent_dispatcher, make_tool_registry
 from agentic.controller import ControllerDomainInput, ControllerRequest, run_controller
-from domain.coder.types import CodeTask
+from experiments.coder.types import CodeTask
 
 from agentic.logging_config import get_logger
-logger = get_logger("domain.coder.main")
+logger = get_logger("experiments.coder.main")
 
 def _pretty_print_run(run: dict, trace: bool = False) -> None:
     """Render the supervisor output in a readable diagnostic summary."""

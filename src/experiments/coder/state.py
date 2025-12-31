@@ -1,7 +1,7 @@
 
 from typing import Self
 from agentic.common.load_save_mixin import LoadSaveMixin
-from domain.coder.types import CodeResult, CodeTask
+from experiments.coder.types import CodeResult, CodeTask
 
 
 class ProblemState(LoadSaveMixin):

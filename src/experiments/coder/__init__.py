@@ -1,4 +1,4 @@
-from domain.coder.types import (
+from experiments.coder.types import (
     CodeTask,
     CodeResult,
     CoderPlannerInput,
@@ -9,10 +9,10 @@ from domain.coder.types import (
     CoderCriticOutput,
     CoderDispatcher,
 )
-from domain.coder.planner import make_planner
-from domain.coder.worker import make_worker
-from domain.coder.critic import make_critic
-from domain.coder.factory import make_agent_dispatcher, make_tool_registry
+from experiments.coder.planner import make_planner
+from experiments.coder.worker import make_worker
+from experiments.coder.critic import make_critic
+from experiments.coder.factory import make_agent_dispatcher, make_tool_registry
 
 
 __all__ = [

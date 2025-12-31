@@ -1,8 +1,8 @@
 from agentic.tool_registry import ToolRegistry
-from domain.coder.types import CoderDispatcher
-from domain.coder.planner import make_planner
-from domain.coder.worker import make_worker
-from domain.coder.critic import make_critic
+from experiments.coder.types import CoderDispatcher
+from experiments.coder.planner import make_planner
+from experiments.coder.worker import make_worker
+from experiments.coder.critic import make_critic
 
 
 def make_agent_dispatcher(
