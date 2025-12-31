@@ -1,5 +1,5 @@
 from agentic.agents.openai import OpenAIAgent
-from domain.sentiment.types import SentimentPlannerInput, SentimentPlannerOutput
+from experiments.sentiment.types import SentimentPlannerInput, SentimentPlannerOutput
 
 
 PROMPT_PLANNER = """ROLE:

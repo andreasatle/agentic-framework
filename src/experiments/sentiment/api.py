@@ -1,7 +1,7 @@
 from agentic.controller import ControllerDomainInput, ControllerRequest, run_controller
 from agentic.tool_registry import ToolRegistry
 from agentic.agent_dispatcher import AgentDispatcher
-from domain.sentiment.types import SentimentTask
+from experiments.sentiment.types import SentimentTask
 
 
 def run(

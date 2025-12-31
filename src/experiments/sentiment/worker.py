@@ -1,5 +1,5 @@
 from agentic.agents.openai import OpenAIAgent
-from domain.sentiment.types import SentimentWorkerInput, SentimentWorkerOutput
+from experiments.sentiment.types import SentimentWorkerInput, SentimentWorkerOutput
 
 
 PROMPT_WORKER = """ROLE:

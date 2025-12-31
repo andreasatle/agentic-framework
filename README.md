@@ -149,7 +149,7 @@ This domain is intentionally simple and stable.
 
 ---
 
-# src/domain/sentiment/README.md
+# src/experiments/sentiment/README.md
 
 ## Sentiment Domain
 

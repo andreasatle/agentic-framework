@@ -1,8 +1,8 @@
 from agentic.tool_registry import ToolRegistry
-from domain.sentiment.types import SentimentDispatcher
-from domain.sentiment.planner import make_planner
-from domain.sentiment.worker import make_worker
-from domain.sentiment.critic import make_critic
+from experiments.sentiment.types import SentimentDispatcher
+from experiments.sentiment.planner import make_planner
+from experiments.sentiment.worker import make_worker
+from experiments.sentiment.critic import make_critic
 def make_agent_dispatcher(
     model: str = "gpt-4.1-mini",
     max_retries: int = 3,

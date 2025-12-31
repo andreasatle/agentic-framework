@@ -2,9 +2,9 @@
 import argparse
 from dotenv import load_dotenv
 
-from domain.sentiment import make_agent_dispatcher, make_tool_registry
-from domain.sentiment.types import SentimentTask
-from domain.sentiment.api import run
+from experiments.sentiment import make_agent_dispatcher, make_tool_registry
+from experiments.sentiment.types import SentimentTask
+from experiments.sentiment.api import run
 
 
 def _pretty_print_run(run: dict, trace: bool = False) -> None:

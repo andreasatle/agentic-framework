@@ -6,7 +6,7 @@
 
 ## 1. Scope and Closure
 
-This document defines the **normative API, contracts, and execution semantics** of the **Sentiment domain** (`src/domain/sentiment`).
+This document defines the **normative API, contracts, and execution semantics** of the **Sentiment domain** (`src/experiments/sentiment`).
 
 * This document is **authoritative** for the provided snapshot only.
 * Anything not specified here is **undefined** and MUST NOT be inferred.

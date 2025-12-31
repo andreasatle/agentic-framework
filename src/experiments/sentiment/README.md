@@ -1,4 +1,4 @@
-# src/domain/sentiment/README.md
+# src/experiments/sentiment/README.md
 
 ## Sentiment Domain
 
