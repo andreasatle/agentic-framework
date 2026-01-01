@@ -6,10 +6,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.75.0",
+    "boto3>=1.42.19",
     "gradio>=6.2.0",
     "markdown>=3.10",
     "openai>=2.8.1",
     "pydantic>=2.12.4",
+    "pytesseract>=0.3.13",
     "pytest>=9.0.1",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
