@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 from apps.legal_document_ingest.detection.spans import CandidateSpan
 from apps.legal_document_ingest.ocr.models import EvidenceBundle, OcrToken
+from apps.legal_document_ingest.qualification.patterns import has_legal_pattern_signal
 
 
 class ValidatedSpan(BaseModel):
@@ -52,10 +53,13 @@ def validate_candidate_spans(
         if _has_missing_tokens(span.token_ids, token_index):
             failures.append("TOKEN_NOT_FOUND")
         else:
+            span_tokens = [token_index[token_id][0] for token_id in span.token_ids]
             if _low_confidence_density(span.token_ids, token_index):
                 failures.append("LOW_CONFIDENCE_DENSITY")
             if _contains_heading_line(span.token_ids, token_index, page_stats):
                 failures.append("HEADING_INTRUSION")
+            if not has_legal_pattern_signal(span_tokens):
+                failures.append("NO_LEGAL_PATTERN_SIGNAL")
 
         results.append(
             ValidatedSpan(
