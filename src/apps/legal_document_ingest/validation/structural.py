@@ -229,6 +229,9 @@ def _index_tokens(
         median_height = float(statistics.median(heights)) if heights else 0.0
         widths = page_char_widths.get(page_number, [])
         median_width = float(statistics.median(widths)) if widths else 0.0
-        page_stats[page_number] = _PageStats(median_height, median_width)
+        page_stats[page_number] = _PageStats(
+            median_token_height=median_height,
+            median_char_width=median_width,
+        )
 
     return token_index, page_stats
