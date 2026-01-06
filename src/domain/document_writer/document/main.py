@@ -1,8 +1,8 @@
-import argparse
 from dotenv import load_dotenv
 from domain.document_writer.document.planner import make_planner
 from domain.document_writer.document.types import DocumentTree
 from domain.document_writer.document.api import analyze
+from domain.document_writer.intent.types import IntentEnvelope
 from agentic.agent_dispatcher import AgentDispatcher
 from agentic.logging_config import get_logger
 
@@ -26,29 +26,6 @@ def _pretty_print_run(run: dict, trace: bool = False) -> None:
 def main() -> None:
     load_dotenv(override=True)
 
-    parser = argparse.ArgumentParser(
-        description="Run the document analysis supervisor (planner-only)."
-    )
-    parser.add_argument(
-        "--tone",
-        type=str,
-        default=None,
-        help="Optional document tone (e.g. formal, academic).",
-    )
-    parser.add_argument(
-        "--audience",
-        type=str,
-        default=None,
-        help="Optional target audience.",
-    )
-    parser.add_argument(
-        "--goal",
-        type=str,
-        default=None,
-        help="Optional document goal.",
-    )
-    args = parser.parse_args()
-
     # --- Planner-only dispatcher ---
     planner = make_planner(model="gpt-4.1-mini")
     dispatcher = AgentDispatcher(
@@ -60,12 +37,11 @@ def main() -> None:
     # --- Initial document state ---
     # For now, start with no tree (first planning step).
     document_tree: DocumentTree | None = None
+    intent = IntentEnvelope()
 
     run = analyze(
         document_tree=document_tree,
-        tone=args.tone,
-        audience=args.audience,
-        goal=args.goal,
+        intent=intent,
         dispatcher=dispatcher,
     )
 

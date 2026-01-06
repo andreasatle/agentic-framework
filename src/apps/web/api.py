@@ -139,9 +139,6 @@ def generate_document_route(
     ) -> dict[str, str]:
     intent = payload.intent
     result = generate_document(
-        goal=intent.structural_intent.document_goal,
-        audience=intent.structural_intent.audience,
-        tone=intent.structural_intent.tone,
         intent=intent,
         trace=False,
     )

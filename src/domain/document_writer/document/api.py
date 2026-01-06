@@ -23,23 +23,17 @@ class DocumentAnalysisResult:
 def analyze(
     *,
     document_tree: DocumentTree | None,
-    tone: str | None,
-    audience: str | None,
-    goal: str | None,
-    intent: IntentEnvelope | None = None,
+    intent: IntentEnvelope,
     dispatcher: AgentDispatcher,
 ):
     intent_observation: str
     if document_tree is not None:
         intent_observation = "ignored_existing_structure"
     else:
-        intent_observation = "intent_advisory_available" if intent is not None else "no_intent_provided"
+        intent_observation = "intent_advisory_available"
 
     planner_input = DocumentPlannerInput(
         document_tree=document_tree,
-        tone=tone,
-        audience=audience,
-        goal=goal,
         intent=intent,
     )
     controller_input = AnalysisControllerRequest(planner_input=planner_input)

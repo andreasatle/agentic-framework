@@ -47,11 +47,8 @@ class DocumentGenerationResult:
 
 def generate_document(
     *,
-    goal: str | None,
-    audience: str | None,
-    tone: str | None,
-    intent: IntentEnvelope | None,
-    trace: bool = False,
+    intent: IntentEnvelope,
+    trace: bool,
 ) -> DocumentGenerationResult:
     # Planner-only dispatcher and analysis
     planner = make_planner(model="gpt-4.1-mini")
@@ -62,9 +59,6 @@ def generate_document(
     )
     analysis = analyze(
         document_tree=None,
-        tone=tone,
-        audience=audience,
-        goal=goal,
         intent=intent,
         dispatcher=dispatcher,
     )

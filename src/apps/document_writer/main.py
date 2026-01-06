@@ -68,9 +68,6 @@ def main() -> None:
     out_path = Path(args.out) if args.out else None
 
     result = generate_document(
-        goal=args.goal,
-        audience=args.audience,
-        tone=args.tone,
         intent=intent,
         trace=args.trace,
     )
