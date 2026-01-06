@@ -14,20 +14,20 @@ def test_I1_outcome_exclusivity(extraction_result):
     Never both. Never partial.
     """
 
-    is_pass = extraction_result.status == "PASS"
-    is_fail = extraction_result.status == "FAIL"
+    is_pass = extraction_result["status"] == "PASS"
+    is_fail = extraction_result["status"] == "FAIL"
 
     # Exactly one outcome
     assert is_pass ^ is_fail
 
     if is_pass:
         # PASS must have output and no failure reason
-        assert extraction_result.legal_description is not None
-        assert extraction_result.trace is not None
-        assert not hasattr(extraction_result, "failure_reason")
+        assert extraction_result["legal_description"] is not None
+        assert extraction_result["trace"] is not None
+        assert "failure_reason" not in extraction_result
 
     if is_fail:
         # FAIL must have reason and no output
-        assert extraction_result.legal_description is None
-        assert isinstance(extraction_result.failure_reason, str)
-        assert extraction_result.failure_reason
+        assert extraction_result["legal_description"] is None
+        assert isinstance(extraction_result["failure_reason"], str)
+        assert extraction_result["failure_reason"]
