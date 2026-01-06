@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 from domain.document_writer.document.planner import make_planner
-from domain.document_writer.document.types import DocumentTree
 from domain.document_writer.document.api import analyze
 from domain.document_writer.intent.types import IntentEnvelope
 from agentic.agent_dispatcher import AgentDispatcher
@@ -34,13 +33,9 @@ def main() -> None:
         critic=None,     # type: ignore[arg-type]
     )
 
-    # --- Initial document state ---
-    # For now, start with no tree (first planning step).
-    document_tree: DocumentTree | None = None
     intent = IntentEnvelope()
 
     run = analyze(
-        document_tree=document_tree,
         intent=intent,
         dispatcher=dispatcher,
     )

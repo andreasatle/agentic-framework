@@ -58,7 +58,6 @@ def generate_document(
         critic=None,  # type: ignore[arg-type]
     )
     analysis = analyze(
-        document_tree=None,
         intent=intent,
         dispatcher=dispatcher,
     )

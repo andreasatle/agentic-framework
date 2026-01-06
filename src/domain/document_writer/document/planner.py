@@ -22,11 +22,7 @@ DocumentTree schema:
 
 INPUT:
 {
-  "document_tree": { "root": { ...DocumentNode... } } | null,
-  "tone": "...",          // optional
-  "audience": "...",      // optional
-  "goal": "...",          // optional
-  "intent": { ...IntentEnvelope... } | null  // advisory only
+  "intent": { ...IntentEnvelope... }  // advisory only
 }
 
 OUTPUT (STRICT JSON):
@@ -37,23 +33,22 @@ OUTPUT (STRICT JSON):
 
 RULES:
 1. Emit exactly one document_tree.
-2. If document_tree is null, construct a complete tree with parameters:
+2. Construct a complete tree with parameters:
    - Root node: structural container only (no user-facing title); set root.title="__ROOT__".
    - Child nodes: sections (title, description, children=[]).
    - parameters.sections MUST NOT appear; root MUST always be present.
-3. If document_tree is provided (not null), ignore intent entirely and preserve the provided structure.
-4. If document_tree is null, you MAY consider intent as advisory only:
+3. You MAY consider intent as advisory only:
    - structural_intent.required_sections may inspire section titles if coherent; do not copy blindly.
    - structural_intent.forbidden_sections may guide naming avoidance but MUST NOT suppress needed sections.
    - document_goal / audience / tone may inform root description wording only; do not add hierarchy or titles.
    - semantic_constraints and stylistic_preferences MUST NOT affect structure.
    - You are free to ignore intent signals if they conflict with coherence.
-5. Intent NEVER creates, deletes, or reorders nodes by itself; you own all structural authority.
-6. Always emit a complete, coherent DocumentTree with a root, even if intent is empty or conflicting.
-7. Never emit writer tasks directly; only structural trees.
-8. Do not mutate external state; decisions only.
-9. JSON only. No commentary.
-10. Thesis requirement (apply ONLY to linear reading docs: blog posts, reflective articles, explanatory essays):
+4. Intent NEVER creates, deletes, or reorders nodes by itself; you own all structural authority.
+5. Always emit a complete, coherent DocumentTree with a root, even if intent is empty or conflicting.
+6. Never emit writer tasks directly; only structural trees.
+7. Do not mutate external state; decisions only.
+8. JSON only. No commentary.
+9. Thesis requirement (apply ONLY to linear reading docs: blog posts, reflective articles, explanatory essays):
     - Produce exactly one thesis: a single declarative sentence expressing the central claim, suitable for quotation.
     - Label it explicitly with "Thesis: ..." in the plan.
     - Include distinct Introduction and Conclusion nodes when applying this rule.

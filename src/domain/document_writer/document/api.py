@@ -4,7 +4,6 @@ from agentic.analysis_controller import (
     run_analysis_controller,
 )
 from domain.document_writer.document.schemas import DocumentPlannerInput
-from domain.document_writer.document.types import DocumentTree
 from domain.document_writer.intent.types import IntentEnvelope
 from dataclasses import dataclass
 
@@ -22,18 +21,12 @@ class DocumentAnalysisResult:
 
 def analyze(
     *,
-    document_tree: DocumentTree | None,
     intent: IntentEnvelope,
     dispatcher: AgentDispatcher,
 ):
-    intent_observation: str
-    if document_tree is not None:
-        intent_observation = "ignored_existing_structure"
-    else:
-        intent_observation = "intent_advisory_available"
+    intent_observation = "intent_advisory_available"
 
     planner_input = DocumentPlannerInput(
-        document_tree=document_tree,
         intent=intent,
     )
     controller_input = AnalysisControllerRequest(planner_input=planner_input)

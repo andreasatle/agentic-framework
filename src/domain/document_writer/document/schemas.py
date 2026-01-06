@@ -8,7 +8,6 @@ from domain.document_writer.intent.types import IntentEnvelope
 
 class DocumentPlannerInput(BaseModel):
     """Planner input; intent is advisory and read-only. Planner retains structural authority."""
-    document_tree: DocumentTree | None = None
     intent: IntentEnvelope
 
 
