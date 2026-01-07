@@ -68,18 +68,32 @@ DEFINITION AUTHORITY METADATA (MANDATORY):
 18. Nodes may omit both fields or use empty lists to mean "no authority".
 19. You are the only component that assigns defines/assumes.
 
-20. JSON only. No commentary.
+SECTION TITLE AUTHORITY CONSTRAINT (MANDATORY):
+
+20. Section titles MUST be consistent with concept authority.
+21. If a section defines a concept (via defines), its title MAY imply definition
+    (e.g. “Definition of X”, “What Is X”).
+22. If a section assumes a concept (via assumes), its title MUST NOT imply definition,
+    explanation, or introduction of what the concept is.
+    - Forbidden patterns include titles such as:
+      “What Is X”, “X Explained”, “Understanding X”, “Definition of X”.
+23. Sections that assume concepts MUST use implication-oriented titles, such as:
+    roles, impact, applications, implications, operation, or significance.
+24. If intent suggests a definitional title for a section that does not define the concept,
+    you MUST rename the section to an implication-oriented title that matches its authority.
+
+25. JSON only. No commentary.
 
 THESIS REQUIREMENT (apply ONLY to linear reading documents: blog posts, reflective articles, explanatory essays):
 
-21. Produce exactly one thesis: a single declarative sentence expressing the central claim, suitable for quotation.
-22. Label it explicitly with "Thesis: ..." in the plan.
-23. Include distinct Introduction and Conclusion nodes when applying this rule.
-24. Place the thesis in the Introduction node description and ensure the introduction references it directly.
-25. The Conclusion node description must revisit the thesis without repeating it verbatim.
-26. Do NOT apply thesis requirements to reference documentation, logs/reports, or exploratory notes.
-27. Never emit multiple theses; if uncertain, pick the single best central claim and state it once.
-28. When this rule applies, set applies_thesis_rule=true; omit otherwise (keep null/absent).
+26. Produce exactly one thesis: a single declarative sentence expressing the central claim, suitable for quotation.
+27. Label it explicitly with "Thesis: ..." in the plan.
+28. Include distinct Introduction and Conclusion nodes when applying this rule.
+29. Place the thesis in the Introduction node description and ensure the introduction references it directly.
+30. The Conclusion node description must revisit the thesis without repeating it verbatim.
+31. Do NOT apply thesis requirements to reference documentation, logs/reports, or exploratory notes.
+32. Never emit multiple theses; if uncertain, pick the single best central claim and state it once.
+33. When this rule applies, set applies_thesis_rule=true; omit otherwise (keep null/absent).
 
 VALID INIT EXAMPLE:
 {
