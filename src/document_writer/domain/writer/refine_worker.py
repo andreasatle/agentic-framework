@@ -15,7 +15,9 @@ INPUT FORMAT (from Planner):
     "kind": "refine_section",
     "section_name": "<name>",
     "purpose": "<reason this section exists>",
-    "requirements": ["...", "..."]
+    "requirements": ["...", "..."],
+    "defines": ["<concept-id>", "..."],
+    "assumes": ["<concept-id>", "..."]
   }
 }
 
@@ -31,7 +33,11 @@ RULES:
 2. Begin result.text with the exact section_name followed by a colon and newline.
 3. Elevate clarity, cohesion, and completeness as guided by the requirements.
 4. Stay within scope; avoid new topics unless explicitly requested.
-5. No meta-commentary, no explanations, no code fences.
+5. Define ONLY the concepts listed in defines.
+6. DO NOT define any concepts listed in assumes.
+7. Do NOT infer whether a concept is already defined.
+8. If a concept is neither in defines nor assumes, do not define it.
+9. No meta-commentary, no explanations, no code fences.
 """
 
 

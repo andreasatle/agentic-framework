@@ -23,6 +23,8 @@ def emit_writer_tasks(
                 purpose=node.description,
                 requirements=[node.description],
                 applies_thesis_rule=applies_thesis_rule,
+                defines=node.defines,
+                assumes=node.assumes,
             )
         else:
             task = DraftSectionTask(
@@ -31,6 +33,8 @@ def emit_writer_tasks(
                 purpose=node.description,
                 requirements=[node.description],
                 applies_thesis_rule=applies_thesis_rule,
+                defines=node.defines,
+                assumes=node.assumes,
             )
         tasks.append(task)
         for child in node.children:

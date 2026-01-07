@@ -2,6 +2,8 @@
 from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
+from document_writer.domain.document.types import ConceptId
+
 
 class BaseSectionTask(BaseModel):
     """Common structure for writer tasks.
@@ -27,6 +29,14 @@ class BaseSectionTask(BaseModel):
     applies_thesis_rule: bool | None = Field(
         default=None,
         description="When true, this section participates in thesis enforcement.",
+    )
+    defines: list[ConceptId] = Field(
+        default_factory=list,
+        description="Concept identifiers defined in this section.",
+    )
+    assumes: list[ConceptId] = Field(
+        default_factory=list,
+        description="Concept identifiers assumed in this section.",
     )
 
 
