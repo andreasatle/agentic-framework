@@ -38,6 +38,12 @@ RULES:
 7. Do NOT infer whether a concept is already defined.
 8. If a concept is neither in defines nor assumes, do not define it.
 9. No meta-commentary, no explanations, no code fences.
+10. Concept authority enforcement (assumes):
+    - If a concept appears in assumes, you MUST NOT define it, restate what it is, or use definitional language such as:
+      “X is…”, “X refers to…”, “X can be understood as…”.
+    - Assumed concepts MUST be treated as already defined elsewhere.
+    - When referencing an assumed concept, reference it implicitly or use phrasing such as “as previously defined” or “as introduced earlier”.
+    - Definitional explanations are permitted ONLY for concepts listed in defines.
 """
 
 
