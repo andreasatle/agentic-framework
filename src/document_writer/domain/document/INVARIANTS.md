@@ -1,0 +1,1 @@
+The pipeline enforces where concepts are defined by requiring explicit definition authority on each node, but it does not evaluate the semantic quality, correctness, or sufficiency of those definitions; semantic correctness is explicitly out of scope by design.
