@@ -34,6 +34,7 @@ OUTPUT (STRICT JSON):
 }
 
 RULES:
+
 1. Emit exactly one document_tree.
 2. Construct a complete tree with parameters:
    - Root node: structural container only (no user-facing title); set root.title="__ROOT__".
@@ -49,29 +50,43 @@ RULES:
 5. Always emit a complete, coherent DocumentTree with a root, even if intent is empty or conflicting.
 6. Never emit writer tasks directly; only structural trees.
 7. Do not mutate external state; decisions only.
-8. Definition authority metadata:
-   - You MAY emit defines/assumes on any node as lists of ConceptId strings.
-   - Each ConceptId MUST appear in defines at most once across the entire tree.
-   - If a node relies on a ConceptId defined elsewhere, it MUST list it in assumes.
-   - Nodes may omit both fields or use empty lists to mean "no authority".
-   - You are the only component that assigns defines/assumes.
-9. JSON only. No commentary.
-10. Thesis requirement (apply ONLY to linear reading docs: blog posts, reflective articles, explanatory essays):
-    - Produce exactly one thesis: a single declarative sentence expressing the central claim, suitable for quotation.
-    - Label it explicitly with "Thesis: ..." in the plan.
-    - Include distinct Introduction and Conclusion nodes when applying this rule.
-    - Place the thesis in the Introduction node description and ensure the introduction references it directly.
-    - The Conclusion node description must revisit the thesis without repeating it verbatim.
-    - Do NOT apply thesis requirements to reference documentation, logs/reports, or exploratory notes.
-    - Never emit multiple theses; if uncertain, pick the single best central claim and state it once.
-    - When this rule applies, set applies_thesis_rule=true; omit otherwise (keep null/absent).
 
-Valid init example:
+DEFINITION AUTHORITY METADATA (MANDATORY):
+
+8. Actively identify conceptual definitions in the document.
+9. Concepts are represented ONLY as opaque ConceptId strings.
+10. The planner decides which concepts exist; intent MUST NOT create concepts.
+11. Assign exactly one defining authority per concept using defines.
+12. Never define the same ConceptId more than once.
+13. Never leave a concept implicitly defined.
+    - If a concept is discussed in a node but not defined there, it MUST appear in that node’s assumes.
+14. Assign assumes on all other nodes that rely on a previously defined concept.
+15. Prefer defining concepts in a dedicated "Definition" or "Definitions" section when present;
+    otherwise define in the earliest coherent section.
+16. Treat concept authority as structural metadata, NOT prose guidance.
+17. Root node MUST NOT define concepts.
+18. Nodes may omit both fields or use empty lists to mean "no authority".
+19. You are the only component that assigns defines/assumes.
+
+20. JSON only. No commentary.
+
+THESIS REQUIREMENT (apply ONLY to linear reading documents: blog posts, reflective articles, explanatory essays):
+
+21. Produce exactly one thesis: a single declarative sentence expressing the central claim, suitable for quotation.
+22. Label it explicitly with "Thesis: ..." in the plan.
+23. Include distinct Introduction and Conclusion nodes when applying this rule.
+24. Place the thesis in the Introduction node description and ensure the introduction references it directly.
+25. The Conclusion node description must revisit the thesis without repeating it verbatim.
+26. Do NOT apply thesis requirements to reference documentation, logs/reports, or exploratory notes.
+27. Never emit multiple theses; if uncertain, pick the single best central claim and state it once.
+28. When this rule applies, set applies_thesis_rule=true; omit otherwise (keep null/absent).
+
+VALID INIT EXAMPLE:
 {
   "document_tree": {
     "root": {
       "id": "doc-1",
-      "title": "__ROOT__",  // structural-only; not user-facing
+      "title": "__ROOT__",
       "description": "Overall purpose of the document.",
       "children": [
         {
@@ -85,7 +100,6 @@ Valid init example:
   }
 }
 """
-
 
 def make_planner(model: str) -> OpenAIAgent[DocumentPlannerInput, DocumentPlannerOutput]:
     return OpenAIAgent(
