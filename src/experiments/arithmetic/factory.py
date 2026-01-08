@@ -1,4 +1,4 @@
-from agentic_workflow.tool_registry import ToolRegistry
+from agentic_framework.tool_registry import ToolRegistry
 from experiments.arithmetic.types import (
     ArithmeticDispatcher,
     WORKER_CAPABILITIES,

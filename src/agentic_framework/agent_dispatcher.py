@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import json
 from typing import Generic, TypeVar
 
-from agentic_workflow.schemas import (
+from agentic_framework.schemas import (
     PlannerInput,
     PlannerOutput,
     WorkerInput,
@@ -10,9 +10,9 @@ from agentic_workflow.schemas import (
     CriticInput,
     AgentCallResult
 )
-from agentic_workflow.protocols import AgentProtocol, InputSchema, OutputSchema
+from agentic_framework.protocols import AgentProtocol, InputSchema, OutputSchema
 from pydantic import ValidationError
-from agentic_workflow.logging_config import get_logger
+from agentic_framework.logging_config import get_logger
 
 logger = get_logger("agentic.dispatcher")
 

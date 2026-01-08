@@ -1,5 +1,5 @@
-from agentic_workflow.agent_dispatcher import AgentDispatcher
-from agentic_workflow.analysis_controller import (
+from agentic_framework.agent_dispatcher import AgentDispatcher
+from agentic_framework.analysis_controller import (
     AnalysisControllerRequest,
     run_analysis_controller,
 )

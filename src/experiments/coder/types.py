@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 
-from agentic_workflow.agent_dispatcher import AgentDispatcher
-from agentic_workflow.schemas import Decision, PlannerOutput, WorkerInput, WorkerOutput, _normalize_for_json, Feedback
+from agentic_framework.agent_dispatcher import AgentDispatcher
+from agentic_framework.schemas import Decision, PlannerOutput, WorkerInput, WorkerOutput, _normalize_for_json, Feedback
 
 
 class CodeTask(BaseModel):

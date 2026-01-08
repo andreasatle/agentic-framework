@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 from document_writer.domain.document.planner import make_planner
 from document_writer.domain.document.api import analyze
 from document_writer.domain.intent.types import IntentEnvelope
-from agentic_workflow.agent_dispatcher import AgentDispatcher
-from agentic_workflow.logging_config import get_logger
+from agentic_framework.agent_dispatcher import AgentDispatcher
+from agentic_framework.logging_config import get_logger
 
 logger = get_logger("document_writer.domain.document.main")
 

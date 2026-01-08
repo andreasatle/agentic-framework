@@ -2,8 +2,8 @@
 import pytest
 from pydantic import ValidationError
 
-from agentic_workflow.controller import Controller, ControllerRequest, ControllerDomainInput
-from agentic_workflow.tool_registry import ToolRegistry
+from agentic_framework.controller import Controller, ControllerRequest, ControllerDomainInput
+from agentic_framework.tool_registry import ToolRegistry
 from experiments.arithmetic.types import (
     ArithmeticCriticInput,
     ArithmeticCriticOutput,

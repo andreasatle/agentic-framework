@@ -1,6 +1,6 @@
-from agentic_workflow.controller import ControllerDomainInput, ControllerRequest, run_controller
-from agentic_workflow.tool_registry import ToolRegistry
-from agentic_workflow.agent_dispatcher import AgentDispatcher
+from agentic_framework.controller import ControllerDomainInput, ControllerRequest, run_controller
+from agentic_framework.tool_registry import ToolRegistry
+from agentic_framework.agent_dispatcher import AgentDispatcher
 from document_writer.domain.writer.types import DraftSectionTask, RefineSectionTask, WriterTask
 from document_writer.domain.document.types import DocumentTree
 from document_writer.domain.document.validation import validate_definition_authority

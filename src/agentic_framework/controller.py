@@ -11,10 +11,10 @@ See docs/authority_map.md for authority boundaries.
 from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from agentic_workflow.schemas import WorkerInput
-from agentic_workflow.tool_registry import ToolRegistry
-from agentic_workflow.agent_dispatcher import AgentDispatcher
-from agentic_workflow.controller_types import ControllerState as State
+from agentic_framework.schemas import WorkerInput
+from agentic_framework.tool_registry import ToolRegistry
+from agentic_framework.agent_dispatcher import AgentDispatcher
+from agentic_framework.controller_types import ControllerState as State
 
 
 class ControllerDomainInput(BaseModel):
