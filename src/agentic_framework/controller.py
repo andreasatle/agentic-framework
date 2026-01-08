@@ -14,7 +14,6 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from agentic_framework.schemas import WorkerInput
 from agentic_framework.tool_registry import ToolRegistry
 from agentic_framework.agent_dispatcher import AgentDispatcher
-from agentic_framework.controller_types import ControllerState as State
 
 
 class ControllerDomainInput(BaseModel):
@@ -98,7 +97,7 @@ class Controller:
         worker_input = worker_input_cls(task=request_task)
         trace.append(
             {
-                "state": State.PLAN.name,
+                "state": "PLAN",
                 "agent_id": planner_response.agent_id,
                 "call_id": planner_response.call_id,
                 "tool_name": None,
@@ -113,7 +112,7 @@ class Controller:
         worker_result = worker_output.result
         trace.append(
             {
-                "state": State.WORK.name,
+                "state": "WORK",
                 "agent_id": worker_response.agent_id,
                 "call_id": worker_response.call_id,
                 "tool_name": None,
@@ -134,7 +133,7 @@ class Controller:
             tool_result = func(request_tool.args)
             trace.append(
                 {
-                    "state": State.TOOL.name,
+                    "state": "TOOL",
                     "agent_id": None,
                     "call_id": None,
                     "tool_name": request_tool.tool_name,
@@ -153,7 +152,7 @@ class Controller:
             worker_result = worker_output.result
             trace.append(
                 {
-                    "state": State.WORK.name,
+                    "state": "WORK",
                     "agent_id": worker_response.agent_id,
                     "call_id": worker_response.call_id,
                     "tool_name": None,
@@ -177,7 +176,7 @@ class Controller:
         decision = critic_response.output
         trace.append(
             {
-                "state": State.CRITIC.name,
+                "state": "CRITIC",
                 "agent_id": critic_response.agent_id,
                 "call_id": critic_response.call_id,
                 "tool_name": None,
@@ -188,7 +187,7 @@ class Controller:
 
         trace.append(
             {
-                "state": State.END.name,
+                "state": "END",
                 "decision": decision,
             }
         )

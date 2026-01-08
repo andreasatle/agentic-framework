@@ -15,7 +15,6 @@ from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from agentic_framework.agent_dispatcher import AgentDispatcher
-from agentic_framework.controller_types import ControllerState as State
 
 
 # =========================
@@ -82,7 +81,7 @@ class AnalysisController:
 
         trace.append(
             {
-                "state": State.PLAN.name,
+                "state": "PLAN",
                 "agent_id": planner_response.agent_id,
                 "call_id": planner_response.call_id,
                 "input": None,
@@ -92,7 +91,7 @@ class AnalysisController:
 
         trace.append(
             {
-                "state": State.END.name,
+                "state": "END",
             }
         )
 
