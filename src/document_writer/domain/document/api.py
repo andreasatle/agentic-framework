@@ -6,16 +6,17 @@ from agentic_framework.analysis_controller import (
 from document_writer.domain.document.schemas import DocumentPlannerInput
 from document_writer.domain.intent.types import IntentEnvelope
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class DocumentAnalysisResult:
     """Domain-owned wrapper adding intent observability; behavior is unchanged and delegated."""
 
-    controller_response: any
+    controller_response: Any
     intent_observation: str
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         return getattr(self.controller_response, item)
 
 

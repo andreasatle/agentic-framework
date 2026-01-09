@@ -1,4 +1,4 @@
-from agentic_framework.agent_dispatcher import AgentDispatcher
+from agentic_framework.agent_dispatcher import AgentDispatcherBase
 from agentic_framework.agents.openai import OpenAIAgent
 from agentic_framework.controller.transform_controller import TransformController, TransformControllerRequest
 
@@ -8,7 +8,7 @@ from document_writer.domain.editor.api import AgentEditorRequest, AgentEditorRes
 def edit_document(
     request: AgentEditorRequest,
     *,
-    dispatcher: AgentDispatcher,
+    dispatcher: AgentDispatcherBase,
     editor_agent: OpenAIAgent,
 ) -> AgentEditorResponse:
     controller_request = TransformControllerRequest(

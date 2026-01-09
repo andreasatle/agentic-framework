@@ -5,7 +5,7 @@ from document_writer.domain.intent import load_intent_from_file
 from agentic_framework.logging_config import get_logger
 from document_writer.apps.service import generate_document
 
-logger = get_logger("document_writer.domain.document.main")
+logger = get_logger("document_writer.apps.main")
 
 
 def _pretty_print_run(run: dict, trace: bool = False) -> None:

@@ -9,6 +9,7 @@ from document_writer.domain.writer.emission import emit_writer_tasks
 from document_writer.domain.intent.types import IntentEnvelope
 from document_writer.domain.writer.intent_audit import audit_intent_satisfaction, IntentAuditResult
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -18,7 +19,7 @@ class WriterExecutionResult:
     content_store: ContentStore
     intent_audit: IntentAuditResult
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         return getattr(self.content_store, item)
 
 
