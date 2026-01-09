@@ -54,13 +54,11 @@ class TransformController:
         agent_input = self.agent.input_schema(**payload)
 
         original_retries = self.dispatcher.max_retries
-        if original_retries != 1:
-            self.dispatcher.max_retries = 1
+        self.dispatcher.max_retries = 1
         try:
             agent_output = self.dispatcher._call(self.agent, agent_input)
         finally:
-            if self.dispatcher.max_retries != original_retries:
-                self.dispatcher.max_retries = original_retries
+            self.dispatcher.max_retries = original_retries
 
         edited_document = getattr(agent_output, "edited_document", None)
         if not isinstance(edited_document, str) or not edited_document.strip():
