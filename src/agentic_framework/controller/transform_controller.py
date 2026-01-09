@@ -64,4 +64,10 @@ class TransformController:
         if not isinstance(edited_document, str) or not edited_document.strip():
             raise ValueError("TransformController requires non-empty edited_document output.")
 
-        return TransformControllerResponse(edited_document=edited_document)
+        trace = None
+        agent_id = getattr(agent_output, "agent_id", None)
+        call_id = getattr(agent_output, "call_id", None)
+        if agent_id is not None and call_id is not None:
+            trace = [{"agent_id": agent_id, "call_id": call_id}]
+
+        return TransformControllerResponse(edited_document=edited_document, trace=trace)
