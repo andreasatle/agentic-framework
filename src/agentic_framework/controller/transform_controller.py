@@ -46,6 +46,7 @@ class TransformController:
         payload: dict[str, Any] = {
             "document": request.document,
             "editing_policy": request.editing_policy,
+            "instruction": "Apply the editing policy exactly. Return the edited document only.",
         }
         if request.intent is not None:
             payload["intent"] = request.intent
