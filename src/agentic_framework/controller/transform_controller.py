@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -53,12 +53,8 @@ class TransformController:
 
         agent_input = self.agent.input_schema(**payload)
 
-        original_retries = self.dispatcher.max_retries
-        self.dispatcher.max_retries = 1
-        try:
-            agent_output = self.dispatcher._call(self.agent, agent_input)
-        finally:
-            self.dispatcher.max_retries = original_retries
+        dispatcher = replace(self.dispatcher, max_retries=1)
+        agent_output = dispatcher._call(self.agent, agent_input)
 
         edited_document = getattr(agent_output, "edited_document", None)
         if not isinstance(edited_document, str) or not edited_document.strip():
