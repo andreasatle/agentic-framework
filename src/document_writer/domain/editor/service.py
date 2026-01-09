@@ -1,6 +1,6 @@
 from agentic_framework.agent_dispatcher import AgentDispatcherBase
 from agentic_framework.agents.openai import OpenAIAgent
-from agentic_framework.controller.transform_controller import TransformController, TransformControllerRequest
+from agentic_framework.transform_controller import TransformController, TransformControllerRequest
 
 from document_writer.domain.editor.api import AgentEditorRequest, AgentEditorResponse
 
