@@ -27,9 +27,6 @@ def generate(args):
     intent = load_intent_from_yaml(Path(args.intent).read_text())
 
     result = generate_document(
-        goal=intent.structural_intent.document_goal,
-        audience=intent.structural_intent.audience,
-        tone=intent.structural_intent.tone,
         intent=intent,
         trace=False,
     )
