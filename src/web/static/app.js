@@ -61,6 +61,13 @@ function setArticleStatus(text) {
   }
 }
 
+function setSuggestedTitle(title) {
+  const target = $("suggested-title");
+  if (target) {
+    target.textContent = title || "";
+  }
+}
+
 function renderIntent(intent) {
   const s = intent.structural_intent || {};
   const sem = intent.semantic_constraints || {};
@@ -198,6 +205,7 @@ async function generateBlogPost() {
   setIntentDisabled(true);
   setView("content");
   setArticleStatus("Generating…");
+  setSuggestedTitle("");
   isGenerating = true;
   try {
     const resp = await fetch("/blog/generate", {
@@ -218,6 +226,7 @@ async function generateBlogPost() {
     if (articleArea) {
       articleArea.innerHTML = marked.parse(currentMarkdown);
     }
+    suggestTitle(currentMarkdown);
     setError("");
   } catch (err) {
     setArticleStatus("Failed to generate blog post. See error.");
@@ -226,6 +235,29 @@ async function generateBlogPost() {
   } finally {
     isGenerating = false;
     setIntentDisabled(false);
+  }
+}
+
+async function suggestTitle(content) {
+  if (!content) {
+    setSuggestedTitle("");
+    return;
+  }
+  try {
+    const resp = await fetch("/blog/suggest-title", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (!resp.ok) {
+      setSuggestedTitle("");
+      return;
+    }
+    const data = await resp.json();
+    const title = (data?.suggested_title || "").trim();
+    setSuggestedTitle(title ? `Suggested title: ${title}` : "");
+  } catch (err) {
+    setSuggestedTitle("");
   }
 }
 
@@ -312,6 +344,7 @@ function clearIntent() {
   }
   setError("");
   setArticleStatus("");
+  setSuggestedTitle("");
   setView("intent");
   isClearing = false;
 }

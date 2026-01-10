@@ -18,12 +18,14 @@ from document_writer.apps.service import generate_document as generate_blog_post
 from document_writer.domain.editor.agent import make_editor_agent
 from document_writer.domain.editor.api import AgentEditorRequest, AgentEditorResponse
 from document_writer.domain.editor.service import edit_document
+from document_writer.apps.title_suggester import suggest_title
 from apps.blog.storage import create_post, list_posts, read_post_meta, read_post_content, read_post_intent
 from web.schemas import (
     DocumentGenerateRequest,
     DocumentSaveRequest,
     IntentParseRequest,
     IntentSaveRequest,
+    TitleSuggestRequest,
 )
 from web.security import require_admin, security
 from document_writer.domain.intent import load_intent_from_yaml
@@ -154,6 +156,16 @@ def generate_blog_post_route(
         content=blog_result.markdown,
     )
     return {"markdown": blog_result.markdown}
+
+
+@app.post("/blog/suggest-title")
+def suggest_blog_title_route(
+    payload: TitleSuggestRequest,
+    creds = Depends(security),
+) -> dict[str, str]:
+    require_admin(creds)
+    title = suggest_title(payload.content)
+    return {"suggested_title": title}
 
 
 @app.post("/document/save")

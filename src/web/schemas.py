@@ -19,3 +19,7 @@ class DocumentGenerateRequest(BaseModel):
 class DocumentSaveRequest(BaseModel):
     markdown: str
     filename: str | None = Field(default=None, description="Optional filename for the markdown download.")
+
+
+class TitleSuggestRequest(BaseModel):
+    content: str
