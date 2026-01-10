@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-import re
+import secrets
 from pathlib import Path
 
 import yaml
@@ -7,18 +7,9 @@ import yaml
 from apps.blog.types import BlogPostMeta
 
 
-def _slugify(title: str) -> str:
-    slug = title.lower()
-    slug = slug.replace(" ", "-")
-    slug = re.sub(r"[^a-z0-9\-]", "", slug)
-    slug = re.sub(r"-{2,}", "-", slug)
-    slug = slug.strip("-")
-    return slug or "post"
-
-
 def create_post(
     *,
-    title: str,
+    title: str | None,
     author: str,
     intent: dict,
     content: str,
@@ -30,9 +21,9 @@ def create_post(
     Returns the absolute path to the created post directory.
     """
     timestamp = datetime.now(timezone.utc).replace(microsecond=0)
-    ts_str = timestamp.strftime("%Y-%m-%dT%H-%M-%S")
-    slug = _slugify(title)
-    post_id = f"{ts_str}-{slug}"
+    ts_str = timestamp.strftime("%Y-%m-%dT%H-%M-%SZ")
+    suffix = secrets.token_hex(3)
+    post_id = f"{ts_str}__{suffix}"
 
     root = Path(posts_root)
     post_dir = root / post_id

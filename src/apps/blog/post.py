@@ -7,7 +7,7 @@ from apps.blog.storage import create_post
 
 
 class BlogPost(BaseModel):
-    title: str
+    title: str | None = None
     author: str
     intent: dict
     content: str
