@@ -32,6 +32,8 @@ from web.schemas import (
     DocumentGenerateRequest,
     DocumentSaveRequest,
     EditContentRequest,
+    BlogEditRequest,
+    BlogEditResponse,
     IntentParseRequest,
     IntentSaveRequest,
     TitleSetRequest,
@@ -229,6 +231,20 @@ def edit_blog_content_route(
         raise HTTPException(status_code=400, detail=str(exc))
     content_path.write_text(response.edited_document)
     return {"post_id": payload.post_id, "content": response.edited_document}
+
+
+@app.post("/blog/edit", response_model=BlogEditResponse)
+def edit_blog_post_route(
+    payload: BlogEditRequest,
+    creds = Depends(security),
+) -> BlogEditResponse:
+    """
+    v2 edit contract (not implemented).
+    Hard rules: draft-only, title unchanged, no publish, no regeneration,
+    editor output authoritative only after validation.
+    """
+    require_admin(creds)
+    raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @app.post("/document/save")
