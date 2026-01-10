@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path
 
 import yaml
@@ -29,6 +30,16 @@ class EditResult(BaseModel):
     changed_chunks: list[int]
     rejected_chunks: list[RejectedChunk]
     content: str
+
+
+class RevisionMeta(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    revision_id: int
+    timestamp: str
+    policy_hash: str
+    changed_chunks: list[int]
+    rejected_chunks: list[RejectedChunk]
 
 
 def apply_policy_edit(
@@ -98,6 +109,8 @@ def apply_policy_edit(
             content=document,
         )
 
+    policy_hash = hashlib.sha256(policy_text.encode("utf-8")).hexdigest()
+
     revisions_dir = post_dir / "revisions"
     revisions_dir.mkdir(exist_ok=True)
     revision_ids: list[int] = []
@@ -127,14 +140,14 @@ def apply_policy_edit(
     revisions = meta_payload.get("revisions")
     if not isinstance(revisions, list):
         revisions = []
-    revisions.append(
-        {
-            "revision_id": next_rev,
-            "policy": policy_text,
-            "changed_chunks": changed_indices,
-            "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        }
+    revision_meta = RevisionMeta(
+        revision_id=next_rev,
+        timestamp=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        policy_hash=policy_hash,
+        changed_chunks=changed_indices,
+        rejected_chunks=rejected_chunks,
     )
+    revisions.append(revision_meta.model_dump())
     meta_payload["revisions"] = revisions
     meta_path.write_text(yaml.safe_dump(meta_payload, sort_keys=False, default_flow_style=False))
 
