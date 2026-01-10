@@ -1,0 +1,4 @@
+Remove hedging language such as "might", "could", "perhaps", and "somewhat".
+Make statements direct while preserving meaning.
+Do not add new claims or remove factual content.
+If no hedging appears, return the chunk unchanged.

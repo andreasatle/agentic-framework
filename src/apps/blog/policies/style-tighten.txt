@@ -1,0 +1,6 @@
+Tighten the prose in this chunk.
+Remove redundancy and filler.
+Prefer shorter, direct sentences.
+Keep all factual content unchanged.
+Do not change wording if the current text is already tight.
+Return the chunk unchanged if no edits are required.

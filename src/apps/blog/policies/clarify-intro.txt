@@ -1,0 +1,4 @@
+Clarify the introductory chunk by making the main point explicit and easy to follow.
+Preserve meaning and do not add new claims.
+Do not change structure or formatting unless needed for clarity.
+If the introduction is already clear, return the chunk unchanged.
