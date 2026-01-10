@@ -151,7 +151,7 @@ def generate_blog_post_route(
     )
     post_id, _ = create_post(
         title=None,
-        author=creds.username,
+        author=creds.username or "system",
         intent=intent.model_dump(),
         content=blog_result.markdown,
     )
