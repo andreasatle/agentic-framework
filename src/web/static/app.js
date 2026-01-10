@@ -1,6 +1,8 @@
 let currentIntent = null;
 let currentMarkdown = null;
 let currentPostId = null;
+let suggestedTitleValue = "";
+let titleCommitted = false;
 let currentView = "intent";
 let isGenerating = false;
 let isClearing = false;
@@ -69,6 +71,12 @@ function setSuggestedTitle(title) {
   }
 }
 
+function setSuggestedTitleValue(title) {
+  suggestedTitleValue = (title || "").trim();
+  setSuggestedTitle(suggestedTitleValue ? `Suggested title: ${suggestedTitleValue}` : "");
+  updateSuggestedTitleAction();
+}
+
 function setFinalTitle(title) {
   const target = $("final-title");
   if (target) {
@@ -81,6 +89,63 @@ function setTitleControlsEnabled(enabled) {
   const btn = $("set-title-btn");
   if (input) input.disabled = !enabled;
   if (btn) btn.disabled = !enabled;
+}
+
+function setGatedActionsEnabled(enabled) {
+  const btn = $("save-document-btn");
+  if (btn) btn.disabled = !enabled;
+}
+
+function updateSuggestedTitleAction() {
+  const wrapper = $("suggested-title-action");
+  const checkbox = $("use-suggested-title");
+  const shouldShow = !!suggestedTitleValue && !titleCommitted;
+  if (wrapper) wrapper.hidden = !shouldShow;
+  if (checkbox) checkbox.disabled = !shouldShow;
+}
+
+async function applySuggestedTitle() {
+  const checkbox = $("use-suggested-title");
+  if (!checkbox || !checkbox.checked) return;
+  if (!suggestedTitleValue) {
+    checkbox.checked = false;
+    return;
+  }
+  if (!currentPostId) {
+    checkbox.checked = false;
+    setError("No post available to set title.");
+    return;
+  }
+  try {
+    const resp = await fetch("/blog/set-title", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ post_id: currentPostId, title: suggestedTitleValue }),
+    });
+    if (resp.status === 409) {
+      titleCommitted = true;
+      setTitleControlsEnabled(false);
+      setGatedActionsEnabled(true);
+      updateSuggestedTitleAction();
+      return;
+    }
+    if (!resp.ok) {
+      checkbox.checked = false;
+      const detail = await resp.text();
+      setError(detail || "Failed to set title.");
+      return;
+    }
+    const data = await resp.json();
+    titleCommitted = true;
+    setFinalTitle(`Title: ${data.title}`);
+    setTitleControlsEnabled(false);
+    setGatedActionsEnabled(true);
+    updateSuggestedTitleAction();
+    setError("");
+  } catch (err) {
+    checkbox.checked = false;
+    setError(err?.message || "Error setting title.");
+  }
 }
 
 function renderIntent(intent) {
@@ -219,8 +284,10 @@ async function generateBlogPost() {
   }
   setIntentDisabled(true);
   setArticleStatus("Generating…");
-  setSuggestedTitle("");
+  setSuggestedTitleValue("");
   setFinalTitle("");
+  titleCommitted = false;
+  setGatedActionsEnabled(false);
   isGenerating = true;
   try {
     const resp = await fetch("/blog/generate", {
@@ -243,7 +310,7 @@ async function generateBlogPost() {
     }
     setView("content");
     if (data.suggested_title) {
-      setSuggestedTitle(`Suggested title: ${data.suggested_title}`);
+      setSuggestedTitleValue(data.suggested_title);
     } else {
       suggestTitle(currentMarkdown);
     }
@@ -276,8 +343,11 @@ async function setTitle() {
       body: JSON.stringify({ post_id: currentPostId, title }),
     });
     if (resp.status === 409) {
+      titleCommitted = true;
       setError("Title already set.");
       setTitleControlsEnabled(false);
+      setGatedActionsEnabled(true);
+      updateSuggestedTitleAction();
       return;
     }
     if (!resp.ok) {
@@ -286,8 +356,11 @@ async function setTitle() {
       return;
     }
     const data = await resp.json();
+    titleCommitted = true;
     setFinalTitle(`Title: ${data.title}`);
     setTitleControlsEnabled(false);
+    setGatedActionsEnabled(true);
+    updateSuggestedTitleAction();
     setError("");
   } catch (err) {
     setError(err?.message || "Error setting title.");
@@ -296,7 +369,7 @@ async function setTitle() {
 
 async function suggestTitle(content) {
   if (!content) {
-    setSuggestedTitle("");
+    setSuggestedTitleValue("");
     return;
   }
   try {
@@ -306,14 +379,14 @@ async function suggestTitle(content) {
       body: JSON.stringify({ content }),
     });
     if (!resp.ok) {
-      setSuggestedTitle("");
+      setSuggestedTitleValue("");
       return;
     }
     const data = await resp.json();
     const title = (data?.suggested_title || "").trim();
-    setSuggestedTitle(title ? `Suggested title: ${title}` : "");
+    setSuggestedTitleValue(title);
   } catch (err) {
-    setSuggestedTitle("");
+    setSuggestedTitleValue("");
   }
 }
 
@@ -360,9 +433,12 @@ document.addEventListener("DOMContentLoaded", () => {
     intentForm.addEventListener("input", applyIntentChanges);
   }
   $("set-title-btn")?.addEventListener("click", setTitle);
+  $("use-suggested-title")?.addEventListener("change", applySuggestedTitle);
   setView("intent");
   setArticleStatus("No blog post generated yet. Click Generate Blog Post.");
   setTitleControlsEnabled(false);
+  setGatedActionsEnabled(false);
+  updateSuggestedTitleAction();
 });
 
 document.addEventListener("click", (event) => {
@@ -388,15 +464,18 @@ function setView(view) {
 function resetPostView() {
   currentMarkdown = null;
   currentPostId = null;
+  suggestedTitleValue = "";
+  titleCommitted = false;
   const article = $("article-text");
   if (article) {
     article.textContent = "";
   }
   setError("");
   setArticleStatus("No blog post generated yet. Click Generate Blog Post.");
-  setSuggestedTitle("");
+  setSuggestedTitleValue("");
   setFinalTitle("");
   setTitleControlsEnabled(false);
+  setGatedActionsEnabled(false);
   setView("intent");
 }
 
@@ -405,6 +484,8 @@ function clearIntent() {
   currentIntent = null;
   currentMarkdown = null;
   currentPostId = null;
+  suggestedTitleValue = "";
+  titleCommitted = false;
   Object.values(intentFields).forEach((el) => {
     if (el) {
       el.value = "";
@@ -416,9 +497,10 @@ function clearIntent() {
   }
   setError("");
   setArticleStatus("");
-  setSuggestedTitle("");
+  setSuggestedTitleValue("");
   setFinalTitle("");
   setTitleControlsEnabled(false);
+  setGatedActionsEnabled(false);
   setView("intent");
   isClearing = false;
 }

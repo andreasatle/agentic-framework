@@ -385,6 +385,15 @@ END OF INTENT UI CONTRACT
           </div>
         </header>
         <div id="suggested-title"></div>
+        <section class="action-row" id="suggested-title-action" hidden>
+          <div class="actions-left">
+            <span class="save-label">Use Suggested Title</span>
+            <div class="inline-controls">
+              <input type="checkbox" id="use-suggested-title" />
+              <label for="use-suggested-title">Use suggested title</label>
+            </div>
+          </div>
+        </section>
         <section class="action-row">
           <div class="actions-left">
             <span class="save-label">Set Title</span>
@@ -408,7 +417,7 @@ END OF INTENT UI CONTRACT
                   placeholder="article.md"
                   aria-label="Article filename"
                 />
-                <button type="button" class="btn btn--primary" onclick="saveDocument()">Save</button>
+                <button type="button" class="btn btn--primary" id="save-document-btn" onclick="saveDocument()">Save</button>
               </div>
             </div>
           </section>
