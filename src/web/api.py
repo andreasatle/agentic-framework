@@ -26,7 +26,7 @@ from web.schemas import (
     IntentSaveRequest,
 )
 from web.persistence import persist_generation
-from web.security import require_admin
+from web.security import require_admin, security
 from document_writer.domain.intent import load_intent_from_yaml
 
 
@@ -168,7 +168,10 @@ def save_document(payload: DocumentSaveRequest):
 
 
 @app.post("/agent-editor/edit")
-def edit_document_route(payload: AgentEditorRequest) -> AgentEditorResponse:
+def edit_document_route(
+    payload: AgentEditorRequest,
+    _: None = Depends(require_admin),
+) -> AgentEditorResponse:
     logger.info("agent-editor request received")
     try:
         logger.info("agent-editor controller invoked")
@@ -185,7 +188,13 @@ def edit_document_route(payload: AgentEditorRequest) -> AgentEditorResponse:
 
 
 @app.get("/blog", response_class=HTMLResponse)
-def get_blog_index(request: Request, include_drafts: bool = False, format: str = "html"):
+async def get_blog_index(request: Request, include_drafts: bool = False, format: str = "html"):
+    if include_drafts:
+        try:
+            creds = await security(request)
+            require_admin(creds)
+        except HTTPException:
+            include_drafts = False
     posts = list_posts(include_drafts=include_drafts)
     if format == "html":
         return templates.TemplateResponse(
@@ -205,7 +214,13 @@ def get_blog_index(request: Request, include_drafts: bool = False, format: str =
 
 
 @app.get("/blog/{post_id}", response_class=HTMLResponse)
-def get_blog_post(request: Request, post_id: str, include_drafts: bool = False, format: str = "html"):
+async def get_blog_post(request: Request, post_id: str, include_drafts: bool = False, format: str = "html"):
+    if include_drafts:
+        try:
+            creds = await security(request)
+            require_admin(creds)
+        except HTTPException:
+            include_drafts = False
     try:
         meta = read_post_meta(post_id)
         if not include_drafts and meta.status != "published":
