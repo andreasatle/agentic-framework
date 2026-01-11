@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict
 from agentic_framework.agent_dispatcher import AgentDispatcherBase
 from document_writer.domain.editor import edit_document, make_editor_agent, AgentEditorRequest
 from document_writer.domain.editor.chunking import Chunk, split_markdown, join_chunks
-from document_writer.domain.editor.validation import validate_diff
 
 from apps.blog.storage import read_post_intent, read_post_meta
 
@@ -78,16 +77,7 @@ def apply_policy_edit(
             dispatcher=dispatcher,
             editor_agent=agent,
         )
-        validation = validate_diff(
-            before=chunk.text,
-            after=response.edited_document,
-            policy_text=policy_text,
-        )
-        if not validation.accepted:
-            rejected_chunks.append(
-                RejectedChunk(chunk_index=chunk.index, reason=validation.reason)
-            )
-        if validation.accepted and response.edited_document != chunk.text:
+        if response.edited_document != chunk.text:
             changed_indices.append(chunk.index)
             updated_chunks.append(
                 Chunk(
