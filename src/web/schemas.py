@@ -52,8 +52,8 @@ class BlogEditRequest(BaseModel):
     - Editor output is authoritative only after validation.
     """
     post_id: str
-    policy_text: str | None
-    policy_id: str | None
+    policy_text: str | None = None
+    policy_id: str | None = None
     scope: BlogEditScope | None = None
 
     @model_validator(mode="after")
