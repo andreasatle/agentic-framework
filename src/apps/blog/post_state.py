@@ -51,9 +51,15 @@ class PostDerivedState:
         delta_type = delta["delta_type"]
         payload = delta["delta_payload"]
 
-        if delta_type == "content_chunks_modified":
+        if delta_type in ("content_chunks_modified", "content_free_edit", "content_policy_edit"):
             content_ref = _require_str(payload, "after_hash")
             return replace(self, content_ref=content_ref, revision_id=next_revision_id)
+        if delta_type == "title_changed":
+            title = _require_str_or_none(payload, "new_title")
+            return replace(self, title=title, revision_id=next_revision_id)
+        if delta_type == "author_changed":
+            author = _require_str(payload, "new_author")
+            return replace(self, author=author, revision_id=next_revision_id)
         if delta_type == "title_set":
             title = _require_str_or_none(payload, "title")
             return replace(self, title=title, revision_id=next_revision_id)

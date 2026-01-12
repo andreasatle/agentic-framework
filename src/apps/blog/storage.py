@@ -185,7 +185,11 @@ def _replay_post_content(post_id: str, posts_root: str) -> str:
             raise ValueError(f"Invalid revision entry for post {post_id}")
         if entry.get("status") != "applied":
             continue
-        if entry.get("delta_type") != "content_chunks_modified":
+        if entry.get("delta_type") not in (
+            "content_chunks_modified",
+            "content_free_edit",
+            "content_policy_edit",
+        ):
             continue
         revision_id = entry.get("revision_id")
         if not isinstance(revision_id, int):

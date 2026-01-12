@@ -91,7 +91,23 @@ def apply_policy_edit(
         writer.apply_delta(
             post_id,
             actor={"type": "policy", "id": actor_id or "policy"},
-            delta_type="content_chunks_modified",
+            delta_type="content_policy_edit",
+            delta_payload={
+                "changed_chunks": [],
+                "before_hash": before_hash,
+                "after_hash": before_hash,
+                "policy_hash": policy_hash,
+                "rejected_chunks": [],
+            },
+            reason=str(exc),
+            status="rejected",
+        )
+        raise
+    except Exception as exc:
+        writer.apply_delta(
+            post_id,
+            actor={"type": "policy", "id": actor_id or "policy"},
+            delta_type="content_policy_edit",
             delta_payload={
                 "changed_chunks": [],
                 "before_hash": before_hash,
@@ -123,7 +139,7 @@ def apply_policy_edit(
     revision_id = writer.apply_delta(
         post_id,
         actor={"type": "policy", "id": actor_id or "policy"},
-        delta_type="content_chunks_modified",
+        delta_type="content_policy_edit",
         delta_payload={
             "changed_chunks": changed_indices,
             "before_hash": before_hash,

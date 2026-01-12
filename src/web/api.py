@@ -315,7 +315,7 @@ def edit_blog_content_route(
         writer.apply_delta(
             payload.post_id,
             actor={"type": "human", "id": creds.username or "admin"},
-            delta_type="content_chunks_modified",
+            delta_type="content_free_edit",
             delta_payload={
                 "changed_chunks": _changed_chunk_indices(before_content, payload.content),
                 "before_hash": before_hash,
@@ -329,7 +329,7 @@ def edit_blog_content_route(
         writer.apply_delta(
             payload.post_id,
             actor={"type": "human", "id": creds.username or "admin"},
-            delta_type="content_chunks_modified",
+            delta_type="content_free_edit",
             delta_payload={
                 "changed_chunks": _changed_chunk_indices(before_content, payload.content),
                 "before_hash": before_hash,
@@ -343,7 +343,7 @@ def edit_blog_content_route(
         writer.apply_delta(
             payload.post_id,
             actor={"type": "human", "id": creds.username or "admin"},
-            delta_type="content_chunks_modified",
+            delta_type="content_free_edit",
             delta_payload={
                 "changed_chunks": [],
                 "before_hash": before_hash,
@@ -364,7 +364,7 @@ def edit_blog_content_route(
     revision_id = writer.apply_delta(
         payload.post_id,
         actor={"type": "human", "id": creds.username or "admin"},
-        delta_type="content_chunks_modified",
+        delta_type="content_free_edit",
         delta_payload={
             "changed_chunks": _changed_chunk_indices(before_content, response.edited_document),
             "before_hash": before_hash,
@@ -406,35 +406,12 @@ def edit_blog_post_route(
         policy_text = policy_path.read_text()
     if not policy_text.strip():
         raise HTTPException(status_code=400, detail="Policy text must be non-empty")
-    try:
-        result = apply_policy_edit(
-            payload.post_id,
-            policy_text,
-            actor_id=payload.policy_id or "inline",
-        )
-        return result
-    except ValueError:
-        raise
-    except Exception as exc:
-        before_content = read_post_content(payload.post_id)
-        before_hash = _hash_text(before_content)
-        policy_hash = hashlib.sha256(policy_text.encode("utf-8")).hexdigest()
-        writer = PostRevisionWriter()
-        writer.apply_delta(
-            payload.post_id,
-            actor={"type": "policy", "id": payload.policy_id or "inline"},
-            delta_type="content_chunks_modified",
-            delta_payload={
-                "changed_chunks": [],
-                "before_hash": before_hash,
-                "after_hash": before_hash,
-                "policy_hash": policy_hash,
-                "rejected_chunks": [],
-            },
-            reason=str(exc),
-            status="rejected",
-        )
-        raise HTTPException(status_code=500, detail="Edit failed")
+    result = apply_policy_edit(
+        payload.post_id,
+        policy_text,
+        actor_id=payload.policy_id or "inline",
+    )
+    return result
 
 
 @app.get("/blog/revisions")
