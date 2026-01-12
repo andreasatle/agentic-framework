@@ -7,7 +7,7 @@ from io import BytesIO
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, Depends, Query
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import yaml
@@ -135,7 +135,22 @@ def read_home(request: Request):
 
 
 @app.get("/writer", response_class=HTMLResponse)
-def read_writer(request: Request):
+def read_writer(request: Request, post_id: str | None = None):
+    if post_id:
+        try:
+            meta = read_post_meta(post_id)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="Post not found")
+        if meta.status != "draft":
+            raise HTTPException(status_code=409, detail="Post is not draft")
+        content = read_post_content(post_id)
+        return JSONResponse(
+            {
+                "post_id": meta.post_id,
+                "content": content,
+                "suggested_title": None,
+            }
+        )
     return templates.TemplateResponse("index.html", {"request": request})
 
 
