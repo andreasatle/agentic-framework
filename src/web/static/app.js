@@ -587,10 +587,33 @@ async function saveDocument() {
   }
 }
 
+async function createNewPost() {
+  try {
+    const resp = await fetch("/blog/create", { method: "POST" });
+    if (!resp.ok) {
+      const detail = await resp.text();
+      setError(detail || "Failed to create post.");
+      return;
+    }
+    const data = await resp.json();
+    if (data?.post_id) {
+      window.location.href = `/blog/writer?post_id=${encodeURIComponent(data.post_id)}`;
+    } else {
+      setError("Failed to create post.");
+    }
+  } catch (err) {
+    setError(err?.message || "Failed to create post.");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const queryPostId = new URLSearchParams(window.location.search).get("post_id");
   if (queryPostId) {
     loadExistingDraft(queryPostId);
+  }
+  const createBtn = $("create-post-btn");
+  if (createBtn) {
+    createBtn.addEventListener("click", createNewPost);
   }
   const input = $("intent-file");
   if (input) {

@@ -264,6 +264,23 @@ def suggest_blog_title_route(
     return {"suggested_title": title}
 
 
+@app.post("/blog/create")
+def create_blog_post_route(
+    creds = Depends(security),
+) -> dict[str, str]:
+    require_admin(creds)
+    author = (creds.username or "").strip()
+    if not author:
+        raise HTTPException(status_code=400, detail="Author must be set")
+    post_id, _ = create_post(
+        title=None,
+        author=author,
+        intent={},
+        content="",
+    )
+    return {"post_id": post_id}
+
+
 @app.post("/blog/set-title")
 def set_blog_title_route(
     payload: TitleSetRequest,

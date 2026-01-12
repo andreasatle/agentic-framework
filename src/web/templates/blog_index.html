@@ -12,6 +12,7 @@
         <header>
             <h1>Blog (read-only)</h1>
             <p>Read-only view of posts.</p>
+            <button type="button" class="btn btn--primary" id="create-post-btn">Create new post</button>
             {% if include_drafts %}
             <p>Showing drafts and published posts.</p>
             {% else %}
@@ -35,5 +36,6 @@
             {% endif %}
         </section>
     </main>
+    <script src="/static/app.js"></script>
 </body>
 </html>
