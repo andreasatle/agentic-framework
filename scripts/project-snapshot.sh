@@ -1,17 +1,13 @@
 #!/usr/bin/env bash
+set -e
 
-ROOT="${1:-.}"
+if [ "$#" -eq 0 ]; then
+  set -- src
+fi
 
-find "$ROOT" -type f \
-  ! -path "*/.git/*" \
-  ! -path "*/.venv/*" \
-  ! -path "*/__pycache__/*" \
-  ! -path "*/node_modules/*" \
-  ! -name "*.pyc" \
-  | sort \
-  | while read -r file; do
-      echo
-      echo "===== FILE: $file ====="
-      echo
-      cat "$file"
-    done
+git ls-files "$@" | sort | while read -r file; do
+  echo
+  echo "===== FILE: $file ====="
+  echo
+  cat "$file"
+done
