@@ -291,11 +291,14 @@ def edit_blog_content_route(
 ) -> dict[str, str]:
     require_admin(creds)
     try:
-        intent = read_post_intent(payload.post_id)
         content_path = Path("posts") / payload.post_id / "content.md"
         before_content = read_post_content(payload.post_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Post not found")
+    try:
+        intent = read_post_intent(payload.post_id)
+    except FileNotFoundError:
+        intent = {}
     writer = PostRevisionWriter()
     before_hash = _hash_text(before_content)
     try:

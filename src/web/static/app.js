@@ -583,6 +583,10 @@ async function saveDocument() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const queryPostId = new URLSearchParams(window.location.search).get("post_id");
+  if (queryPostId) {
+    loadExistingDraft(queryPostId);
+  }
   const input = $("intent-file");
   if (input) {
     input.addEventListener("change", uploadIntent);
@@ -627,6 +631,34 @@ function setView(view) {
 
   intent.hidden = view !== "intent";
   content.hidden = view !== "content";
+}
+
+async function loadExistingDraft(postId) {
+  try {
+    const resp = await fetch(`/writer?post_id=${encodeURIComponent(postId)}`);
+    if (!resp.ok) {
+      return;
+    }
+    const data = await resp.json();
+    currentIntent = null;
+    currentPostId = data.post_id || null;
+    currentMarkdown = data.content || "";
+    const articleArea = $("article-text");
+    if (articleArea) {
+      articleArea.innerHTML = marked.parse(currentMarkdown);
+    }
+    setSuggestedTitleValue("");
+    setFinalTitle("");
+    setEditMode(false);
+    setView("content");
+    setTitleControlsEnabled(!!currentPostId);
+    setEditControlsEnabled(!!currentPostId);
+    setPolicyEditControlsEnabled(!!currentPostId);
+    setGatedActionsEnabled(!!currentPostId);
+    setError("");
+  } catch (err) {
+    setError(err?.message || "Error loading post.");
+  }
 }
 
 function resetPostView() {
