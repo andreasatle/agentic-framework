@@ -1,4 +1,5 @@
 import web.bootstrap
+import hashlib
 import json
 import logging
 import os
@@ -18,8 +19,10 @@ from document_writer.apps.service import generate_document as generate_blog_post
 from document_writer.domain.editor.agent import make_editor_agent
 from document_writer.domain.editor.api import AgentEditorRequest, AgentEditorResponse
 from document_writer.domain.editor.service import edit_document
+from document_writer.domain.editor.chunking import split_markdown
 from document_writer.apps.title_suggester import suggest_title
 from apps.blog.edit_service import apply_policy_edit
+from apps.blog.post_revision_writer import PostRevisionWriter
 from apps.blog.storage import (
     TitleAlreadySetError,
     create_post,
@@ -59,6 +62,23 @@ templates = Jinja2Templates(directory=templates_dir)
 logger = logging.getLogger(__name__)
 editor_agent = make_editor_agent()
 editor_dispatcher = AgentDispatcherBase()
+
+
+def _hash_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _changed_chunk_indices(before: str, after: str) -> list[int]:
+    before_chunks = split_markdown(before)
+    after_chunks = split_markdown(after)
+    max_len = max(len(before_chunks), len(after_chunks))
+    changed: list[int] = []
+    for index in range(max_len):
+        before_text = before_chunks[index].text if index < len(before_chunks) else None
+        after_text = after_chunks[index].text if index < len(after_chunks) else None
+        if before_text != after_text:
+            changed.append(index)
+    return changed
 
 
 @app.on_event("startup")
@@ -219,8 +239,11 @@ def edit_blog_content_route(
         content_path = Path("posts") / payload.post_id / "content.md"
         if not content_path.exists():
             raise FileNotFoundError(f"content.md not found for post {payload.post_id}")
+        before_content = content_path.read_text()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Post not found")
+    writer = PostRevisionWriter()
+    before_hash = _hash_text(before_content)
     try:
         response = edit_document(
             AgentEditorRequest(
@@ -232,8 +255,32 @@ def edit_blog_content_route(
             editor_agent=editor_agent,
         )
     except ValueError as exc:
+        writer.apply_delta(
+            payload.post_id,
+            actor={"type": "human", "id": creds.username or "admin"},
+            delta_type="content_chunks_modified",
+            delta_payload={
+                "status": "rejected",
+                "changed_chunks": _changed_chunk_indices(before_content, payload.content),
+                "before_hash": before_hash,
+                "after_hash": _hash_text(payload.content),
+            },
+            reason=str(exc),
+        )
         raise HTTPException(status_code=400, detail=str(exc))
-    content_path.write_text(response.edited_document)
+    if response.edited_document != before_content:
+        writer.apply_delta(
+            payload.post_id,
+            actor={"type": "human", "id": creds.username or "admin"},
+            delta_type="content_chunks_modified",
+            delta_payload={
+                "status": "applied",
+                "changed_chunks": _changed_chunk_indices(before_content, response.edited_document),
+                "before_hash": before_hash,
+                "after_hash": _hash_text(response.edited_document),
+                "_content": response.edited_document,
+            },
+        )
     return {"post_id": payload.post_id, "content": response.edited_document}
 
 
@@ -259,7 +306,11 @@ def edit_blog_post_route(
         policy_text = policy_path.read_text()
     if not policy_text.strip():
         raise HTTPException(status_code=400, detail="Policy text must be non-empty")
-    result = apply_policy_edit(payload.post_id, policy_text)
+    result = apply_policy_edit(
+        payload.post_id,
+        policy_text,
+        actor_id=payload.policy_id or "inline",
+    )
     return result
 
 

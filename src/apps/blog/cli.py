@@ -61,7 +61,11 @@ def generate(args):
 def edit_post(args):
     editing_policy = Path(args.policy).read_text()
 
-    result = apply_policy_edit(args.post_id, editing_policy)
+    result = apply_policy_edit(
+        args.post_id,
+        editing_policy,
+        actor_id=Path(args.policy).name,
+    )
 
     for rejected in result.rejected_chunks:
         print(f"Chunk {rejected.chunk_index} rejected: {rejected.reason}")

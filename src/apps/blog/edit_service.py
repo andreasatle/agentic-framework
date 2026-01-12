@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
 
-import yaml
 from pydantic import BaseModel, ConfigDict
 
 from agentic_framework.agent_dispatcher import AgentDispatcherBase
@@ -12,6 +10,7 @@ from document_writer.domain.editor import edit_document, make_editor_agent, Agen
 from document_writer.domain.editor.chunking import Chunk, split_markdown, join_chunks
 
 from apps.blog.storage import read_post_intent, read_post_meta
+from apps.blog.post_revision_writer import PostRevisionWriter
 
 
 class RejectedChunk(BaseModel):
@@ -31,64 +30,79 @@ class EditResult(BaseModel):
     content: str
 
 
-class RevisionMeta(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    revision_id: int
-    timestamp: str
-    policy_hash: str
-    changed_chunks: list[int]
-    rejected_chunks: list[RejectedChunk]
+def _hash_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def apply_policy_edit(
     post_id: str,
     policy_text: str,
     posts_root: str = "posts",
+    *,
+    actor_id: str | None = None,
 ) -> EditResult:
     post_dir = Path(posts_root) / post_id
     if not post_dir.exists():
         raise FileNotFoundError(f"Post not found: {post_dir}")
 
     content_path = post_dir / "content.md"
-    meta_path = post_dir / "meta.yaml"
     meta = read_post_meta(post_id, posts_root)
     if meta.status != "draft":
         raise RuntimeError(f"Cannot edit non-draft post: {post_id}")
 
     document = content_path.read_text()
+    before_hash = _hash_text(document)
     intent = read_post_intent(post_id, posts_root)
+    policy_hash = hashlib.sha256(policy_text.encode("utf-8")).hexdigest()
 
     agent = make_editor_agent()
     dispatcher = AgentDispatcherBase()
+    writer = PostRevisionWriter(posts_root=posts_root)
 
     chunks = split_markdown(document)
     original_chunks = chunks
     changed_indices: list[int] = []
     rejected_chunks: list[RejectedChunk] = []
     updated_chunks: list[Chunk] = []
-    for chunk in chunks:
-        response = edit_document(
-            AgentEditorRequest(
-                document=chunk.text,
-                editing_policy=policy_text,
-                intent=intent,
-            ),
-            dispatcher=dispatcher,
-            editor_agent=agent,
-        )
-        if response.edited_document != chunk.text:
-            changed_indices.append(chunk.index)
-            updated_chunks.append(
-                Chunk(
-                    index=chunk.index,
-                    text=response.edited_document,
-                    leading_separator=chunk.leading_separator,
-                    trailing_separator=chunk.trailing_separator,
-                )
+    try:
+        for chunk in chunks:
+            response = edit_document(
+                AgentEditorRequest(
+                    document=chunk.text,
+                    editing_policy=policy_text,
+                    intent=intent,
+                ),
+                dispatcher=dispatcher,
+                editor_agent=agent,
             )
-        else:
-            updated_chunks.append(chunk)
+            if response.edited_document != chunk.text:
+                changed_indices.append(chunk.index)
+                updated_chunks.append(
+                    Chunk(
+                        index=chunk.index,
+                        text=response.edited_document,
+                        leading_separator=chunk.leading_separator,
+                        trailing_separator=chunk.trailing_separator,
+                    )
+                )
+            else:
+                updated_chunks.append(chunk)
+    except ValueError as exc:
+        writer.apply_delta(
+            post_id,
+            actor={"type": "policy", "id": actor_id or "policy"},
+            delta_type="content_chunks_modified",
+            delta_payload={
+                "status": "rejected",
+                "changed_chunks": [],
+                "before_hash": before_hash,
+                "after_hash": before_hash,
+                "policy_hash": policy_hash,
+                "rejected_chunks": [],
+            },
+            reason=str(exc),
+        )
+        raise
 
     if not changed_indices:
         return EditResult(
@@ -99,51 +113,33 @@ def apply_policy_edit(
             content=document,
         )
 
-    policy_hash = hashlib.sha256(policy_text.encode("utf-8")).hexdigest()
-
-    revisions_dir = post_dir / "revisions"
-    revisions_dir.mkdir(exist_ok=True)
-    revision_ids: list[int] = []
-    for entry in revisions_dir.glob("*.md"):
-        stem = entry.stem
-        if "_" in stem:
-            stem = stem.split("_", 1)[0]
-        if stem.isdigit():
-            revision_ids.append(int(stem))
-    next_rev = max(revision_ids, default=0) + 1
-
-    for chunk in original_chunks:
-        if chunk.index in changed_indices:
-            snapshot_path = revisions_dir / f"{next_rev}_{chunk.index}.md"
-            snapshot_path.write_text(chunk.text)
-
     assert [c.index for c in updated_chunks] == list(range(len(updated_chunks)))
     updated_document = join_chunks(updated_chunks)
-    content_path.write_text(updated_document)
-
-    if meta_path.exists():
-        meta_payload = yaml.safe_load(meta_path.read_text()) or {}
-        if not isinstance(meta_payload, dict):
-            raise ValueError(f"Invalid meta.yaml for post {post_id}")
-    else:
-        meta_payload = {}
-    revisions = meta_payload.get("revisions")
-    if not isinstance(revisions, list):
-        revisions = []
-    revision_meta = RevisionMeta(
-        revision_id=next_rev,
-        timestamp=datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        policy_hash=policy_hash,
-        changed_chunks=changed_indices,
-        rejected_chunks=rejected_chunks,
+    after_hash = _hash_text(updated_document)
+    snapshot_chunks = [
+        {"index": chunk.index, "text": chunk.text}
+        for chunk in original_chunks
+        if chunk.index in changed_indices
+    ]
+    revision_id = writer.apply_delta(
+        post_id,
+        actor={"type": "policy", "id": actor_id or "policy"},
+        delta_type="content_chunks_modified",
+        delta_payload={
+            "status": "applied",
+            "changed_chunks": changed_indices,
+            "before_hash": before_hash,
+            "after_hash": after_hash,
+            "policy_hash": policy_hash,
+            "rejected_chunks": [chunk.model_dump() for chunk in rejected_chunks],
+            "_content": updated_document,
+            "_snapshot_chunks": snapshot_chunks,
+        },
     )
-    revisions.append(revision_meta.model_dump())
-    meta_payload["revisions"] = revisions
-    meta_path.write_text(yaml.safe_dump(meta_payload, sort_keys=False, default_flow_style=False))
 
     return EditResult(
         post_id=post_id,
-        revision_id=next_rev,
+        revision_id=revision_id,
         changed_chunks=changed_indices,
         rejected_chunks=rejected_chunks,
         content=updated_document,
