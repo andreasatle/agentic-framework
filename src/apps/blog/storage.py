@@ -242,3 +242,104 @@ def _replay_post_content(post_id: str, posts_root: str) -> str:
     content_path = post_dir / "content.md"
     content_path.write_text(content)
     return content
+
+
+def _migrate_legacy_revisions(post_id: str, posts_root: str) -> None:
+    post_dir = _post_dir(post_id, posts_root)
+    meta_path = post_dir / "meta.yaml"
+    if not meta_path.exists():
+        raise FileNotFoundError(f"meta.yaml not found for post {post_id}")
+    meta_payload = yaml.safe_load(meta_path.read_text()) or {}
+    if not isinstance(meta_payload, dict):
+        raise ValueError(f"Invalid meta.yaml for post {post_id}")
+
+    revisions = meta_payload.get("revisions")
+    existing_revisions: list[dict] = []
+    if revisions is not None:
+        if not isinstance(revisions, list):
+            raise ValueError(f"Invalid revisions for post {post_id}")
+        for entry in revisions:
+            if not isinstance(entry, dict):
+                raise ValueError(f"Invalid revision entry for post {post_id}")
+            existing_revisions.append(dict(entry))
+
+    snapshots_by_revision = _load_snapshot_groups(post_dir)
+
+    revisions_by_id: dict[int, dict] = {}
+    for entry in existing_revisions:
+        revision_id = entry.get("revision_id")
+        if not isinstance(revision_id, int):
+            raise ValueError(f"Invalid revision_id for post {post_id}")
+        revisions_by_id[revision_id] = entry
+
+    needs_migration = False
+    for revision_id, snapshot_chunks in snapshots_by_revision.items():
+        entry = revisions_by_id.get(revision_id)
+        if entry is None:
+            needs_migration = True
+            continue
+        delta_type = entry.get("delta_type")
+        if delta_type != "content_chunks_modified":
+            needs_migration = True
+
+    if not needs_migration:
+        return
+
+    for revision_id, snapshot_chunks in snapshots_by_revision.items():
+        entry = revisions_by_id.get(revision_id)
+        if entry is None or entry.get("delta_type") != "content_chunks_modified":
+            content, after_hash = _build_content_from_snapshots(snapshot_chunks)
+            entry = {
+                "revision_id": revision_id,
+                "delta_type": "content_chunks_modified",
+                "delta_payload": {
+                    "changed_chunks": list(range(len(snapshot_chunks))),
+                    "before_hash": None,
+                    "after_hash": after_hash,
+                },
+                "status": "applied",
+                "actor": {"type": "migration", "id": "legacy"},
+            }
+            revisions_by_id[revision_id] = entry
+
+    migrated = [revisions_by_id[rid] for rid in sorted(revisions_by_id)]
+    meta_payload["revisions"] = migrated
+    meta_path.write_text(yaml.safe_dump(meta_payload, sort_keys=False, default_flow_style=False))
+
+
+def _load_snapshot_groups(post_dir: Path) -> dict[int, dict[int, str]]:
+    revisions_dir = post_dir / "revisions"
+    if not revisions_dir.exists():
+        return {}
+    snapshots_by_revision: dict[int, dict[int, str]] = {}
+    for snapshot_path in revisions_dir.glob("*.md"):
+        stem = snapshot_path.stem
+        if "_" not in stem:
+            raise ValueError(f"Invalid snapshot filename {snapshot_path}")
+        revision_str, index_str = stem.split("_", 1)
+        if not revision_str.isdigit() or not index_str.isdigit():
+            raise ValueError(f"Invalid snapshot filename {snapshot_path}")
+        revision_id = int(revision_str)
+        index = int(index_str)
+        snapshots_by_revision.setdefault(revision_id, {})[index] = snapshot_path.read_text()
+    return snapshots_by_revision
+
+
+def _build_content_from_snapshots(snapshot_chunks: dict[int, str]) -> tuple[str, str]:
+    if not snapshot_chunks:
+        raise ValueError("No snapshot chunks available")
+    max_index = max(snapshot_chunks)
+    expected_indices = list(range(max_index + 1))
+    if sorted(snapshot_chunks.keys()) != expected_indices:
+        raise ValueError("Snapshot indices must be contiguous")
+    chunks = [
+        Chunk(
+            index=i,
+            text=snapshot_chunks[i],
+            trailing_separator="\n\n" if i < max_index else "",
+        )
+        for i in range(max_index + 1)
+    ]
+    content = join_chunks(chunks)
+    after_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return content, after_hash
