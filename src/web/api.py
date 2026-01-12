@@ -13,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 import yaml
 import markdown
 from pathlib import Path
+from pydantic import BaseModel
 
 from agentic_framework.agent_dispatcher import AgentDispatcherBase
 from document_writer.apps.service import generate_document as generate_blog_post
@@ -77,6 +78,11 @@ def _changed_chunk_indices(before: str, after: str) -> list[int]:
         if before_text != after_text:
             changed.append(index)
     return changed
+
+
+class AuthorSetRequest(BaseModel):
+    post_id: str
+    author: str
 
 
 @app.on_event("startup")
@@ -216,11 +222,10 @@ def set_blog_title_route(
 ) -> dict[str, str]:
     require_admin(creds)
     try:
-        meta = read_post_meta(payload.post_id)
+        read_post_meta(payload.post_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Post not found")
     writer = PostRevisionWriter()
-    old_title = meta.title
     new_title = (payload.title or "").strip()
     if not new_title:
         reason = "Title must be a non-empty string"
@@ -228,7 +233,7 @@ def set_blog_title_route(
             payload.post_id,
             actor={"type": "human", "id": creds.username or "admin"},
             delta_type="title_changed",
-            delta_payload={"old_title": old_title, "new_title": new_title},
+            delta_payload={"new_title": new_title},
             reason=reason,
             status="rejected",
         )
@@ -237,9 +242,29 @@ def set_blog_title_route(
         payload.post_id,
         actor={"type": "human", "id": creds.username or "admin"},
         delta_type="title_changed",
-        delta_payload={"old_title": old_title, "new_title": new_title},
+        delta_payload={"new_title": new_title},
     )
-    return {"post_id": meta.post_id, "title": new_title}
+    return {"post_id": payload.post_id, "title": new_title}
+
+
+@app.post("/blog/set-author")
+def set_blog_author_route(
+    payload: AuthorSetRequest,
+    creds = Depends(security),
+) -> dict[str, str]:
+    require_admin(creds)
+    try:
+        read_post_meta(payload.post_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Post not found")
+    writer = PostRevisionWriter()
+    writer.apply_delta(
+        payload.post_id,
+        actor={"type": "human", "id": creds.username or "admin"},
+        delta_type="author_changed",
+        delta_payload={"new_author": payload.author},
+    )
+    return {"post_id": payload.post_id, "author": payload.author}
 
 
 @app.post("/blog/edit-content")

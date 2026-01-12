@@ -78,11 +78,18 @@ class PostRevisionWriter:
         if reason is not None:
             revision_entry["reason"] = reason
 
-        if delta_type == "title_changed" and status == "applied":
+        if delta_type == "title_changed":
             new_title = record_payload.get("new_title")
             if not isinstance(new_title, str):
                 raise ValueError("title_changed requires delta_payload.new_title as string")
-            meta_payload["title"] = new_title
+            if status == "applied":
+                meta_payload["title"] = new_title
+        if delta_type == "author_changed":
+            new_author = record_payload.get("new_author")
+            if not isinstance(new_author, str):
+                raise ValueError("author_changed requires delta_payload.new_author as string")
+            if status == "applied":
+                meta_payload["author"] = new_author
         revisions.append(revision_entry)
         meta_payload["revisions"] = revisions
         meta_path.write_text(yaml.safe_dump(meta_payload, sort_keys=False, default_flow_style=False))
