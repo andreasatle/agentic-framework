@@ -437,16 +437,18 @@ function toggleEditContent() {
 }
 
 async function applyEdit() {
-  if (!currentPostId || editRequestInFlight) return;
-  if (!isEditingContent) return;
-  const editor = $("article-editor");
-  const rawContent = editor?.value || "";
-  if (!rawContent.trim()) {
-    setError("Content cannot be empty.");
-    return;
-  }
+  const canStartEdit = !!currentPostId && !editRequestInFlight && isEditingContent;
   setEditRequestState(true);
   try {
+    if (!canStartEdit) {
+      return;
+    }
+    const editor = $("article-editor");
+    const rawContent = editor?.value || "";
+    if (!rawContent.trim()) {
+      setError("Content cannot be empty.");
+      return;
+    }
     const resp = await fetch("/blog/edit-content", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -473,18 +475,21 @@ async function applyEdit() {
 }
 
 async function runPolicyEdit() {
-  if (!currentPostId || policyEditInFlight) return;
-  const policyText = $("policy-text");
-  const policyValue = (policyText?.value || "").trim();
-  if (!policyValue) {
-    setPolicyEditStatus("Policy text is required.");
-    return;
-  }
+  const canStartPolicyEdit = !!currentPostId && !policyEditInFlight;
   policyEditInFlight = true;
   setPolicyEditControlsEnabled(false);
   setPolicyEditStatus("editing…");
   setPolicyEditResult("");
   try {
+    if (!canStartPolicyEdit) {
+      return;
+    }
+    const policyText = $("policy-text");
+    const policyValue = (policyText?.value || "").trim();
+    if (!policyValue) {
+      setPolicyEditStatus("Policy text is required.");
+      return;
+    }
     const resp = await fetch("/blog/edit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
