@@ -19,7 +19,6 @@ docs_drafts/
 examples/
 blog_drafts/
 docs_draft/
-*.pdf
-*.png
 /*.txt
 tesseract.py
+data/
