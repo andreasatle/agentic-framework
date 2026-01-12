@@ -6,7 +6,7 @@ import os
 from io import BytesIO
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request, Depends, Query
+from fastapi import FastAPI, HTTPException, Request, Depends, Query, Body
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -266,18 +266,55 @@ def suggest_blog_title_route(
 
 @app.post("/blog/create")
 def create_blog_post_route(
+    payload: DocumentGenerateRequest | None = Body(default=None),
     creds = Depends(security),
 ) -> dict[str, str]:
     require_admin(creds)
     author = (creds.username or "").strip()
     if not author:
         raise HTTPException(status_code=400, detail="Author must be set")
+    intent = payload.intent.model_dump() if payload is not None else {}
     post_id, _ = create_post(
         title=None,
         author=author,
-        intent={},
+        intent=intent,
         content="",
     )
+    if payload is not None:
+        blog_result = generate_blog_post(
+            intent=payload.intent,
+            trace=False,
+        )
+        markdown = blog_result.markdown
+        content_path = Path("posts") / post_id / "content.md"
+        before_content = read_post_content(post_id)
+        before_hash = _hash_text(before_content)
+        after_hash = _hash_text(markdown)
+        snapshot_chunks = [
+            {"index": chunk.index, "text": chunk.text}
+            for chunk in split_markdown(markdown)
+        ]
+        writer = PostRevisionWriter()
+        revision_id = writer.apply_delta(
+            post_id,
+            actor={"type": "generator", "id": author},
+            delta_type="content_free_edit",
+            delta_payload={
+                "changed_chunks": _changed_chunk_indices(before_content, markdown),
+                "before_hash": before_hash,
+                "after_hash": after_hash,
+            },
+        )
+        if not isinstance(revision_id, int):
+            raise HTTPException(status_code=500, detail="Failed to record revision")
+        revisions_dir = Path("posts") / post_id / "revisions"
+        revisions_dir.mkdir(parents=True, exist_ok=True)
+        for snapshot in snapshot_chunks:
+            index = snapshot["index"]
+            text = snapshot["text"]
+            snapshot_path = revisions_dir / f"{revision_id}_{index}.md"
+            snapshot_path.write_text(text)
+        content_path.write_text(markdown)
     return {"post_id": post_id}
 
 
