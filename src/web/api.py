@@ -200,9 +200,13 @@ def generate_blog_post_route(
     ) -> dict[str, str | None]:
     require_admin(creds)
     intent = payload.intent
+    author = (creds.username or "").strip()
+    if not author:
+        raise HTTPException(status_code=400, detail="Author must be set via /blog/set-author")
+    # content-only authority: writer generates content, metadata remains blog-owned
     post_id, _ = create_post(
         title=None,
-        author=creds.username or "system",
+        author=author,
         intent=intent.model_dump(),
         content="",
     )
