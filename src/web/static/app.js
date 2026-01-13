@@ -612,6 +612,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (queryPostId) {
     loadExistingDraft(queryPostId);
   }
+  const intentContainer = $("intent-container");
+  if (!queryPostId && intentContainer) {
+    intentContainer.hidden = false;
+  }
   const createBtn = $("create-post-btn");
   if (createBtn) {
     createBtn.addEventListener("click", createNewPost);
@@ -670,6 +674,10 @@ async function loadExistingDraft(postId) {
     }
     const data = await resp.json();
     currentIntent = null;
+    const intentContainer = $("intent-container");
+    if (intentContainer) {
+      intentContainer.hidden = true;
+    }
     currentPostId = data.post_id || null;
     currentMarkdown = data.content || "";
     currentRevisions = Array.isArray(data.revisions) ? data.revisions : [];
