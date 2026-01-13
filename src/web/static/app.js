@@ -3,6 +3,8 @@ let currentMarkdown = null;
 let currentPostId = null;
 let currentRevisions = [];
 let currentEditMode = "free";
+let currentStatus = null;
+let currentLastRevisionId = null;
 let suggestedTitleValue = "";
 let titleCommitted = false;
 let isEditingContent = false;
@@ -162,6 +164,18 @@ function updateSuggestedTitleAction() {
   if (button) {
     button.hidden = !shouldShow;
     button.disabled = !shouldShow;
+  }
+}
+
+function setInvariantIndicators(status, lastRevisionId) {
+  const statusTarget = $("post-status-indicator");
+  const revisionTarget = $("post-revision-indicator");
+  if (statusTarget) {
+    statusTarget.textContent = `Status: ${status || "—"}`;
+  }
+  if (revisionTarget) {
+    const label = typeof lastRevisionId === "number" ? String(lastRevisionId) : "—";
+    revisionTarget.textContent = `Last revision: ${label}`;
   }
 }
 
@@ -737,6 +751,8 @@ async function loadExistingDraft(postId) {
     }
     currentPostId = data.post_id || null;
     currentMarkdown = data.content || "";
+    currentStatus = data.status || null;
+    currentLastRevisionId = data.last_revision_id ?? null;
     currentRevisions = Array.isArray(data.revisions) ? data.revisions : [];
     const articleArea = $("article-text");
     if (articleArea) {
@@ -761,6 +777,7 @@ async function loadExistingDraft(postId) {
     setEditControlsEnabled(!!currentPostId);
     setPolicyEditControlsEnabled(!!currentPostId);
     setGatedActionsEnabled(!!currentPostId);
+    setInvariantIndicators(currentStatus, currentLastRevisionId);
     applyEditModeState();
     setError("");
   } catch (err) {
@@ -771,6 +788,8 @@ async function loadExistingDraft(postId) {
 function resetPostView() {
   currentMarkdown = null;
   currentPostId = null;
+  currentStatus = null;
+  currentLastRevisionId = null;
   suggestedTitleValue = "";
   titleCommitted = false;
   isEditingContent = false;
@@ -799,6 +818,7 @@ function resetPostView() {
   setPolicyEditControlsEnabled(false);
   setPolicyEditStatus("");
   setPolicyEditResult("");
+  setInvariantIndicators(null, null);
   setView("intent");
 }
 
@@ -807,6 +827,8 @@ function clearIntent() {
   currentIntent = null;
   currentMarkdown = null;
   currentPostId = null;
+  currentStatus = null;
+  currentLastRevisionId = null;
   suggestedTitleValue = "";
   titleCommitted = false;
   isEditingContent = false;
@@ -836,6 +858,7 @@ function clearIntent() {
   setPolicyEditControlsEnabled(false);
   setPolicyEditStatus("");
   setPolicyEditResult("");
+  setInvariantIndicators(null, null);
   setView("intent");
   isClearing = false;
 }

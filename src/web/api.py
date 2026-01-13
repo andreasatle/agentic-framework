@@ -162,9 +162,17 @@ def read_writer(request: Request, post_id: str | None = None):
             }
             summaries.append(summary)
         summaries.sort(key=lambda item: item.get("revision_id") or 0)
+        revision_ids = [
+            entry.get("revision_id")
+            for entry in revisions
+            if isinstance(entry, dict) and isinstance(entry.get("revision_id"), int)
+        ]
+        last_revision_id = max(revision_ids) if revision_ids else None
         return JSONResponse(
             {
                 "post_id": meta.post_id,
+                "status": meta.status,
+                "last_revision_id": last_revision_id,
                 "meta": {
                     "title": meta.title,
                     "author": meta.author,
