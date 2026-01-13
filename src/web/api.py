@@ -141,6 +141,9 @@ def read_editor_entry(
     creds = Depends(security),
 ):
     require_admin(creds)
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept.lower():
+        raise HTTPException(status_code=406, detail="Editor renders HTML only")
     if post_id:
         return templates.TemplateResponse(
             "blog_editor.html",
@@ -598,12 +601,7 @@ def edit_document_route(
 
 @app.get("/blog", response_class=HTMLResponse)
 async def get_blog_index(request: Request, include_drafts: bool = False, format: str = "html"):
-    if include_drafts:
-        try:
-            creds = await security(request)
-            require_admin(creds)
-        except HTTPException:
-            include_drafts = False
+    include_drafts = False
     posts = list_posts(include_drafts=include_drafts)
     if format == "html":
         return templates.TemplateResponse(
@@ -624,12 +622,7 @@ async def get_blog_index(request: Request, include_drafts: bool = False, format:
 
 @app.get("/blog/{post_id}", response_class=HTMLResponse)
 async def get_blog_post(request: Request, post_id: str, include_drafts: bool = False, format: str = "html"):
-    if include_drafts:
-        try:
-            creds = await security(request)
-            require_admin(creds)
-        except HTTPException:
-            include_drafts = False
+    include_drafts = False
     try:
         meta = read_post_meta(post_id)
         if not include_drafts and meta.status != "published":
