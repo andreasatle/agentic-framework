@@ -24,6 +24,7 @@ from document_writer.domain.editor.chunking import split_markdown
 from document_writer.apps.title_suggester import suggest_title
 from apps.blog.edit_service import apply_policy_edit
 from apps.blog.post_revision_writer import PostRevisionWriter
+from apps.blog.paths import POSTS_ROOT
 from apps.blog.storage import (
     create_post,
     list_posts,
@@ -239,7 +240,7 @@ def generate_blog_post_route(
         trace=False,
     )
     markdown = blog_result.markdown
-    content_path = Path("posts") / post_id / "content.md"
+    content_path = POSTS_ROOT / post_id / "content.md"
     before_content = read_post_content(post_id)
     before_hash = _hash_text(before_content)
     after_hash = _hash_text(markdown)
@@ -261,7 +262,7 @@ def generate_blog_post_route(
     revision_recorded = True
     if not isinstance(revision_id, int):
         raise HTTPException(status_code=500, detail="Failed to record revision")
-    revisions_dir = Path("posts") / post_id / "revisions"
+    revisions_dir = POSTS_ROOT / post_id / "revisions"
     revisions_dir.mkdir(parents=True, exist_ok=True)
     for snapshot in snapshot_chunks:
         index = snapshot["index"]
@@ -313,7 +314,7 @@ def create_blog_post_route(
             trace=False,
         )
         markdown = blog_result.markdown
-        content_path = Path("posts") / post_id / "content.md"
+        content_path = POSTS_ROOT / post_id / "content.md"
         before_content = read_post_content(post_id)
         before_hash = _hash_text(before_content)
         after_hash = _hash_text(markdown)
@@ -335,7 +336,7 @@ def create_blog_post_route(
         revision_recorded = True
         if not isinstance(revision_id, int):
             raise HTTPException(status_code=500, detail="Failed to record revision")
-        revisions_dir = Path("posts") / post_id / "revisions"
+        revisions_dir = POSTS_ROOT / post_id / "revisions"
         revisions_dir.mkdir(parents=True, exist_ok=True)
         for snapshot in snapshot_chunks:
             index = snapshot["index"]
@@ -410,7 +411,7 @@ def edit_blog_content_route(
     require_admin(creds)
     # UI state is non-authoritative; content mutations are revision-led only.
     try:
-        content_path = Path("posts") / payload.post_id / "content.md"
+        content_path = POSTS_ROOT / payload.post_id / "content.md"
         before_content = read_post_content(payload.post_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -493,7 +494,7 @@ def edit_blog_content_route(
     revision_recorded = True
     if not isinstance(revision_id, int):
         raise HTTPException(status_code=500, detail="Failed to record revision")
-    revisions_dir = Path("posts") / payload.post_id / "revisions"
+    revisions_dir = POSTS_ROOT / payload.post_id / "revisions"
     revisions_dir.mkdir(parents=True, exist_ok=True)
     for snapshot in snapshot_chunks:
         index = snapshot["index"]
@@ -547,7 +548,7 @@ def list_blog_revisions(
         read_post_meta(post_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Post not found")
-    meta_path = Path("posts") / post_id / "meta.yaml"
+    meta_path = POSTS_ROOT / post_id / "meta.yaml"
     meta_payload = yaml.safe_load(meta_path.read_text()) or {}
     if not isinstance(meta_payload, dict):
         raise HTTPException(status_code=500, detail="Invalid meta.yaml")
