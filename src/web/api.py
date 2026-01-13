@@ -188,7 +188,7 @@ def read_editor_entry(request: Request, post_id: str | None = None, creds = Depe
         {
             "post_id": post.post_id,
             "title": post.title,
-            "created_at": post.created_at,
+            "created_at": post.created_at.isoformat() if post.created_at is not None else None,
         }
         for post in posts
         if post.status == "draft"
