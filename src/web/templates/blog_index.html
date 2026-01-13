@@ -12,19 +12,14 @@
         <header>
             <h1>Blog (read-only)</h1>
             <p>Read-only view of posts.</p>
-            <button type="button" class="btn btn--primary" id="create-post-btn">Create new post</button>
-            {% if include_drafts %}
-            <p>Showing drafts and published posts.</p>
-            {% else %}
             <p>Showing published posts only.</p>
-            {% endif %}
         </header>
         <section>
             {% if posts %}
                 <ul>
                     {% for p in posts %}
                         <li>
-                            <a href="/blog/{{ p.post_id }}?include_drafts={{ 'true' if include_drafts else 'false' }}">
+                            <a href="/blog/{{ p.post_id }}">
                                 {{ p.title or '(untitled)' }}
                             </a>
                             <div>By {{ p.author }} · {{ p.created_at }}</div>
@@ -36,6 +31,5 @@
             {% endif %}
         </section>
     </main>
-    <script src="/static/app.js"></script>
 </body>
 </html>
