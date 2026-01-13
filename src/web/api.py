@@ -136,6 +136,8 @@ def read_home(request: Request):
 @app.get("/blog/editor")
 def read_editor_entry(request: Request, post_id: str | None = None, creds = Depends(security)):
     require_admin(creds)
+    if post_id:
+        return templates.TemplateResponse("index.html", {"request": request})
     posts = list_posts(include_drafts=True)
     draft_posts = [post for post in posts if post.status == "draft"]
     return templates.TemplateResponse(
