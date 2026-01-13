@@ -5,6 +5,7 @@ from pathlib import Path
 
 import yaml
 
+from apps.blog.paths import POSTS_ROOT
 from apps.blog.types import BlogPostMeta
 from document_writer.domain.editor.chunking import Chunk, join_chunks
 
@@ -15,7 +16,6 @@ def create_post(
     author: str,
     intent: dict,
     content: str,
-    posts_root: str = "posts",
 ) -> tuple[str, str]:
     """
     Creates a new blog post directory and writes meta.yaml, intent.yaml, content.md.
@@ -27,8 +27,7 @@ def create_post(
     suffix = secrets.token_hex(3)
     post_id = f"{ts_str}__{suffix}"
 
-    root = Path(posts_root)
-    post_dir = root / post_id
+    post_dir = POSTS_ROOT / post_id
     if post_dir.exists():
         raise FileExistsError(f"Post directory already exists: {post_dir}")
 
@@ -53,12 +52,11 @@ def create_post(
     return post_id, str(post_dir.resolve())
 
 
-def list_posts(*, posts_root: str = "posts", include_drafts: bool = False) -> list[BlogPostMeta]:
+def list_posts(*, include_drafts: bool = False) -> list[BlogPostMeta]:
     posts: list[BlogPostMeta] = []
-    root = Path(posts_root)
-    if not root.exists() or not root.is_dir():
+    if not POSTS_ROOT.exists() or not POSTS_ROOT.is_dir():
         return []
-    for entry in root.iterdir():
+    for entry in POSTS_ROOT.iterdir():
         if not entry.is_dir():
             continue
         meta_path = entry / "meta.yaml"
@@ -76,12 +74,8 @@ def list_posts(*, posts_root: str = "posts", include_drafts: bool = False) -> li
     return posts
 
 
-def _post_dir(post_id: str, posts_root: str) -> Path:
-    return Path(posts_root) / post_id
-
-
-def read_post_meta(post_id: str, posts_root: str = "posts") -> BlogPostMeta:
-    post_dir = _post_dir(post_id, posts_root)
+def read_post_meta(post_id: str) -> BlogPostMeta:
+    post_dir = POSTS_ROOT / post_id
     meta_path = post_dir / "meta.yaml"
     if not meta_path.exists():
         raise FileNotFoundError(f"meta.yaml not found for post {post_id}")
@@ -92,28 +86,28 @@ def read_post_meta(post_id: str, posts_root: str = "posts") -> BlogPostMeta:
         raise ValueError(f"Invalid meta.yaml for post {post_id}: {exc}") from exc
 
 
-def read_post_content(post_id: str, posts_root: str = "posts") -> str:
-    post_dir = _post_dir(post_id, posts_root)
+def read_post_content(post_id: str) -> str:
+    post_dir = POSTS_ROOT / post_id
     content_path = post_dir / "content.md"
     if not content_path.exists():
-        return _replay_post_content(post_id, posts_root)
+        return _replay_post_content(post_id)
     return content_path.read_text()
 
 
-def write_post_content(post_id: str, content: str, posts_root: str = "posts") -> None:
-    post_dir = _post_dir(post_id, posts_root)
+def write_post_content(post_id: str, content: str) -> None:
+    post_dir = POSTS_ROOT / post_id
     content_path = post_dir / "content.md"
     content_path.write_text(content)
 
 
-def ensure_draft(post_id: str, posts_root: str = "posts") -> None:
-    meta = read_post_meta(post_id, posts_root)
+def ensure_draft(post_id: str) -> None:
+    meta = read_post_meta(post_id)
     if meta.status != "draft":
         raise RuntimeError(f"Cannot edit non-draft post: {post_id}")
 
 
-def next_revision_id(post_id: str, posts_root: str = "posts") -> int:
-    post_dir = _post_dir(post_id, posts_root)
+def next_revision_id(post_id: str) -> int:
+    post_dir = POSTS_ROOT / post_id
     meta_path = post_dir / "meta.yaml"
     if meta_path.exists():
         meta_payload = yaml.safe_load(meta_path.read_text()) or {}
@@ -145,14 +139,14 @@ def next_revision_id(post_id: str, posts_root: str = "posts") -> int:
     return max(revision_ids, default=0) + 1
 
 
-def append_revision_meta(post_id: str, revision_entry: dict, posts_root: str = "posts") -> None:
+def append_revision_meta(post_id: str, revision_entry: dict) -> None:
     raise NotImplementedError(
         "Revisions must be appended via PostRevisionWriter.apply_delta."
     )
 
 
-def read_post_intent(post_id: str, posts_root: str = "posts") -> dict:
-    post_dir = _post_dir(post_id, posts_root)
+def read_post_intent(post_id: str) -> dict:
+    post_dir = POSTS_ROOT / post_id
     intent_path = post_dir / "intent.yaml"
     if not intent_path.exists():
         raise FileNotFoundError(f"intent.yaml not found for post {post_id}")
@@ -165,8 +159,8 @@ def read_post_intent(post_id: str, posts_root: str = "posts") -> dict:
         raise ValueError(f"Invalid intent.yaml for post {post_id}: {exc}") from exc
 
 
-def _replay_post_content(post_id: str, posts_root: str) -> str:
-    post_dir = _post_dir(post_id, posts_root)
+def _replay_post_content(post_id: str) -> str:
+    post_dir = POSTS_ROOT / post_id
     meta_path = post_dir / "meta.yaml"
     if not meta_path.exists():
         raise FileNotFoundError(f"meta.yaml not found for post {post_id}")
@@ -254,8 +248,8 @@ def _replay_post_content(post_id: str, posts_root: str) -> str:
     return content
 
 
-def _migrate_legacy_revisions(post_id: str, posts_root: str) -> None:
-    post_dir = _post_dir(post_id, posts_root)
+def _migrate_legacy_revisions(post_id: str) -> None:
+    post_dir = POSTS_ROOT / post_id
     meta_path = post_dir / "meta.yaml"
     if not meta_path.exists():
         raise FileNotFoundError(f"meta.yaml not found for post {post_id}")
