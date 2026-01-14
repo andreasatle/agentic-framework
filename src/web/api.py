@@ -6,7 +6,7 @@ import os
 from io import BytesIO
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, Body
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -329,15 +329,20 @@ def suggest_blog_title_route(
 
 
 @app.post("/blog/create")
-async def create_blog_post_route(
-    request: Request,
+def create_blog_post_route(
+    payload: dict = Body(...),
     creds = Depends(security),
-) -> RedirectResponse:
+) -> dict[str, str]:
     require_admin(creds)
-    form = await request.form()
-    intent_text = form.get("intent") or ""
-    intent_payload = json.loads(intent_text) if intent_text else {}
-    intent = IntentEnvelope.model_validate(intent_payload)
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid intent payload")
+    intent_payload = payload.get("intent")
+    if not isinstance(intent_payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid intent payload")
+    try:
+        intent = IntentEnvelope.model_validate(intent_payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     post_id, _ = create_post(
         title=None,
         author=(creds.username or "unknown"),
@@ -374,7 +379,7 @@ async def create_blog_post_route(
     if not revision_recorded:
         raise HTTPException(status_code=500, detail="Revision required before content write")
     write_post_content(post_id, markdown)
-    return RedirectResponse(f"/blog/editor?post_id={post_id}", status_code=303)
+    return {"post_id": post_id}
 
 
 @app.post("/blog/set-title")

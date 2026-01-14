@@ -756,6 +756,33 @@ async function createNewPostFromIntent() {
   }
 }
 
+async function createBlogPostFromIntent(intentObject) {
+  if (!intentObject) {
+    setError("No intent to generate from. Load or apply changes first.");
+    return;
+  }
+  try {
+    const resp = await fetch("/blog/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: intentObject }),
+    });
+    if (!resp.ok) {
+      const detail = await resp.text();
+      setError(detail || "Failed to create post.");
+      return;
+    }
+    const data = await resp.json();
+    if (data?.post_id) {
+      window.location = `/blog/editor?post_id=${encodeURIComponent(data.post_id)}`;
+    } else {
+      setError("Failed to create post.");
+    }
+  } catch (err) {
+    setError(err?.message || "Failed to create post.");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const queryPostId = new URLSearchParams(window.location.search).get("post_id");
   const queryMode = new URLSearchParams(window.location.search).get("mode");
@@ -791,6 +818,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const intentForm = $("intent-form");
   if (intentForm) {
     intentForm.addEventListener("input", applyIntentChanges);
+    intentForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      createBlogPostFromIntent(readIntentFromForm());
+    });
+  }
+  const generateBtn = $("generate-blog-post-btn");
+  if (generateBtn) {
+    generateBtn.addEventListener("click", () => {
+      createBlogPostFromIntent(readIntentFromForm());
+    });
   }
   $("set-title-btn")?.addEventListener("click", setTitle);
   $("use-suggested-title")?.addEventListener("click", applySuggestedTitle);
