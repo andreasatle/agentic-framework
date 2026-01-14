@@ -139,12 +139,9 @@ function setEditMode(enabled) {
   const editor = $("article-editor");
   const applyBtn = $("apply-edit-btn");
   const editBtn = $("edit-content-btn");
-  if (article) article.hidden = enabled;
   if (editor) {
-    editor.hidden = !enabled;
     if (enabled) editor.value = currentMarkdown || "";
   }
-  if (applyBtn) applyBtn.hidden = !enabled;
   if (editBtn) editBtn.textContent = enabled ? "Cancel edit" : "Edit content";
 }
 
@@ -162,7 +159,6 @@ function updateSuggestedTitleAction() {
   const button = $("use-suggested-title");
   const shouldShow = !!suggestedTitleValue && !titleCommitted;
   if (button) {
-    button.hidden = !shouldShow;
     button.disabled = !shouldShow;
   }
 }
