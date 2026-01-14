@@ -46,6 +46,7 @@ from web.schemas import (
 )
 from web.security import require_admin, security
 from document_writer.domain.intent import load_intent_from_yaml
+from document_writer.domain.intent.types import IntentEnvelope
 
 
 
@@ -175,6 +176,47 @@ def read_editor_entry(
     )
 
 
+@app.get("/blog/editor/data")
+def read_editor_data(
+    post_id: str,
+    creds = Depends(security),
+) -> dict[str, object]:
+    require_admin(creds)
+    try:
+        meta = read_post_meta(post_id)
+        content = read_post_content(post_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Post not found")
+    try:
+        intent = read_post_intent(post_id)
+    except FileNotFoundError:
+        intent = {}
+    revisions = read_revision_metadata(post_id)
+    if not isinstance(revisions, list):
+        raise HTTPException(status_code=500, detail="Invalid revision metadata")
+    last_revision_id = None
+    if revisions:
+        revision_ids: list[int] = []
+        for entry in revisions:
+            if not isinstance(entry, dict):
+                raise HTTPException(status_code=500, detail="Invalid revision metadata")
+            revision_id = entry.get("revision_id")
+            if not isinstance(revision_id, int):
+                raise HTTPException(status_code=500, detail="Invalid revision metadata")
+            revision_ids.append(revision_id)
+        last_revision_id = max(revision_ids) if revision_ids else None
+    meta_payload = meta.model_dump() if hasattr(meta, "model_dump") else meta
+    return {
+        "post_id": post_id,
+        "content": content,
+        "intent": intent,
+        "meta": meta_payload,
+        "status": meta.status,
+        "last_revision_id": last_revision_id,
+        "revisions": revisions,
+    }
+
+
 @app.get("/blog/writer")
 def redirect_writer():
     return RedirectResponse("/blog/editor", status_code=307)
@@ -294,11 +336,12 @@ async def create_blog_post_route(
     require_admin(creds)
     form = await request.form()
     intent_text = form.get("intent") or ""
-    intent = load_intent_from_yaml(intent_text)
+    intent_payload = json.loads(intent_text) if intent_text else {}
+    intent = IntentEnvelope.model_validate(intent_payload)
     post_id, _ = create_post(
         title=None,
         author=(creds.username or "unknown"),
-        intent=intent.model_dump(),
+        intent=intent_payload,
         content="",
     )
     blog_result = generate_blog_post(
