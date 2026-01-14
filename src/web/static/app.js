@@ -606,6 +606,8 @@ async function saveDocument() {
 document.addEventListener("DOMContentLoaded", () => {
   const queryPostId = new URLSearchParams(window.location.search).get("post_id");
   const isEditorEntry = window.location.pathname === "/blog/editor";
+  const isEditorActive =
+    !!queryPostId || window.location.search.includes("mode=create");
   if (queryPostId) {
     loadExistingDraft(queryPostId);
   }
@@ -630,17 +632,19 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!queryPostId && !isEditorEntry) {
     setArticleStatus("No blog post generated yet. Click Generate Blog Post.");
   }
-  setTitleControlsEnabled(false);
-  setEditControlsEnabled(false);
-  setEditMode(false);
-  setGatedActionsEnabled(false);
-  setPolicyEditControlsEnabled(false);
-  setPolicyEditStatus("");
-  setPolicyEditResult("");
-  policyEditInFlight = false;
-  updateEditModeButtons();
-  applyEditModeState();
-  updateSuggestedTitleAction();
+  if (isEditorActive) {
+    setTitleControlsEnabled(false);
+    setEditControlsEnabled(false);
+    setEditMode(false);
+    setGatedActionsEnabled(false);
+    setPolicyEditControlsEnabled(false);
+    setPolicyEditStatus("");
+    setPolicyEditResult("");
+    policyEditInFlight = false;
+    updateEditModeButtons();
+    applyEditModeState();
+    updateSuggestedTitleAction();
+  }
 });
 
 document.addEventListener("click", (event) => {
@@ -773,4 +777,3 @@ function showHelp(anchor, text) {
 
   setTimeout(() => document.addEventListener("click", cleanup), 0);
 }
-
