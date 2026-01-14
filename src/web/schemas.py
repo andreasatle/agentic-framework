@@ -1,6 +1,7 @@
 from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
+from document_writer.domain.intent.types import IntentEnvelope
 
 class DocumentGenerateRequest(BaseModel):
     intent: IntentEnvelope
