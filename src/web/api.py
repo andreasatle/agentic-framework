@@ -12,7 +12,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import yaml
 import markdown
-from pathlib import Path
 from pydantic import BaseModel
 
 from agentic_framework.agent_dispatcher import AgentDispatcherBase
@@ -24,13 +23,15 @@ from document_writer.domain.editor.chunking import split_markdown
 from document_writer.apps.title_suggester import suggest_title
 from apps.blog.edit_service import apply_policy_edit
 from apps.blog.post_revision_writer import PostRevisionWriter
-from apps.blog.paths import POSTS_ROOT
 from apps.blog.storage import (
     create_post,
     list_posts,
     read_post_meta,
     read_post_content,
     read_post_intent,
+    write_post_content,
+    write_revision_snapshots,
+    read_revision_metadata,
 )
 from web.schemas import (
     DocumentGenerateRequest,
@@ -48,9 +49,9 @@ from document_writer.domain.intent import load_intent_from_yaml
 
 
 
-BASE_DIR = Path(__file__).resolve().parent
-static_dir = BASE_DIR / "static"
-templates_dir = BASE_DIR / "templates"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(BASE_DIR, "static")
+templates_dir = os.path.join(BASE_DIR, "templates")
 
 BLOG_MARKDOWN_EXTENSIONS = ["fenced_code", "tables"]
 # No-op policy: editor pipeline runs only to enforce invariants; future policies may replace it.
@@ -182,11 +183,11 @@ def redirect_writer():
 @app.get("/me")
 def read_me(request: Request):
     resume_html = markdown.markdown(
-        (BASE_DIR / "content" / "resume.md").read_text(encoding="utf-8"),
+        open(os.path.join(BASE_DIR, "content", "resume.md"), "r", encoding="utf-8").read(),
         extensions=BLOG_MARKDOWN_EXTENSIONS,
     )
     profile_html = markdown.markdown(
-        (BASE_DIR / "content" / "profile.md").read_text(encoding="utf-8"),
+        open(os.path.join(BASE_DIR, "content", "profile.md"), "r", encoding="utf-8").read(),
         extensions=BLOG_MARKDOWN_EXTENSIONS,
     )
 
@@ -240,7 +241,6 @@ def generate_blog_post_route(
         trace=False,
     )
     markdown = blog_result.markdown
-    content_path = POSTS_ROOT / post_id / "content.md"
     before_content = read_post_content(post_id)
     before_hash = _hash_text(before_content)
     after_hash = _hash_text(markdown)
@@ -262,16 +262,10 @@ def generate_blog_post_route(
     revision_recorded = True
     if not isinstance(revision_id, int):
         raise HTTPException(status_code=500, detail="Failed to record revision")
-    revisions_dir = POSTS_ROOT / post_id / "revisions"
-    revisions_dir.mkdir(parents=True, exist_ok=True)
-    for snapshot in snapshot_chunks:
-        index = snapshot["index"]
-        text = snapshot["text"]
-        snapshot_path = revisions_dir / f"{revision_id}_{index}.md"
-        snapshot_path.write_text(text)
+    write_revision_snapshots(post_id, revision_id, snapshot_chunks)
     if not revision_recorded:
         raise HTTPException(status_code=500, detail="Revision required before content write")
-    content_path.write_text(markdown)
+    write_post_content(post_id, markdown)
     suggested_title = None
     if isinstance(markdown, str) and markdown.strip():
         suggested_title = suggest_title(markdown)
@@ -314,7 +308,6 @@ def create_blog_post_route(
             trace=False,
         )
         markdown = blog_result.markdown
-        content_path = POSTS_ROOT / post_id / "content.md"
         before_content = read_post_content(post_id)
         before_hash = _hash_text(before_content)
         after_hash = _hash_text(markdown)
@@ -336,16 +329,10 @@ def create_blog_post_route(
         revision_recorded = True
         if not isinstance(revision_id, int):
             raise HTTPException(status_code=500, detail="Failed to record revision")
-        revisions_dir = POSTS_ROOT / post_id / "revisions"
-        revisions_dir.mkdir(parents=True, exist_ok=True)
-        for snapshot in snapshot_chunks:
-            index = snapshot["index"]
-            text = snapshot["text"]
-            snapshot_path = revisions_dir / f"{revision_id}_{index}.md"
-            snapshot_path.write_text(text)
+        write_revision_snapshots(post_id, revision_id, snapshot_chunks)
         if not revision_recorded:
             raise HTTPException(status_code=500, detail="Revision required before content write")
-        content_path.write_text(markdown)
+        write_post_content(post_id, markdown)
     return {"post_id": post_id}
 
 
@@ -411,7 +398,6 @@ def edit_blog_content_route(
     require_admin(creds)
     # UI state is non-authoritative; content mutations are revision-led only.
     try:
-        content_path = POSTS_ROOT / payload.post_id / "content.md"
         before_content = read_post_content(payload.post_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -494,16 +480,10 @@ def edit_blog_content_route(
     revision_recorded = True
     if not isinstance(revision_id, int):
         raise HTTPException(status_code=500, detail="Failed to record revision")
-    revisions_dir = POSTS_ROOT / payload.post_id / "revisions"
-    revisions_dir.mkdir(parents=True, exist_ok=True)
-    for snapshot in snapshot_chunks:
-        index = snapshot["index"]
-        text = snapshot["text"]
-        snapshot_path = revisions_dir / f"{revision_id}_{index}.md"
-        snapshot_path.write_text(text)
+    write_revision_snapshots(payload.post_id, revision_id, snapshot_chunks)
     if not revision_recorded:
         raise HTTPException(status_code=500, detail="Revision required before content write")
-    content_path.write_text(response.edited_document)
+    write_post_content(payload.post_id, response.edited_document)
     return {"post_id": payload.post_id, "content": response.edited_document}
 
 
@@ -523,11 +503,12 @@ def edit_blog_post_route(
     if payload.policy_text is not None:
         policy_text = payload.policy_text
     else:
-        policies_dir = BASE_DIR / "apps" / "blog" / "policies"
-        policy_path = policies_dir / f"{payload.policy_id}.txt"
-        if not policy_path.exists():
+        policies_dir = os.path.join(BASE_DIR, "apps", "blog", "policies")
+        policy_path = os.path.join(policies_dir, f"{payload.policy_id}.txt")
+        if not os.path.exists(policy_path):
             raise HTTPException(status_code=400, detail="Policy not found")
-        policy_text = policy_path.read_text()
+        with open(policy_path, "r", encoding="utf-8") as handle:
+            policy_text = handle.read()
     if not policy_text.strip():
         raise HTTPException(status_code=400, detail="Policy text must be non-empty")
     result = apply_policy_edit(
@@ -548,11 +529,7 @@ def list_blog_revisions(
         read_post_meta(post_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Post not found")
-    meta_path = POSTS_ROOT / post_id / "meta.yaml"
-    meta_payload = yaml.safe_load(meta_path.read_text()) or {}
-    if not isinstance(meta_payload, dict):
-        raise HTTPException(status_code=500, detail="Invalid meta.yaml")
-    revisions = meta_payload.get("revisions") or []
+    revisions = read_revision_metadata(post_id)
     if not isinstance(revisions, list):
         raise HTTPException(status_code=500, detail="Invalid revisions")
     summaries: list[dict[str, object]] = []
