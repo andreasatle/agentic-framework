@@ -444,71 +444,6 @@ async function saveIntent() {
   }
 }
 
-async function generateBlogPost() {
-  if (!currentPostId) {
-    setError("No post available to generate from.");
-    return;
-  }
-  if (!currentIntent) {
-    setError("No intent to generate from. Load or apply changes first.");
-    return;
-  }
-  setIntentDisabled(true);
-  setArticleStatus("Generating…");
-  setSuggestedTitleValue("");
-  setFinalTitle("");
-  setPolicyEditStatus("");
-  setPolicyEditResult("");
-  titleCommitted = false;
-  setEditMode(false);
-  setEditControlsEnabled(false);
-  setEditRequestState(false);
-  setPolicyEditControlsEnabled(false);
-  setPolicyEditStatus("");
-  setPolicyEditResult("");
-  policyEditInFlight = false;
-  setGatedActionsEnabled(false);
-  isGenerating = true;
-  try {
-    const resp = await fetch("/blog/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: currentIntent }),
-    });
-    if (!resp.ok) {
-      const detail = await resp.text();
-      setArticleStatus("Failed to generate blog post. See error.");
-      setError(detail || "Failed to generate blog post.");
-      return;
-    }
-    const data = await resp.json();
-    currentPostId = data.post_id || null;
-    currentMarkdown = data.content || "";
-    const articleArea = $("article-text");
-    if (articleArea) {
-      articleArea.innerHTML = marked.parse(currentMarkdown);
-    }
-    setEditMode(false);
-    setView("content");
-    if (data.suggested_title) {
-      setSuggestedTitleValue(data.suggested_title);
-    } else {
-      suggestTitle(currentMarkdown);
-    }
-    setTitleControlsEnabled(!!currentPostId);
-    setEditControlsEnabled(!!currentPostId);
-    setPolicyEditControlsEnabled(!!currentPostId);
-    applyEditModeState();
-    setError("");
-  } catch (err) {
-    setArticleStatus("Failed to generate blog post. See error.");
-    setError(err?.message || "Error generating blog post.");
-  } finally {
-    isGenerating = false;
-    setIntentDisabled(false);
-  }
-}
-
 async function setTitle() {
   if (!currentPostId) {
     setError("No post available to set title.");
@@ -710,37 +645,11 @@ async function saveDocument() {
   }
 }
 
-async function createNewPostFromIntent() {
-  if (!currentIntent) {
-    setError("No intent to generate from. Load or apply changes first.");
-    return;
-  }
-  try {
-    const resp = await fetch("/blog/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: currentIntent }),
-    });
-    if (!resp.ok) {
-      const detail = await resp.text();
-      setError(detail || "Failed to create post.");
-      return;
-    }
-    const data = await resp.json();
-    if (data?.post_id) {
-      window.location.href = `/blog/editor?post_id=${encodeURIComponent(data.post_id)}`;
-    } else {
-      setError("Failed to create post.");
-    }
-  } catch (err) {
-    setError(err?.message || "Failed to create post.");
-  }
-}
-
 async function createBlogPostFromIntent(intentObject) {
-  if (!intentObject) {
-    setError("No intent to generate from. Load or apply changes first.");
-    return;
+  const generateBtn = $("generate-blog-post-btn");
+  if (generateBtn) {
+    generateBtn.disabled = true;
+    generateBtn.textContent = "Generating…";
   }
   try {
     const resp = await fetch("/blog/create", {
@@ -750,16 +659,28 @@ async function createBlogPostFromIntent(intentObject) {
     });
     if (!resp.ok) {
       const detail = await resp.text();
-      setError(detail || "Failed to create post.");
+      if (generateBtn) {
+        generateBtn.disabled = false;
+        generateBtn.textContent = "Generate Blog Post";
+      }
+      setError(detail);
       return;
     }
     const data = await resp.json();
     if (data?.post_id) {
       window.location = `/blog/editor?post_id=${encodeURIComponent(data.post_id)}`;
     } else {
+      if (generateBtn) {
+        generateBtn.disabled = false;
+        generateBtn.textContent = "Generate Blog Post";
+      }
       setError("Failed to create post.");
     }
   } catch (err) {
+    if (generateBtn) {
+      generateBtn.disabled = false;
+      generateBtn.textContent = "Generate Blog Post";
+    }
     setError(err?.message || "Failed to create post.");
   }
 }
@@ -797,13 +718,53 @@ document.addEventListener("DOMContentLoaded", () => {
     intentForm.addEventListener("input", applyIntentChanges);
     intentForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      createBlogPostFromIntent(readIntentFromForm());
+      currentIntent = readIntentFromForm();
+      const hasIntent =
+        currentIntent
+        && (
+          currentIntent.structural_intent?.document_goal
+          || currentIntent.structural_intent?.audience
+          || currentIntent.structural_intent?.tone
+          || (currentIntent.structural_intent?.required_sections || []).length
+          || (currentIntent.structural_intent?.forbidden_sections || []).length
+          || (currentIntent.semantic_constraints?.must_include || []).length
+          || (currentIntent.semantic_constraints?.must_avoid || []).length
+          || (currentIntent.semantic_constraints?.required_mentions || []).length
+          || currentIntent.stylistic_preferences?.humor_level
+          || currentIntent.stylistic_preferences?.formality
+          || currentIntent.stylistic_preferences?.narrative_voice
+        );
+      if (!hasIntent) {
+        setError("Intent is required.");
+        return;
+      }
+      createBlogPostFromIntent(currentIntent);
     });
   }
   const generateBtn = $("generate-blog-post-btn");
   if (generateBtn) {
     generateBtn.addEventListener("click", () => {
-      createBlogPostFromIntent(readIntentFromForm());
+      currentIntent = readIntentFromForm();
+      const hasIntent =
+        currentIntent
+        && (
+          currentIntent.structural_intent?.document_goal
+          || currentIntent.structural_intent?.audience
+          || currentIntent.structural_intent?.tone
+          || (currentIntent.structural_intent?.required_sections || []).length
+          || (currentIntent.structural_intent?.forbidden_sections || []).length
+          || (currentIntent.semantic_constraints?.must_include || []).length
+          || (currentIntent.semantic_constraints?.must_avoid || []).length
+          || (currentIntent.semantic_constraints?.required_mentions || []).length
+          || currentIntent.stylistic_preferences?.humor_level
+          || currentIntent.stylistic_preferences?.formality
+          || currentIntent.stylistic_preferences?.narrative_voice
+        );
+      if (!hasIntent) {
+        setError("Intent is required.");
+        return;
+      }
+      createBlogPostFromIntent(currentIntent);
     });
   }
   $("set-title-btn")?.addEventListener("click", setTitle);
