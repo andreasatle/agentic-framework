@@ -36,7 +36,8 @@
                 <button type="button" class="btn btn--ghost" id="mode-metadata-edit" aria-pressed="false">Metadata edit</button>
             </div>
             <section>
-                <article id="article-text">{{ content or '' }}</article>
+                <article id="article-text"></article>
+                <textarea id="article-source" hidden>{{ content | e }}</textarea>
                 <textarea id="article-editor"></textarea>
                 <div class="inline-controls">
                     <button type="button" class="btn btn--primary" id="edit-content-btn">Edit content</button>

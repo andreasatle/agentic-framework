@@ -587,6 +587,14 @@ async function saveDocument() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Initialize markdown rendering from preserved source
+  const article = $("article-text");
+  const articleSource = $("article-source");
+  if (article && articleSource) {
+    currentMarkdown = articleSource.value || "";
+    article.innerHTML = marked.parse(currentMarkdown);
+  }
+
   const intentForm = $("intent-form");
   if (intentForm) {
     intentForm.addEventListener("submit", () => {
@@ -597,14 +605,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
   $("set-title-btn")?.addEventListener("click", setTitle);
   $("use-suggested-title")?.addEventListener("click", applySuggestedTitle);
   $("edit-content-btn")?.addEventListener("click", toggleEditContent);
   $("apply-edit-btn")?.addEventListener("click", applyEdit);
   $("run-policy-edit-btn")?.addEventListener("click", runPolicyEdit);
-  $("mode-free-edit")?.addEventListener("click", () => setCurrentEditMode("free"));
-  $("mode-policy-edit")?.addEventListener("click", () => setCurrentEditMode("policy"));
-  $("mode-metadata-edit")?.addEventListener("click", () => setCurrentEditMode("metadata"));
+  $("mode-free-edit")?.addEventListener("click", () =>
+    setCurrentEditMode("free")
+  );
+  $("mode-policy-edit")?.addEventListener("click", () =>
+    setCurrentEditMode("policy")
+  );
+  $("mode-metadata-edit")?.addEventListener("click", () =>
+    setCurrentEditMode("metadata")
+  );
 });
 
 document.addEventListener("click", (event) => {
