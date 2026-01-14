@@ -144,6 +144,9 @@ def read_editor_entry(
     creds = Depends(security),
 ):
     require_admin(creds)
+    if mode not in {"entry", "create", "edit", None}:
+        logger.warning(f"Invalid editor mode '{mode}', defaulting to entry")
+        mode = "entry"
     accept = request.headers.get("accept", "")
     if "application/json" in accept.lower():
         raise HTTPException(status_code=406, detail="Editor renders HTML only")
