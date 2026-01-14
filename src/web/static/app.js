@@ -630,6 +630,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const intentForm = $("intent-form");
   if (intentForm) {
     intentForm.addEventListener("input", applyIntentChanges);
+    intentForm.addEventListener("submit", () => {
+      const generateBtn = $("generate-blog-post-btn");
+      if (generateBtn) {
+        generateBtn.disabled = true;
+        generateBtn.textContent = "Generating…";
+      }
+    });
   }
   $("set-title-btn")?.addEventListener("click", setTitle);
   $("use-suggested-title")?.addEventListener("click", applySuggestedTitle);
