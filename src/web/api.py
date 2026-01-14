@@ -6,8 +6,8 @@ import os
 from io import BytesIO
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request, Depends, Body
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import yaml
