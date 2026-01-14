@@ -30,11 +30,6 @@
                 <div id="post-status-indicator">Status: {{ meta.status or "—" }}</div>
                 <div id="post-revision-indicator">Last revision: —</div>
             </div>
-            <div class="inline-controls">
-                <button type="button" class="btn btn--ghost" id="mode-free-edit" aria-pressed="true">Free edit</button>
-                <button type="button" class="btn btn--ghost" id="mode-policy-edit" aria-pressed="false">Policy edit</button>
-                <button type="button" class="btn btn--ghost" id="mode-metadata-edit" aria-pressed="false">Metadata edit</button>
-            </div>
             <section>
                 <article id="article-text"></article>
                 <textarea id="article-source" hidden>{{ content | e }}</textarea>

@@ -1,6 +1,5 @@
 let currentMarkdown = null;
 let currentPostId = null;
-let currentEditMode = "free";
 let suggestedTitleValue = "";
 let titleCommitted = false;
 let isEditingContent = false;
@@ -196,19 +195,22 @@ function setFinalTitle(title) {
 function setTitleControlsEnabled(enabled) {
   const input = $("title-input");
   const btn = $("set-title-btn");
-  const canEnable = enabled && currentEditMode === "metadata";
+  if (input) input.disabled = !enabled;
+  if (btn) btn.disabled = !enabled;
 }
 
 function setEditControlsEnabled(enabled) {
   const editBtn = $("edit-content-btn");
   const applyBtn = $("apply-edit-btn");
-  const canEnable = enabled && currentEditMode === "free";
+  if (editBtn) editBtn.disabled = !enabled;
+  if (applyBtn) applyBtn.disabled = !enabled;
 }
 
 function setPolicyEditControlsEnabled(enabled) {
   const policyText = $("policy-text");
   const runBtn = $("run-policy-edit-btn");
-  const canEnable = enabled && currentEditMode === "policy";
+  if (policyText) policyText.disabled = !enabled;
+  if (runBtn) runBtn.disabled = !enabled;
 }
 
 function setPolicyEditStatus(text) {
@@ -239,7 +241,7 @@ function setEditMode(enabled) {
 
 function setEditRequestState(inFlight) {
   editRequestInFlight = inFlight;
-  applyEditModeState();
+  setEditControlsEnabled(!inFlight);
 }
 
 function setGatedActionsEnabled(enabled) {
@@ -290,48 +292,6 @@ function renderDraftPosts(draftPosts) {
     }
     list.appendChild(item);
   });
-}
-
-function updateEditModeButtons() {
-  const freeBtn = $("mode-free-edit");
-  const policyBtn = $("mode-policy-edit");
-  const metaBtn = $("mode-metadata-edit");
-  const setActive = (btn, active) => {
-    if (!btn) return;
-    btn.setAttribute("aria-pressed", active ? "true" : "false");
-    btn.classList.toggle("btn--primary", active);
-    btn.classList.toggle("btn--ghost", !active);
-    btn.classList.toggle("active", active);
-  };
-  setActive(freeBtn, currentEditMode === "free");
-  setActive(policyBtn, currentEditMode === "policy");
-  setActive(metaBtn, currentEditMode === "metadata");
-}
-
-function applyEditModeState() {
-  const isFree = currentEditMode === "free";
-  const isPolicy = currentEditMode === "policy";
-  const isMetadata = currentEditMode === "metadata";
-  const hasPost = !!currentPostId;
-  const canEdit = isFree && hasPost && !editRequestInFlight;
-  const canPolicyEdit = isPolicy && hasPost && !policyEditInFlight;
-  setEditControlsEnabled(canEdit);
-  const editor = $("article-editor");
-  const policyText = $("policy-text");
-  const runBtn = $("run-policy-edit-btn");
-  const titleEnabled = isMetadata && hasPost;
-  setTitleControlsEnabled(titleEnabled);
-  const authorInput = $("author-input");
-  const authorBtn = $("set-author-btn");
-}
-
-function setCurrentEditMode(mode) {
-  if (mode !== "free" && mode !== "policy" && mode !== "metadata") {
-    return;
-  }
-  currentEditMode = mode;
-  updateEditModeButtons();
-  applyEditModeState();
 }
 
 async function applySuggestedTitle() {
@@ -512,7 +472,7 @@ async function runPolicyEdit() {
     setPolicyEditStatus(err?.message || "Edit failed.");
   } finally {
     policyEditInFlight = false;
-    applyEditModeState();
+    setPolicyEditControlsEnabled(true);
   }
 }
 
@@ -600,15 +560,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("edit-content-btn")?.addEventListener("click", toggleEditContent);
   $("apply-edit-btn")?.addEventListener("click", applyEdit);
   $("run-policy-edit-btn")?.addEventListener("click", runPolicyEdit);
-  $("mode-free-edit")?.addEventListener("click", () =>
-    setCurrentEditMode("free")
-  );
-  $("mode-policy-edit")?.addEventListener("click", () =>
-    setCurrentEditMode("policy")
-  );
-  $("mode-metadata-edit")?.addEventListener("click", () =>
-    setCurrentEditMode("metadata")
-  );
 });
 
 document.addEventListener("click", (event) => {
