@@ -50,8 +50,6 @@ static_dir = os.path.join(BASE_DIR, "static")
 templates_dir = os.path.join(BASE_DIR, "templates")
 
 BLOG_MARKDOWN_EXTENSIONS = ["fenced_code", "tables"]
-# No-op policy: editor pipeline runs only to enforce invariants; future policies may replace it.
-EDIT_CONTENT_POLICY = "Return the document unchanged."
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -491,7 +489,6 @@ def edit_blog_content_route(
         response = edit_document(
             AgentEditorRequest(
                 document=payload.content,
-                editing_policy=EDIT_CONTENT_POLICY,
                 intent=intent,
             ),
             dispatcher=editor_dispatcher,
