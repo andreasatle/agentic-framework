@@ -342,6 +342,8 @@ async def create_blog_post_route(
 ) -> RedirectResponse:
     require_admin(creds)
     form = await request.form()
+    if "intent" in form:
+        logger.warning("Ignoring legacy intent field in form data; intent is built server-side only.")
     document_goal_raw = form.get("document_goal")
     audience_raw = form.get("audience")
     tone_raw = form.get("tone")
