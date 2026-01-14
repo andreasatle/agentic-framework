@@ -1,6 +1,5 @@
 import web.bootstrap
 import hashlib
-import json
 import logging
 import os
 from io import BytesIO
@@ -91,44 +90,6 @@ class AuthorSetRequest(BaseModel):
 @app.on_event("startup")
 def validate_generated_dir() -> None:
     web.bootstrap.validate_generated_dir()
-
-
-@app.get("/admin/generations")
-def list_generations(
-    request: Request,
-    limit: int = 50,
-    _: None = Depends(require_admin),
-) -> list[dict[str, str | None]]:
-    capped = min(max(limit, 0), 500)
-    index_path = os.path.join(
-        os.environ.get("AGENTIC_GENERATED_DIR") or "/opt/agentic/data/generated",
-        "index.jsonl",
-    )
-    if not os.path.exists(index_path):
-        return []
-    entries: list[dict[str, str | None]] = []
-    try:
-        with open(index_path, "r", encoding="utf-8") as handle:
-            for line in handle:
-                payload = line.strip()
-                if not payload:
-                    continue
-                try:
-                    item = json.loads(payload)
-                except json.JSONDecodeError:
-                    logger.exception("Malformed generation index line")
-                    continue
-                if isinstance(item, dict):
-                    entries.append(item)
-                else:
-                    logger.exception("Malformed generation index entry")
-    except Exception:
-        logger.exception("Failed to read generation index")
-        return []
-    entries.reverse()
-    if capped == 0:
-        return []
-    return entries[:capped]
 
 
 @app.get("/", response_class=HTMLResponse)
