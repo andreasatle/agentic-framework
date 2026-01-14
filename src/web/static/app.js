@@ -838,7 +838,7 @@ function setView(view) {
 
 async function loadExistingDraft(postId) {
   try {
-    const resp = await fetch(`/blog/editor?post_id=${encodeURIComponent(postId)}`);
+    const resp = await fetch(`/blog/editor/data?post_id=${encodeURIComponent(postId)}`);
     if (!resp.ok) {
       const detail = await resp.text();
       setError(detail || "Failed to load post.");
