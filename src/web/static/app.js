@@ -1,21 +1,6 @@
-// JS is non-authoritative. HTML controls navigation and state.
-(function () {
-  const forbiddenGlobals = ["mode", "view", "currentView"];
-
-  forbiddenGlobals.forEach((name) => {
-    if (name in window) {
-      console.error(
-        `FATAL: Competing navigation authority detected. Global '${name}' must not exist.`
-      );
-    }
-  });
-})();
 let currentMarkdown = null;
 let currentPostId = null;
-let currentRevisions = [];
 let currentEditMode = "free";
-let currentStatus = null;
-let currentLastRevisionId = null;
 let suggestedTitleValue = "";
 let titleCommitted = false;
 let isEditingContent = false;
@@ -632,60 +617,9 @@ document.addEventListener("click", (event) => {
   }
 });
 
-async function loadExistingDraft(postId) {
-  try {
-    const resp = await fetch(`/blog/editor/data?post_id=${encodeURIComponent(postId)}`);
-    if (!resp.ok) {
-      const detail = await resp.text();
-      setError(detail || "Failed to load post.");
-      return;
-    }
-    const data = await resp.json();
-    currentPostId = data.post_id || null;
-    currentMarkdown = data.content || "";
-    currentStatus = data.status || null;
-    currentLastRevisionId = data.last_revision_id ?? null;
-    currentRevisions = Array.isArray(data.revisions) ? data.revisions : [];
-    const articleArea = $("article-text");
-    if (articleArea) {
-      articleArea.innerHTML = marked.parse(currentMarkdown);
-    }
-    if (!currentMarkdown.trim()) {
-      setEditMode(true);
-    }
-    const titleInput = $("title-input");
-    if (titleInput) {
-      titleInput.value = data?.meta?.title || "";
-    }
-    const authorInput = $("author-input");
-    if (authorInput) {
-      authorInput.value = data?.meta?.author || "";
-    }
-    setSuggestedTitleValue("");
-    setFinalTitle("");
-    if (currentMarkdown.trim()) {
-      setEditMode(false);
-    }
-    setEditRequestState(false);
-    policyEditInFlight = false;
-    setPolicyEditControlsEnabled(!!currentPostId);
-    setTitleControlsEnabled(!!currentPostId);
-    setEditControlsEnabled(!!currentPostId);
-    setPolicyEditControlsEnabled(!!currentPostId);
-    setGatedActionsEnabled(!!currentPostId);
-    setInvariantIndicators(currentStatus, currentLastRevisionId);
-    applyEditModeState();
-    setError("");
-  } catch (err) {
-    setError(err?.message || "Error loading post.");
-  }
-}
-
 function resetPostView() {
   currentMarkdown = null;
   currentPostId = null;
-  currentStatus = null;
-  currentLastRevisionId = null;
   suggestedTitleValue = "";
   titleCommitted = false;
   isEditingContent = false;
