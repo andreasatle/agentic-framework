@@ -22,3 +22,7 @@ docs_draft/
 /*.txt
 tesseract.py
 data/
+*.dump
+
+# Temporary to avoid committing unfinished work
+docs/
