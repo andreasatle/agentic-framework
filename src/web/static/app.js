@@ -28,49 +28,11 @@ function $(id) {
   return document.getElementById(id);
 }
 
-const intentFields = {
-  document_goal: $("document-goal"),
-  audience: $("audience"),
-  tone: $("tone"),
-  required_sections: $("required-sections"),
-  forbidden_sections: $("forbidden-sections"),
-  must_include: $("must-include"),
-  must_avoid: $("must-avoid"),
-  required_mentions: $("required-mentions"),
-  humor_level: $("humor-level"),
-  formality: $("formality"),
-  narrative_voice: $("narrative-voice"),
-};
-
 const errorArea = $("error-area");
 
 function setError(message) {
   if (errorArea) {
     errorArea.textContent = message || "";
-  }
-}
-
-function setIntentDisabled(flag) {
-  Object.values(intentFields).forEach((el) => {
-    if (el) {
-      el.disabled = flag;
-      el.classList.toggle("opacity-60", flag);
-      el.classList.toggle("cursor-not-allowed", flag);
-    }
-  });
-  const fileInput = $("intent-file");
-  if (fileInput) {
-    fileInput.disabled = flag;
-    fileInput.classList.toggle("opacity-60", flag);
-    fileInput.classList.toggle("cursor-not-allowed", flag);
-  }
-  const generateBtn = $("generate-blog-post-btn");
-  if (generateBtn) {
-    generateBtn.disabled = flag;
-    generateBtn.textContent = flag ? "Generating…" : "Generate Blog Post";
-    generateBtn.classList.toggle("bg-green-700", flag);
-    generateBtn.classList.toggle("cursor-not-allowed", flag);
-    generateBtn.classList.toggle("opacity-80", flag);
   }
 }
 
@@ -633,56 +595,7 @@ function resetPostView() {
   setInvariantIndicators(null, null);
 }
 
-function clearIntent() {
-  isClearing = true;
-  currentMarkdown = null;
-  currentPostId = null;
-  currentStatus = null;
-  currentLastRevisionId = null;
-  suggestedTitleValue = "";
-  titleCommitted = false;
-  isEditingContent = false;
-  editRequestInFlight = false;
-  policyEditInFlight = false;
-  setEditMode(false);
-  Object.values(intentFields).forEach((el) => {
-    if (el) {
-      el.value = "";
-    }
-  });
-  const fileInput = $("intent-file");
-  if (fileInput) {
-    fileInput.value = "";
-  }
-  const policyText = $("policy-text");
-  if (policyText) {
-    policyText.value = "";
-  }
-  setError("");
-  setArticleStatus("");
-  setSuggestedTitleValue("");
-  setFinalTitle("");
-  setTitleControlsEnabled(false);
-  setEditControlsEnabled(false);
-  setGatedActionsEnabled(false);
-  setPolicyEditControlsEnabled(false);
-  setPolicyEditStatus("");
-  setPolicyEditResult("");
-  setInvariantIndicators(null, null);
-  isClearing = false;
-}
-
-window.clearIntent = clearIntent;
 window.resetPostView = resetPostView;
-
-function openIntentFile() {
-  const fileInput = $("intent-file");
-  if (fileInput) {
-    fileInput.click();
-  }
-}
-
-window.openIntentFile = openIntentFile;
 
 function showHelp(anchor, text) {
   const existing = document.querySelector(".help-tooltip");
