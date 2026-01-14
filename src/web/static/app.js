@@ -3,8 +3,6 @@ let currentPostId = null;
 let suggestedTitleValue = "";
 let titleCommitted = false;
 let isEditingContent = false;
-let editRequestInFlight = false;
-let policyEditInFlight = false;
 
 function $(id) {
   return document.getElementById(id);
@@ -182,7 +180,6 @@ function setSuggestedTitleValue(title) {
   if (titleInput && suggestedTitleValue && !titleCommitted && !titleInput.value.trim()) {
     titleInput.value = suggestedTitleValue;
   }
-  updateSuggestedTitleAction();
 }
 
 function setFinalTitle(title) {
@@ -190,27 +187,6 @@ function setFinalTitle(title) {
   if (target) {
     target.textContent = title || "";
   }
-}
-
-function setTitleControlsEnabled(enabled) {
-  const input = $("title-input");
-  const btn = $("set-title-btn");
-  if (input) input.disabled = !enabled;
-  if (btn) btn.disabled = !enabled;
-}
-
-function setEditControlsEnabled(enabled) {
-  const editBtn = $("edit-content-btn");
-  const applyBtn = $("apply-edit-btn");
-  if (editBtn) editBtn.disabled = !enabled;
-  if (applyBtn) applyBtn.disabled = !enabled;
-}
-
-function setPolicyEditControlsEnabled(enabled) {
-  const policyText = $("policy-text");
-  const runBtn = $("run-policy-edit-btn");
-  if (policyText) policyText.disabled = !enabled;
-  if (runBtn) runBtn.disabled = !enabled;
 }
 
 function setPolicyEditStatus(text) {
@@ -239,61 +215,6 @@ function setEditMode(enabled) {
   if (editBtn) editBtn.textContent = enabled ? "Cancel edit" : "Edit content";
 }
 
-function setEditRequestState(inFlight) {
-  editRequestInFlight = inFlight;
-  setEditControlsEnabled(!inFlight);
-}
-
-function setGatedActionsEnabled(enabled) {
-  const btn = $("save-document-btn");
-  if (btn) btn.disabled = !enabled;
-}
-
-function updateSuggestedTitleAction() {
-  const button = $("use-suggested-title");
-  const shouldShow = !!suggestedTitleValue && !titleCommitted;
-  if (button) {
-    button.disabled = !shouldShow;
-  }
-}
-
-function setInvariantIndicators(status, lastRevisionId) {
-  const statusTarget = $("post-status-indicator");
-  const revisionTarget = $("post-revision-indicator");
-  if (statusTarget) {
-    statusTarget.textContent = `Status: ${status || "—"}`;
-  }
-  if (revisionTarget) {
-    const label = typeof lastRevisionId === "number" ? String(lastRevisionId) : "—";
-    revisionTarget.textContent = `Last revision: ${label}`;
-  }
-}
-
-function renderDraftPosts(draftPosts) {
-  const list = $("draft-post-list");
-  if (!list) return;
-  list.textContent = "";
-  if (!Array.isArray(draftPosts) || !draftPosts.length) {
-    const item = document.createElement("li");
-    item.textContent = "No draft posts available.";
-    list.appendChild(item);
-    return;
-  }
-  draftPosts.forEach((post) => {
-    const item = document.createElement("li");
-    const link = document.createElement("a");
-    link.href = `/blog/editor?post_id=${encodeURIComponent(post.post_id)}`;
-    link.textContent = post.title || "(untitled)";
-    item.appendChild(link);
-    if (post.created_at) {
-      const meta = document.createElement("div");
-      meta.textContent = `Created: ${post.created_at}`;
-      item.appendChild(meta);
-    }
-    list.appendChild(item);
-  });
-}
-
 async function applySuggestedTitle() {
   const button = $("use-suggested-title");
   if (!button) return;
@@ -312,9 +233,6 @@ async function applySuggestedTitle() {
     });
     if (resp.status === 409) {
       titleCommitted = true;
-      setTitleControlsEnabled(false);
-      setGatedActionsEnabled(true);
-      updateSuggestedTitleAction();
       return;
     }
     if (!resp.ok) {
@@ -325,9 +243,6 @@ async function applySuggestedTitle() {
     const data = await resp.json();
     titleCommitted = true;
     setFinalTitle(`Title: ${data.title}`);
-    setTitleControlsEnabled(false);
-    setGatedActionsEnabled(true);
-    updateSuggestedTitleAction();
     setError("");
   } catch (err) {
     setError(err?.message || "Error setting title.");
@@ -354,9 +269,6 @@ async function setTitle() {
     if (resp.status === 409) {
       titleCommitted = true;
       setError("Title already set.");
-      setTitleControlsEnabled(false);
-      setGatedActionsEnabled(true);
-      updateSuggestedTitleAction();
       return;
     }
     if (!resp.ok) {
@@ -367,25 +279,49 @@ async function setTitle() {
     const data = await resp.json();
     titleCommitted = true;
     setFinalTitle(`Title: ${data.title}`);
-    setTitleControlsEnabled(false);
-    setGatedActionsEnabled(true);
-    updateSuggestedTitleAction();
     setError("");
   } catch (err) {
     setError(err?.message || "Error setting title.");
   }
 }
 
+async function setAuthor() {
+  if (!currentPostId) {
+    setError("No post available to set author.");
+    return;
+  }
+  const input = $("author-input");
+  const author = (input?.value || "").trim();
+  if (!author) {
+    setError("Author cannot be empty.");
+    return;
+  }
+  try {
+    const resp = await fetch("/blog/set-author", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ post_id: currentPostId, author }),
+    });
+    if (!resp.ok) {
+      const detail = await resp.text();
+      setError(detail || "Failed to set author.");
+      return;
+    }
+    await resp.json();
+    setError("");
+  } catch (err) {
+    setError(err?.message || "Error setting author.");
+  }
+}
+
 function toggleEditContent() {
-  if (!currentPostId || editRequestInFlight) return;
+  if (!currentPostId) return;
   setEditMode(!isEditingContent);
 }
 
 async function applyEdit() {
-  const canStartEdit = !!currentPostId && !editRequestInFlight && isEditingContent;
-  setEditRequestState(true);
   try {
-    if (!canStartEdit) {
+    if (!currentPostId || !isEditingContent) {
       return;
     }
     const editor = $("article-editor");
@@ -414,19 +350,14 @@ async function applyEdit() {
     setError("");
   } catch (err) {
     setError(err?.message || "Error applying edit.");
-  } finally {
-    setEditRequestState(false);
   }
 }
 
 async function runPolicyEdit() {
-  const canStartPolicyEdit = !!currentPostId && !policyEditInFlight;
-  policyEditInFlight = true;
-  setPolicyEditControlsEnabled(false);
   setPolicyEditStatus("editing…");
   setPolicyEditResult("");
   try {
-    if (!canStartPolicyEdit) {
+    if (!currentPostId) {
       return;
     }
     const policyText = $("policy-text");
@@ -470,9 +401,6 @@ async function runPolicyEdit() {
     setError("");
   } catch (err) {
     setPolicyEditStatus(err?.message || "Edit failed.");
-  } finally {
-    policyEditInFlight = false;
-    setPolicyEditControlsEnabled(true);
   }
 }
 
@@ -562,6 +490,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   $("set-title-btn")?.addEventListener("click", setTitle);
+  $("set-author-btn")?.addEventListener("click", setAuthor);
   $("use-suggested-title")?.addEventListener("click", applySuggestedTitle);
   $("edit-content-btn")?.addEventListener("click", toggleEditContent);
   $("apply-edit-btn")?.addEventListener("click", applyEdit);
@@ -577,42 +506,6 @@ document.addEventListener("click", (event) => {
     showHelp(target, help);
   }
 });
-
-function resetPostView() {
-  currentMarkdown = null;
-  currentPostId = null;
-  suggestedTitleValue = "";
-  titleCommitted = false;
-  isEditingContent = false;
-  editRequestInFlight = false;
-  policyEditInFlight = false;
-  const article = $("article-text");
-  if (article) {
-    article.textContent = "";
-  }
-  const editor = $("article-editor");
-  if (editor) {
-    editor.value = "";
-  }
-  const policyText = $("policy-text");
-  if (policyText) {
-    policyText.value = "";
-  }
-  setError("");
-  setArticleStatus("No blog post generated yet. Click Generate Blog Post.");
-  setSuggestedTitleValue("");
-  setFinalTitle("");
-  setTitleControlsEnabled(false);
-  setEditControlsEnabled(false);
-  setEditMode(false);
-  setGatedActionsEnabled(false);
-  setPolicyEditControlsEnabled(false);
-  setPolicyEditStatus("");
-  setPolicyEditResult("");
-  setInvariantIndicators(null, null);
-}
-
-window.resetPostView = resetPostView;
 
 function showHelp(anchor, text) {
   const existing = document.querySelector(".help-tooltip");
