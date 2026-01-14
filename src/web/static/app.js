@@ -36,6 +36,142 @@ function setError(message) {
   }
 }
 
+// Intent load/save is a local convenience only.
+// It must never influence submission, validation, or generation.
+function downloadIntentFromForm() {
+  const documentGoal = $("document-goal")?.value ?? "";
+  const audience = $("audience")?.value ?? "";
+  const tone = $("tone")?.value ?? "";
+  const requiredSectionsRaw = $("required-sections")?.value ?? "";
+  const forbiddenSectionsRaw = $("forbidden-sections")?.value ?? "";
+  const mustIncludeRaw = $("must-include")?.value ?? "";
+  const mustAvoidRaw = $("must-avoid")?.value ?? "";
+  const requiredMentionsRaw = $("required-mentions")?.value ?? "";
+  const humorLevel = $("humor-level")?.value ?? "";
+  const formality = $("formality")?.value ?? "";
+  const narrativeVoice = $("narrative-voice")?.value ?? "";
+
+  const toScalar = (value) => {
+    const trimmed = value.trim();
+    return trimmed ? JSON.stringify(trimmed) : "null";
+  };
+
+  const toList = (value) => {
+    const items = value
+      .split(/\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!items.length) {
+      return "[]";
+    }
+    return `\n${items.map((item) => `  - ${JSON.stringify(item)}`).join("\n")}`;
+  };
+
+  const yamlText = [
+    "structural_intent:",
+    `  document_goal: ${toScalar(documentGoal)}`,
+    `  audience: ${toScalar(audience)}`,
+    `  tone: ${toScalar(tone)}`,
+    `  required_sections: ${toList(requiredSectionsRaw)}`,
+    `  forbidden_sections: ${toList(forbiddenSectionsRaw)}`,
+    "",
+    "semantic_constraints:",
+    `  must_include: ${toList(mustIncludeRaw)}`,
+    `  must_avoid: ${toList(mustAvoidRaw)}`,
+    `  required_mentions: ${toList(requiredMentionsRaw)}`,
+    "",
+    "stylistic_preferences:",
+    `  humor_level: ${toScalar(humorLevel)}`,
+    `  formality: ${toScalar(formality)}`,
+    `  narrative_voice: ${toScalar(narrativeVoice)}`,
+    "",
+  ].join("\n");
+
+  const blob = new Blob([yamlText], { type: "text/yaml" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "intent.yaml";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+async function loadIntentIntoForm(yamlText) {
+  let parsed = {};
+  try {
+    if (window.jsyaml && typeof window.jsyaml.load === "function") {
+      parsed = window.jsyaml.load(yamlText) || {};
+    } else if (window.YAML && typeof window.YAML.parse === "function") {
+      parsed = window.YAML.parse(yamlText) || {};
+    } else {
+      const module = await import("https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/+esm");
+      parsed = module.load(yamlText) || {};
+    }
+  } catch (err) {
+    console.error("Failed to load intent YAML.");
+    return;
+  }
+
+  const structural = parsed.structural_intent || {};
+  const semantic = parsed.semantic_constraints || {};
+  const stylistic = parsed.stylistic_preferences || {};
+
+  const setValue = (id, value) => {
+    const field = $(id);
+    if (!field) return;
+    field.value = value ?? "";
+  };
+
+  const setList = (id, value) => {
+    const field = $(id);
+    if (!field) return;
+    if (Array.isArray(value)) {
+      field.value = value.join("\n");
+      return;
+    }
+    field.value = "";
+  };
+
+  setValue("document-goal", structural.document_goal ?? "");
+  setValue("audience", structural.audience ?? "");
+  setValue("tone", structural.tone ?? "");
+  setList("required-sections", structural.required_sections);
+  setList("forbidden-sections", structural.forbidden_sections);
+  setList("must-include", semantic.must_include);
+  setList("must-avoid", semantic.must_avoid);
+  setList("required-mentions", semantic.required_mentions);
+  setValue("humor-level", stylistic.humor_level ?? "");
+  setValue("formality", stylistic.formality ?? "");
+  setValue("narrative-voice", stylistic.narrative_voice ?? "");
+}
+
+function openIntentFile() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".yaml,.yml";
+  input.hidden = true;
+  input.addEventListener("change", () => {
+    const file = input.files && input.files[0];
+    if (!file) {
+      input.remove();
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      await loadIntentIntoForm(reader.result);
+      input.remove();
+    };
+    reader.readAsText(file);
+  });
+  document.body.appendChild(input);
+  input.click();
+}
+
+window.downloadIntentFromForm = downloadIntentFromForm;
+window.openIntentFile = openIntentFile;
+
 function setArticleStatus(text) {
   const article = $("article-text");
   if (article) {
