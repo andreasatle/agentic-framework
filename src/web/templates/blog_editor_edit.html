@@ -9,45 +9,198 @@
 <body data-post-id="{{ post_id }}">
     <main class="container">
         <p><a href="/">Home</a></p>
-        <header>
-            <h1>Blog Editor</h1>
+        <header class="intent-header">
+            <div class="intent-header-left">
+                <h1>Edit blog post</h1>
+            </div>
+            <div class="intent-header-right">
+                <button type="button" class="btn btn--primary" id="save-document-btn">Download document</button>
+            </div>
         </header>
-        <section id="edit-view">
-            <div class="inline-controls">
-                <input type="text" id="title-input" value="{{ meta.title or '' }}" placeholder="Title" />
-                <button type="button" class="btn btn--primary" id="set-title-btn">Set title</button>
-            </div>
-            <div class="inline-controls">
-                <span id="suggested-title-text"></span>
-            </div>
-            <div id="final-title"></div>
-            <div class="inline-controls">
-                <input type="text" id="author-input" value="{{ meta.author or '' }}" placeholder="Author" />
-                <button type="button" class="btn btn--primary" id="set-author-btn">Set author</button>
-            </div>
-                <div class="inline-controls">
-                    <button type="button" class="btn btn--primary" id="save-document-btn">Download document</button>
+        <section id="edit-view" class="stack">
+            <section class="stack">
+                <div class="form-row">
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label for="title-input" class="intent-label-text">Title</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="Final title used for this post."
+                                aria-label="Help for Title"
+                            >
+                                ?
+                            </button>
+                        </div>
+                        <input type="text" id="title-input" value="{{ meta.title or '' }}" />
+                    </div>
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label for="author-input" class="intent-label-text">Author</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="Name shown as the post author."
+                                aria-label="Help for Author"
+                            >
+                                ?
+                            </button>
+                        </div>
+                        <input type="text" id="author-input" value="{{ meta.author or '' }}" />
+                    </div>
                 </div>
-            <div class="inline-controls">
-                <div id="post-status-indicator">Status: {{ meta.status or "—" }}</div>
-                <div id="post-revision-indicator">Last revision: —</div>
-            </div>
-            <section>
-                <article id="article-text"></article>
-                <textarea id="article-source" hidden>{{ content | e }}</textarea>
-                <textarea id="article-editor"></textarea>
-                <div class="inline-controls">
-                    <button type="button" class="btn btn--primary" id="edit-content-btn">Edit content</button>
-                    <button type="button" class="btn btn--primary" id="apply-edit-btn">Apply edit</button>
+                <section class="action-row">
+                    <div class="actions-right">
+                        <button type="button" class="btn btn--primary" id="set-title-btn">Set title</button>
+                        <button type="button" class="btn btn--primary" id="set-author-btn">Set author</button>
+                    </div>
+                </section>
+                <div class="form-row">
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label class="intent-label-text">Suggested title</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="Suggested title based on the current content."
+                                aria-label="Help for Suggested title"
+                            >
+                                ?
+                            </button>
+                        </div>
+                        <div id="suggested-title-text"></div>
+                    </div>
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label class="intent-label-text">Final title</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="Confirmed title after applying changes."
+                                aria-label="Help for Final title"
+                            >
+                                ?
+                            </button>
+                        </div>
+                        <div id="final-title"></div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label class="intent-label-text">Status</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="Current publication status for this post."
+                                aria-label="Help for Status"
+                            >
+                                ?
+                            </button>
+                        </div>
+                        <div id="post-status-indicator">{{ meta.status or "—" }}</div>
+                    </div>
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label class="intent-label-text">Last revision</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="Most recent revision id recorded for this post."
+                                aria-label="Help for Last revision"
+                            >
+                                ?
+                            </button>
+                        </div>
+                        <div id="post-revision-indicator">—</div>
+                    </div>
                 </div>
             </section>
-            <section>
-                <textarea id="policy-text" placeholder="Policy text"></textarea>
-                <div class="inline-controls">
-                    <button type="button" class="btn btn--primary" id="run-policy-edit-btn">Run policy edit</button>
+            <section class="stack">
+                <div class="intent-field">
+                    <div class="intent-label-row">
+                        <label class="intent-label-text">Current content</label>
+                        <button
+                            type="button"
+                            class="intent-help"
+                            data-help="Rendered markdown for the current post."
+                            aria-label="Help for Current content"
+                        >
+                            ?
+                        </button>
+                    </div>
+                    <article id="article-text"></article>
                 </div>
-                <div id="policy-edit-status"></div>
-                <pre id="policy-edit-result"></pre>
+                <div class="intent-field">
+                    <div class="intent-label-row">
+                        <label for="article-editor" class="intent-label-text">Content editor</label>
+                        <button
+                            type="button"
+                            class="intent-help"
+                            data-help="Edit the markdown content for this post."
+                            aria-label="Help for Content editor"
+                        >
+                            ?
+                        </button>
+                    </div>
+                    <textarea id="article-editor"></textarea>
+                    <textarea id="article-source" hidden>{{ content | e }}</textarea>
+                </div>
+                <section class="action-row">
+                    <div class="actions-right">
+                        <button type="button" class="btn btn--primary" id="edit-content-btn">Edit content</button>
+                        <button type="button" class="btn btn--primary" id="apply-edit-btn">Apply edit</button>
+                    </div>
+                </section>
+            </section>
+            <section class="stack">
+                <div class="intent-field">
+                    <div class="intent-label-row">
+                        <label for="policy-text" class="intent-label-text">Policy editor</label>
+                        <button
+                            type="button"
+                            class="intent-help"
+                            data-help="Provide policy instructions for a constrained edit."
+                            aria-label="Help for Policy editor"
+                        >
+                            ?
+                        </button>
+                    </div>
+                    <textarea id="policy-text" placeholder="Policy text"></textarea>
+                </div>
+                <section class="action-row">
+                    <div class="actions-right">
+                        <button type="button" class="btn btn--primary" id="run-policy-edit-btn">Run policy edit</button>
+                    </div>
+                </section>
+                <div class="intent-field">
+                    <div class="intent-label-row">
+                        <label class="intent-label-text">Policy status</label>
+                        <button
+                            type="button"
+                            class="intent-help"
+                            data-help="Status updates for the policy edit request."
+                            aria-label="Help for Policy status"
+                        >
+                            ?
+                        </button>
+                    </div>
+                    <div id="policy-edit-status"></div>
+                </div>
+                <div class="intent-field">
+                    <div class="intent-label-row">
+                        <label class="intent-label-text">Policy result</label>
+                        <button
+                            type="button"
+                            class="intent-help"
+                            data-help="Summary of changes applied by the policy edit."
+                            aria-label="Help for Policy result"
+                        >
+                            ?
+                        </button>
+                    </div>
+                    <pre id="policy-edit-result"></pre>
+                </div>
             </section>
         </section>
         <section id="download-modal" hidden>
@@ -56,7 +209,18 @@
                     <h2>Download document</h2>
                 </header>
                 <div class="modal-body">
-                    <div class="inline-controls">
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label for="download-filename" class="intent-label-text">Filename</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="File name for the markdown download."
+                                aria-label="Help for Filename"
+                            >
+                                ?
+                            </button>
+                        </div>
                         <input type="text" id="download-filename" value="article.md" />
                     </div>
                 </div>
