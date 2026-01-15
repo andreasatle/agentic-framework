@@ -51,15 +51,19 @@
             </section>
         </section>
         <section id="download-modal" hidden>
-            <header>
-                <h2>Download document</h2>
-            </header>
-            <div class="inline-controls">
-                <input type="text" id="download-filename" value="article.md" />
-            </div>
-            <div class="inline-controls">
-                <button type="button" class="btn btn--ghost">Cancel</button>
-                <button type="button" class="btn btn--primary">Download</button>
+            <div class="modal-panel">
+                <header class="modal-header">
+                    <h2>Download document</h2>
+                </header>
+                <div class="modal-body">
+                    <div class="inline-controls">
+                        <input type="text" id="download-filename" value="article.md" />
+                    </div>
+                </div>
+                <div class="inline-controls modal-actions">
+                    <button type="button" class="btn btn--ghost">Cancel</button>
+                    <button type="button" class="btn btn--primary">Download</button>
+                </div>
             </div>
         </section>
     </main>
