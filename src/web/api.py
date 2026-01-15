@@ -598,13 +598,12 @@ def save_document(payload: DocumentSaveRequest):
 
 
 @app.get("/blog", response_class=HTMLResponse)
-async def get_blog_index(request: Request, include_drafts: bool = False, format: str = "html"):
-    include_drafts = False
-    posts = list_posts(include_drafts=include_drafts)
+async def get_blog_index(request: Request, format: str = "html"):
+    posts = list_posts(include_drafts=False)
     if format == "html":
         return templates.TemplateResponse(
             "blog_index.html",
-            {"request": request, "posts": posts, "include_drafts": include_drafts},
+            {"request": request, "posts": posts, "include_drafts": False},
         )
     result = [
         {
@@ -619,11 +618,10 @@ async def get_blog_index(request: Request, include_drafts: bool = False, format:
 
 
 @app.get("/blog/{post_id}", response_class=HTMLResponse)
-async def get_blog_post(request: Request, post_id: str, include_drafts: bool = False, format: str = "html"):
-    include_drafts = False
+async def get_blog_post(request: Request, post_id: str, format: str = "html"):
     try:
         meta = read_post_meta(post_id)
-        if not include_drafts and meta.status != "published":
+        if meta.status != "published":
             raise HTTPException(status_code=404, detail="Post not found")
         content = read_post_content(post_id)
         intent = read_post_intent(post_id)
@@ -644,7 +642,7 @@ async def get_blog_post(request: Request, post_id: str, include_drafts: bool = F
                 "meta": meta,
                 "content_html": content_html,
                 "intent": intent,
-                "include_drafts": include_drafts,
+                "include_drafts": False,
             },
         )
 
