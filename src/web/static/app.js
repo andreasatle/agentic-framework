@@ -390,37 +390,25 @@ async function suggestTitle(content) {
   }
 }
 
-async function saveDocument() {
-  if (!currentMarkdown) {
-    setError("No article to save. Generate first.");
-    return;
+async function downloadDocument(filename) {
+  const resp = await fetch("/document/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ markdown: currentMarkdown, filename }),
+  });
+  if (!resp.ok) {
+    const detail = await resp.text();
+    throw new Error(detail || "Failed to download document.");
   }
-  try {
-    const filenameInput = $("download-filename") || $("article-filename");
-    const filename = (filenameInput?.value || "").trim();
-    const resp = await fetch("/document/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown: currentMarkdown, filename }),
-    });
-    if (!resp.ok) {
-      const detail = await resp.text();
-      setError(detail || "Failed to save article.");
-      return;
-    }
-    const blob = await resp.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename || "article.md";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-    setError("");
-  } catch (err) {
-    setError(err?.message || "Error saving article.");
-  }
+  const blob = await resp.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "article.md";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 function openDownloadModal() {
@@ -475,8 +463,16 @@ document.addEventListener("DOMContentLoaded", () => {
   $("save-document-btn")?.addEventListener("click", openDownloadModal);
   $("download-cancel-btn")?.addEventListener("click", closeDownloadModal);
   $("download-confirm-btn")?.addEventListener("click", () => {
-    saveDocument();
-    closeDownloadModal();
+    const filenameInput = $("download-filename");
+    const filename = (filenameInput?.value || "").trim() || "article.md";
+    downloadDocument(filename)
+      .then(() => {
+        setError("");
+        closeDownloadModal();
+      })
+      .catch((err) => {
+        setError(err?.message || "Error downloading document.");
+      });
   });
 });
 
