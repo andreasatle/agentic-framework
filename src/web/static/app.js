@@ -29,10 +29,14 @@ async function resolveYamlParser() {
 }
 
 async function downloadIntentFromForm() {
-  const filename =
-    prompt("Save intent as:", "intent.yaml")?.trim() || "intent.yaml";
-
-  if (!filename) return;
+  const filenameInput = prompt("Save intent as:", "intent.yaml");
+  if (!filenameInput) {
+    return;
+  }
+  const filename = filenameInput.trim();
+  if (!filename) {
+    return;
+  }
 
   const documentGoalRaw = $("document-goal")?.value ?? "";
   const audienceRaw = $("audience")?.value ?? "";
