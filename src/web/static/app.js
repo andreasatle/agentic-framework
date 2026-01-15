@@ -651,8 +651,16 @@ function initManualEditorPage() {}
 
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body?.dataset?.page;
-  if (page === "blog-editor") initBlogEditorPage();
-  if (page === "manual-editor") initManualEditorPage();
+  if (!page) return;
+
+  switch (page) {
+    case "blog-editor":
+      initBlogEditorPage();
+      break;
+    case "manual-editor":
+      initManualEditorPage();
+      break;
+  }
 });
 
 document.addEventListener("click", (e) => {
