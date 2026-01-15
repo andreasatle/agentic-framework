@@ -454,6 +454,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("edit-content-btn")?.addEventListener("click", toggleEditContent);
   $("apply-edit-btn")?.addEventListener("click", applyEdit);
   $("run-policy-edit-btn")?.addEventListener("click", runPolicyEdit);
+  $("save-document-btn")?.addEventListener("click", saveDocument);
 });
 
 document.addEventListener("click", (event) => {
