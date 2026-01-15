@@ -556,6 +556,15 @@ document.addEventListener("DOMContentLoaded", () => {
     throw new Error("Missing required post_id data attribute on <body>.");
   }
   currentPostId = postId;
+  fetch(`/blog/editor/data?post_id=${currentPostId}`)
+    .then((resp) => (resp.ok ? resp.json() : null))
+    .then((data) => {
+      const target = $("post-revision-indicator");
+      if (!target) return;
+      const value = data && data.last_revision_id;
+      target.textContent = value == null ? "—" : String(value);
+    })
+    .catch(() => {});
 
   // Initialize markdown rendering from preserved source
   const article = $("article-text");
