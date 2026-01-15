@@ -2,7 +2,9 @@ import web.bootstrap
 import hashlib
 import logging
 import os
+from datetime import datetime, timezone
 from io import BytesIO
+import yaml
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +21,7 @@ from document_writer.domain.editor.chunking import split_markdown
 from document_writer.apps.title_suggester import suggest_title
 from apps.blog.edit_service import apply_policy_edit
 from apps.blog.post_revision_writer import PostRevisionWriter
+from apps.blog.paths import POSTS_ROOT
 from apps.blog.storage import (
     create_post,
     list_posts,
@@ -203,6 +206,39 @@ async def submit_manual_edit(
     require_admin(creds)
     form = await request.form()
     write_post_content(post_id, form.get("content") or "")
+    post_dir = POSTS_ROOT / post_id
+    meta_path = post_dir / "meta.yaml"
+    if not meta_path.exists():
+        raise FileNotFoundError(f"meta.yaml not found for post {post_id}")
+    meta_payload = yaml.safe_load(meta_path.read_text()) or {}
+    if not isinstance(meta_payload, dict):
+        raise ValueError(f"Invalid meta.yaml for post {post_id}")
+    revisions = meta_payload.get("revisions")
+    if revisions is None:
+        revisions = []
+    elif not isinstance(revisions, list):
+        raise ValueError(f"Invalid revisions for post {post_id}")
+    last_revision_id = 0
+    if revisions:
+        last_entry = revisions[-1]
+        if not isinstance(last_entry, dict):
+            raise ValueError(f"Invalid revision entry for post {post_id}")
+        last_revision_id = last_entry.get("revision_id", 0)
+        if not isinstance(last_revision_id, int):
+            raise ValueError(f"Invalid revision_id for post {post_id}")
+    revision_entry = {
+        "revision_id": last_revision_id + 1,
+        "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "delta_type": "content_changed",
+        "delta_payload": {},
+        "actor": {"type": "human", "id": creds.username or "editor"},
+        "status": "applied",
+    }
+    revisions.append(revision_entry)
+    meta_payload["revisions"] = revisions
+    meta_path.write_text(
+        yaml.safe_dump(meta_payload, sort_keys=False, default_flow_style=False)
+    )
     return RedirectResponse(f"/blog/editor/{post_id}", status_code=303)
 
 
