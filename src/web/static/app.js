@@ -1,7 +1,6 @@
 let currentMarkdown = null;
 let currentPostId = null;
 let suggestedTitleValue = "";
-let titleCommitted = false;
 let isEditingContent = false;
 
 function $(id) {
@@ -159,13 +158,6 @@ function openIntentFile() {
 window.downloadIntentFromForm = downloadIntentFromForm;
 window.openIntentFile = openIntentFile;
 
-function setArticleStatus(text) {
-  const article = $("article-text");
-  if (article) {
-    article.textContent = text;
-  }
-}
-
 function setSuggestedTitle(title) {
   const target = $("suggested-title-text");
   if (target) {
@@ -177,7 +169,7 @@ function setSuggestedTitleValue(title) {
   suggestedTitleValue = (title || "").trim();
   setSuggestedTitle(suggestedTitleValue ? `Suggested title: ${suggestedTitleValue}` : "");
   const titleInput = $("title-input");
-  if (titleInput && suggestedTitleValue && !titleCommitted && !titleInput.value.trim()) {
+  if (titleInput && suggestedTitleValue && !titleInput.value.trim()) {
     titleInput.value = suggestedTitleValue;
   }
 }
@@ -218,7 +210,6 @@ async function applySuggestedTitle() {
       body: JSON.stringify({ post_id: currentPostId, title: suggestedTitleValue }),
     });
     if (resp.status === 409) {
-      titleCommitted = true;
       return;
     }
     if (!resp.ok) {
@@ -227,7 +218,6 @@ async function applySuggestedTitle() {
       return;
     }
     const data = await resp.json();
-    titleCommitted = true;
     setFinalTitle(`Title: ${data.title}`);
     setError("");
   } catch (err) {
@@ -253,7 +243,6 @@ async function setTitle() {
       body: JSON.stringify({ post_id: currentPostId, title }),
     });
     if (resp.status === 409) {
-      titleCommitted = true;
       setError("Title already set.");
       return;
     }
@@ -263,7 +252,6 @@ async function setTitle() {
       return;
     }
     const data = await resp.json();
-    titleCommitted = true;
     setFinalTitle(`Title: ${data.title}`);
     setError("");
   } catch (err) {
