@@ -26,7 +26,7 @@
                             <button
                                 type="button"
                                 class="intent-help"
-                                data-help="Final title used for this post."
+                                data-help="If a title is generated, it appears under 'Suggested title'. Use 'Set title' to apply it as the final title for the post."
                                 aria-label="Help for Title"
                             >
                                 ?
@@ -40,7 +40,7 @@
                             <button
                                 type="button"
                                 class="intent-help"
-                                data-help="Name shown as the post author."
+                                data-help="This value controls the displayed author name for the post."
                                 aria-label="Help for Author"
                             >
                                 ?
@@ -89,28 +89,12 @@
                     <div class="intent-field">
                         <div class="intent-label-row">
                             <label class="intent-label-text">Status</label>
-                            <button
-                                type="button"
-                                class="intent-help"
-                                data-help="Current publication status for this post."
-                                aria-label="Help for Status"
-                            >
-                                ?
-                            </button>
                         </div>
                         <div id="post-status-indicator">{{ meta.status or "—" }}</div>
                     </div>
                     <div class="intent-field">
                         <div class="intent-label-row">
                             <label class="intent-label-text">Last revision</label>
-                            <button
-                                type="button"
-                                class="intent-help"
-                                data-help="Most recent revision id recorded for this post."
-                                aria-label="Help for Last revision"
-                            >
-                                ?
-                            </button>
                         </div>
                         <div id="post-revision-indicator">—</div>
                     </div>
@@ -120,14 +104,6 @@
                 <div class="intent-field">
                     <div class="intent-label-row">
                         <label class="intent-label-text">Current content</label>
-                        <button
-                            type="button"
-                            class="intent-help"
-                            data-help="Rendered markdown for the current post."
-                            aria-label="Help for Current content"
-                        >
-                            ?
-                        </button>
                     </div>
                     <article id="article-text"></article>
                 </div>
@@ -176,28 +152,12 @@
                 <div class="intent-field">
                     <div class="intent-label-row">
                         <label class="intent-label-text">Policy status</label>
-                        <button
-                            type="button"
-                            class="intent-help"
-                            data-help="Status updates for the policy edit request."
-                            aria-label="Help for Policy status"
-                        >
-                            ?
-                        </button>
                     </div>
                     <div id="policy-edit-status"></div>
                 </div>
                 <div class="intent-field">
                     <div class="intent-label-row">
                         <label class="intent-label-text">Policy result</label>
-                        <button
-                            type="button"
-                            class="intent-help"
-                            data-help="Summary of changes applied by the policy edit."
-                            aria-label="Help for Policy result"
-                        >
-                            ?
-                        </button>
                     </div>
                     <pre id="policy-edit-result"></pre>
                 </div>
