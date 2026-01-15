@@ -184,8 +184,27 @@ function confirmDownloadIntent() {
     });
 }
 
+function setSuggestedTitle(title) {
+  const target = $("suggested-title-text");
+  if (target) {
+    target.textContent = title || "";
+  }
+}
+
 function setSuggestedTitleValue(title) {
   suggestedTitleValue = (title || "").trim();
+  setSuggestedTitle(suggestedTitleValue ? `Suggested title: ${suggestedTitleValue}` : "");
+  const titleInput = $("title-input");
+  if (titleInput && suggestedTitleValue && !titleInput.value.trim()) {
+    titleInput.value = suggestedTitleValue;
+  }
+}
+
+function setFinalTitle(title) {
+  const target = $("final-title");
+  if (target) {
+    target.textContent = title || "";
+  }
 }
 
 function setPolicyEditStatus(text) {
@@ -220,9 +239,6 @@ async function setTitle() {
     return;
   }
   const input = $("title-input");
-  if (input && suggestedTitleValue) {
-    input.value = suggestedTitleValue;
-  }
   const title = (input?.value || "").trim();
   if (!title) {
     setError("Title cannot be empty.");
@@ -243,7 +259,8 @@ async function setTitle() {
       setError(detail || "Failed to set title.");
       return;
     }
-    await resp.json();
+    const data = await resp.json();
+    setFinalTitle(`Title: ${data.title}`);
     setError("");
   } catch (err) {
     setError(err?.message || "Error setting title.");
