@@ -187,8 +187,12 @@ function confirmDownloadIntent() {
 function setSuggestedTitleValue(title) {
   suggestedTitleValue = (title || "").trim();
   const target = $("suggested-title-text");
+  const wrap = $("suggested-title-wrap");
   if (target) {
     target.textContent = suggestedTitleValue ? `Suggested: "${suggestedTitleValue}"` : "";
+  }
+  if (wrap) {
+    wrap.hidden = !suggestedTitleValue;
   }
 }
 
@@ -223,11 +227,7 @@ async function setTitle() {
     setError("No post available to set title.");
     return;
   }
-  const input = $("title-input");
-  const rawTitle = (input?.value || "").trim();
-  if (!rawTitle && input && suggestedTitleValue) {
-    input.value = suggestedTitleValue;
-  }
+  const input = $("title-modal-input");
   const title = (input?.value || "").trim();
   if (!title) {
     setError("Title cannot be empty.");
@@ -249,6 +249,12 @@ async function setTitle() {
       return;
     }
     await resp.json();
+    const titleDisplay = $("title-display");
+    if (titleDisplay) {
+      titleDisplay.textContent = title;
+    }
+    setSuggestedTitleValue("");
+    closeTitleModal();
     setError("");
   } catch (err) {
     setError(err?.message || "Error setting title.");
@@ -260,7 +266,7 @@ async function setAuthor() {
     setError("No post available to set author.");
     return;
   }
-  const input = $("author-input");
+  const input = $("author-modal-input");
   const author = (input?.value || "").trim();
   if (!author) {
     setError("Author cannot be empty.");
@@ -278,9 +284,100 @@ async function setAuthor() {
       return;
     }
     await resp.json();
+    const authorDisplay = $("author-display");
+    if (authorDisplay) {
+      authorDisplay.textContent = author;
+    }
+    closeAuthorModal();
     setError("");
   } catch (err) {
     setError(err?.message || "Error setting author.");
+  }
+}
+
+let lastFocusedElement = null;
+
+function trapFocus(modal, event) {
+  if (!modal) return;
+  if (event.key === "Escape") {
+    if (modal.id === "title-modal") {
+      closeTitleModal();
+    } else if (modal.id === "author-modal") {
+      closeAuthorModal();
+    }
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const focusable = modal.querySelectorAll(
+    'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
+  );
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function openModal(modalId, focusId) {
+  const modal = $(modalId);
+  if (!modal) return;
+  lastFocusedElement = document.activeElement;
+  modal.hidden = false;
+  const focusTarget = focusId ? $(focusId) : null;
+  if (focusTarget) {
+    focusTarget.focus();
+  }
+  if (!modal._trapHandler) {
+    modal._trapHandler = (event) => trapFocus(modal, event);
+  }
+  modal.addEventListener("keydown", modal._trapHandler);
+}
+
+function closeModal(modalId) {
+  const modal = $(modalId);
+  if (!modal) return;
+  modal.hidden = true;
+  if (modal._trapHandler) {
+    modal.removeEventListener("keydown", modal._trapHandler);
+  }
+  if (lastFocusedElement instanceof HTMLElement) {
+    lastFocusedElement.focus();
+  }
+}
+
+function openTitleModal() {
+  openModal("title-modal", "title-modal-input");
+  setSuggestedTitleValue("");
+  const editor = $("article-editor");
+  const source = isEditingContent && editor ? editor.value : currentMarkdown;
+  if (source) {
+    suggestTitle(source);
+  }
+}
+
+function closeTitleModal() {
+  setSuggestedTitleValue("");
+  closeModal("title-modal");
+}
+
+function openAuthorModal() {
+  openModal("author-modal", "author-modal-input");
+}
+
+function closeAuthorModal() {
+  closeModal("author-modal");
+}
+
+function applySuggestedTitle() {
+  const input = $("title-modal-input");
+  if (input && suggestedTitleValue) {
+    input.value = suggestedTitleValue;
+    input.focus();
   }
 }
 
@@ -316,7 +413,7 @@ async function applyEdit() {
     if (articleArea) {
       articleArea.innerHTML = marked.parse(currentMarkdown);
     }
-    suggestTitle(currentMarkdown || "");
+    setSuggestedTitleValue("");
     setEditMode(false);
     setError("");
   } catch (err) {
@@ -467,7 +564,6 @@ document.addEventListener("DOMContentLoaded", () => {
     currentMarkdown = articleSource.value || "";
     article.innerHTML = marked.parse(currentMarkdown);
   }
-  suggestTitle(currentMarkdown || "");
 
   const intentForm = $("intent-form");
   if (intentForm) {
@@ -483,6 +579,11 @@ document.addEventListener("DOMContentLoaded", () => {
   $("download-intent-btn")?.addEventListener("click", openDownloadIntentModal);
   $("download-intent-cancel-btn")?.addEventListener("click", closeDownloadIntentModal);
   $("download-intent-confirm-btn")?.addEventListener("click", confirmDownloadIntent);
+  $("open-title-modal-btn")?.addEventListener("click", openTitleModal);
+  $("open-author-modal-btn")?.addEventListener("click", openAuthorModal);
+  $("title-cancel-btn")?.addEventListener("click", closeTitleModal);
+  $("author-cancel-btn")?.addEventListener("click", closeAuthorModal);
+  $("apply-suggested-title-btn")?.addEventListener("click", applySuggestedTitle);
   $("set-title-btn")?.addEventListener("click", setTitle);
   $("set-author-btn")?.addEventListener("click", setAuthor);
   $("edit-content-btn")?.addEventListener("click", toggleEditContent);

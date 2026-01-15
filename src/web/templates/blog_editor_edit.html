@@ -14,6 +14,8 @@
                 <h1>Edit blog post</h1>
             </div>
             <div class="intent-header-right">
+                <button type="button" class="btn btn--primary" id="open-title-modal-btn">Change title</button>
+                <button type="button" class="btn btn--primary" id="open-author-modal-btn">Change author</button>
                 <button type="button" class="btn btn--primary" id="save-document-btn">Download document</button>
             </div>
         </header>
@@ -22,40 +24,17 @@
                 <div class="form-row">
                     <div class="intent-field">
                         <div class="intent-label-row">
-                            <label for="title-input" class="intent-label-text">Title</label>
-                            <button
-                                type="button"
-                                class="intent-help"
-                                data-help="A generated suggestion may appear under this field. Set title applies the current field value; if empty, it uses the suggestion if available."
-                                aria-label="Help for Title"
-                            >
-                                ?
-                            </button>
+                            <label class="intent-label-text">Title</label>
                         </div>
-                        <input type="text" id="title-input" value="{{ meta.title or '' }}" />
-                        <div id="suggested-title-text" class="intent-muted"></div>
+                        <div id="title-display">{{ meta.title or "—" }}</div>
                     </div>
                     <div class="intent-field">
                         <div class="intent-label-row">
-                            <label for="author-input" class="intent-label-text">Author</label>
-                            <button
-                                type="button"
-                                class="intent-help"
-                                data-help="This value controls the displayed author name for the post."
-                                aria-label="Help for Author"
-                            >
-                                ?
-                            </button>
+                            <label class="intent-label-text">Author</label>
                         </div>
-                        <input type="text" id="author-input" value="{{ meta.author or '' }}" />
+                        <div id="author-display">{{ meta.author or "—" }}</div>
                     </div>
                 </div>
-                <section class="action-row">
-                    <div class="actions-right">
-                        <button type="button" class="btn btn--primary" id="set-title-btn">Set title</button>
-                        <button type="button" class="btn btn--primary" id="set-author-btn">Set author</button>
-                    </div>
-                </section>
                 <div class="form-row">
                     <div class="intent-field">
                         <div class="intent-label-row">
@@ -158,6 +137,66 @@
                 <div class="inline-controls modal-actions">
                     <button type="button" class="btn btn--ghost" id="download-cancel-btn">Cancel</button>
                     <button type="button" class="btn btn--primary" id="download-confirm-btn">Download</button>
+                </div>
+            </div>
+        </section>
+        <section id="title-modal" hidden>
+            <div class="modal-panel">
+                <header class="modal-header">
+                    <h2>Change title</h2>
+                </header>
+                <div class="modal-body">
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label for="title-modal-input" class="intent-label-text">Title</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="A generated suggestion may appear below. Apply title uses the current input value."
+                                aria-label="Help for Title"
+                            >
+                                ?
+                            </button>
+                        </div>
+                        <input type="text" id="title-modal-input" value="{{ meta.title or '' }}" />
+                        <div id="suggested-title-wrap" class="stack" hidden>
+                            <div class="intent-muted" id="suggested-title-text"></div>
+                            <button type="button" class="btn btn--ghost" id="apply-suggested-title-btn">
+                                Use suggested title
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="inline-controls modal-actions">
+                    <button type="button" class="btn btn--ghost" id="title-cancel-btn">Cancel</button>
+                    <button type="button" class="btn btn--primary" id="set-title-btn">Apply title</button>
+                </div>
+            </div>
+        </section>
+        <section id="author-modal" hidden>
+            <div class="modal-panel">
+                <header class="modal-header">
+                    <h2>Change author</h2>
+                </header>
+                <div class="modal-body">
+                    <div class="intent-field">
+                        <div class="intent-label-row">
+                            <label for="author-modal-input" class="intent-label-text">Author</label>
+                            <button
+                                type="button"
+                                class="intent-help"
+                                data-help="This value controls the displayed author name for the post."
+                                aria-label="Help for Author"
+                            >
+                                ?
+                            </button>
+                        </div>
+                        <input type="text" id="author-modal-input" value="{{ meta.author or '' }}" />
+                    </div>
+                </div>
+                <div class="inline-controls modal-actions">
+                    <button type="button" class="btn btn--ghost" id="author-cancel-btn">Cancel</button>
+                    <button type="button" class="btn btn--primary" id="set-author-btn">Apply author</button>
                 </div>
             </div>
         </section>

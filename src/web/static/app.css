@@ -237,12 +237,16 @@ main.container ul li > a:hover {
    ============================== */
 
 #download-modal[hidden],
-#download-intent-modal[hidden] {
+#download-intent-modal[hidden],
+#title-modal[hidden],
+#author-modal[hidden] {
   display: none;
 }
 
 #download-modal,
-#download-intent-modal {
+#download-intent-modal,
+#title-modal,
+#author-modal {
   position: fixed;
   inset: 0;
   display: flex;
@@ -254,7 +258,9 @@ main.container ul li > a:hover {
 }
 
 #download-modal .modal-panel,
-#download-intent-modal .modal-panel {
+#download-intent-modal .modal-panel,
+#title-modal .modal-panel,
+#author-modal .modal-panel {
   width: min(520px, 100%);
   padding: 1rem;
   background: var(--bg-panel);
@@ -265,17 +271,23 @@ main.container ul li > a:hover {
 }
 
 #download-modal .modal-header h2,
-#download-intent-modal .modal-header h2 {
+#download-intent-modal .modal-header h2,
+#title-modal .modal-header h2,
+#author-modal .modal-header h2 {
   margin: 0 0 0.75rem;
 }
 
 #download-modal .modal-body,
-#download-intent-modal .modal-body {
+#download-intent-modal .modal-body,
+#title-modal .modal-body,
+#author-modal .modal-body {
   margin-bottom: 1rem;
 }
 
 #download-modal .modal-actions,
-#download-intent-modal .modal-actions {
+#download-intent-modal .modal-actions,
+#title-modal .modal-actions,
+#author-modal .modal-actions {
   justify-content: flex-end;
 }
 
@@ -284,7 +296,13 @@ main.container ul li > a:hover {
 #download-modal select,
 #download-intent-modal input,
 #download-intent-modal textarea,
-#download-intent-modal select {
+#download-intent-modal select,
+#title-modal input,
+#title-modal textarea,
+#title-modal select,
+#author-modal input,
+#author-modal textarea,
+#author-modal select {
   background: var(--bg-input);
   color: var(--text-main);
   border-color: var(--border-subtle);
