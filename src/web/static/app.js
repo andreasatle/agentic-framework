@@ -560,6 +560,9 @@ function initBlogEditorPage() {
     .then((resp) => (resp.ok ? resp.json() : null))
     .then((data) => {
       const target = $("post-revision-indicator");
+      console.log("editor-data payload", data);
+      console.log("editor-data last_revision_id", data?.last_revision_id);
+      console.log("editor-data target exists", Boolean(target));
       if (!target) return;
       const value = data && data.last_revision_id;
       target.textContent = value == null ? "—" : String(value);
