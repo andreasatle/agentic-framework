@@ -429,6 +429,19 @@ function closeDownloadModal() {
   }
 }
 
+function confirmDownload() {
+  const filenameInput = $("download-filename");
+  const filename = (filenameInput?.value || "").trim() || "article.md";
+  downloadDocument(filename)
+    .then(() => {
+      setError("");
+      closeDownloadModal();
+    })
+    .catch((err) => {
+      setError(err?.message || "Error downloading document.");
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const postId = document.body?.dataset?.postId;
   if (!postId) {
@@ -462,18 +475,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("run-policy-edit-btn")?.addEventListener("click", runPolicyEdit);
   $("save-document-btn")?.addEventListener("click", openDownloadModal);
   $("download-cancel-btn")?.addEventListener("click", closeDownloadModal);
-  $("download-confirm-btn")?.addEventListener("click", () => {
-    const filenameInput = $("download-filename");
-    const filename = (filenameInput?.value || "").trim() || "article.md";
-    downloadDocument(filename)
-      .then(() => {
-        setError("");
-        closeDownloadModal();
-      })
-      .catch((err) => {
-        setError(err?.message || "Error downloading document.");
-      });
-  });
+  $("download-confirm-btn")?.addEventListener("click", confirmDownload);
 });
 
 document.addEventListener("click", (event) => {
