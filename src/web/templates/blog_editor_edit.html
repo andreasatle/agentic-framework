@@ -25,9 +25,9 @@
                 <input type="text" id="author-input" value="{{ meta.author or '' }}" placeholder="Author" />
                 <button type="button" class="btn btn--primary" id="set-author-btn">Set author</button>
             </div>
-            <div class="inline-controls">
-                <button type="button" class="btn btn--primary" id="save-document-btn">Download document</button>
-            </div>
+                <div class="inline-controls">
+                    <button type="button" class="btn btn--primary" id="save-document-btn">Download document</button>
+                </div>
             <div class="inline-controls">
                 <div id="post-status-indicator">Status: {{ meta.status or "—" }}</div>
                 <div id="post-revision-indicator">Last revision: —</div>
@@ -61,8 +61,8 @@
                     </div>
                 </div>
                 <div class="inline-controls modal-actions">
-                    <button type="button" class="btn btn--ghost">Cancel</button>
-                    <button type="button" class="btn btn--primary">Download</button>
+                    <button type="button" class="btn btn--ghost" id="download-cancel-btn">Cancel</button>
+                    <button type="button" class="btn btn--primary" id="download-confirm-btn">Download</button>
                 </div>
             </div>
         </section>

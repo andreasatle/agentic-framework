@@ -396,7 +396,7 @@ async function saveDocument() {
     return;
   }
   try {
-    const filenameInput = $("article-filename");
+    const filenameInput = $("download-filename") || $("article-filename");
     const filename = (filenameInput?.value || "").trim();
     const resp = await fetch("/document/save", {
       method: "POST",
@@ -420,6 +420,24 @@ async function saveDocument() {
     setError("");
   } catch (err) {
     setError(err?.message || "Error saving article.");
+  }
+}
+
+function openDownloadModal() {
+  const modal = $("download-modal");
+  const filenameInput = $("download-filename");
+  if (!modal || !filenameInput) {
+    return;
+  }
+  filenameInput.value = "article.md";
+  modal.hidden = false;
+  filenameInput.focus();
+}
+
+function closeDownloadModal() {
+  const modal = $("download-modal");
+  if (modal) {
+    modal.hidden = true;
   }
 }
 
@@ -454,7 +472,12 @@ document.addEventListener("DOMContentLoaded", () => {
   $("edit-content-btn")?.addEventListener("click", toggleEditContent);
   $("apply-edit-btn")?.addEventListener("click", applyEdit);
   $("run-policy-edit-btn")?.addEventListener("click", runPolicyEdit);
-  $("save-document-btn")?.addEventListener("click", saveDocument);
+  $("save-document-btn")?.addEventListener("click", openDownloadModal);
+  $("download-cancel-btn")?.addEventListener("click", closeDownloadModal);
+  $("download-confirm-btn")?.addEventListener("click", () => {
+    saveDocument();
+    closeDownloadModal();
+  });
 });
 
 document.addEventListener("click", (event) => {
