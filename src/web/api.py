@@ -194,6 +194,18 @@ def read_manual_edit(
     )
 
 
+@app.post("/blog/edit/{post_id}/manual")
+async def submit_manual_edit(
+    request: Request,
+    post_id: str,
+    creds = Depends(security),
+) -> RedirectResponse:
+    require_admin(creds)
+    form = await request.form()
+    form.get("content")
+    return RedirectResponse(f"/blog/editor/{post_id}", status_code=303)
+
+
 @app.get("/blog/editor/data")
 def read_editor_data(
     post_id: str,
