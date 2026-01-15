@@ -111,9 +111,10 @@ textarea {
 
 .help-tooltip {
   position: absolute;
-  width: 320px;
+  width: min(320px, 90vw);
+  max-width: 320px;
   padding: 0.5rem 0.6rem;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   line-height: 1.4;
   background: #1a1a1d;
   color: #e6e6eb;
@@ -178,6 +179,11 @@ textarea {
 
 .intent-field {
   width: 100%;
+}
+
+.intent-muted {
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 main.container article,

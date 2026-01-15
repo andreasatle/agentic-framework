@@ -184,26 +184,11 @@ function confirmDownloadIntent() {
     });
 }
 
-function setSuggestedTitle(title) {
-  const target = $("suggested-title-text");
-  if (target) {
-    target.textContent = title || "";
-  }
-}
-
 function setSuggestedTitleValue(title) {
   suggestedTitleValue = (title || "").trim();
-  setSuggestedTitle(suggestedTitleValue ? `Suggested title: ${suggestedTitleValue}` : "");
-  const titleInput = $("title-input");
-  if (titleInput && suggestedTitleValue && !titleInput.value.trim()) {
-    titleInput.value = suggestedTitleValue;
-  }
-}
-
-function setFinalTitle(title) {
-  const target = $("final-title");
+  const target = $("suggested-title-text");
   if (target) {
-    target.textContent = title || "";
+    target.textContent = suggestedTitleValue ? `Suggested: "${suggestedTitleValue}"` : "";
   }
 }
 
@@ -239,6 +224,10 @@ async function setTitle() {
     return;
   }
   const input = $("title-input");
+  const rawTitle = (input?.value || "").trim();
+  if (!rawTitle && input && suggestedTitleValue) {
+    input.value = suggestedTitleValue;
+  }
   const title = (input?.value || "").trim();
   if (!title) {
     setError("Title cannot be empty.");
@@ -259,8 +248,7 @@ async function setTitle() {
       setError(detail || "Failed to set title.");
       return;
     }
-    const data = await resp.json();
-    setFinalTitle(`Title: ${data.title}`);
+    await resp.json();
     setError("");
   } catch (err) {
     setError(err?.message || "Error setting title.");
@@ -328,6 +316,7 @@ async function applyEdit() {
     if (articleArea) {
       articleArea.innerHTML = marked.parse(currentMarkdown);
     }
+    suggestTitle(currentMarkdown || "");
     setEditMode(false);
     setError("");
   } catch (err) {
@@ -478,6 +467,7 @@ document.addEventListener("DOMContentLoaded", () => {
     currentMarkdown = articleSource.value || "";
     article.innerHTML = marked.parse(currentMarkdown);
   }
+  suggestTitle(currentMarkdown || "");
 
   const intentForm = $("intent-form");
   if (intentForm) {
