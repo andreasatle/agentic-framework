@@ -9,6 +9,7 @@
 <body data-page="blog-editor" data-post-id="{{ post_id }}">
     <main class="container">
         <p><a href="/">Home</a></p>
+
         <header class="intent-header">
             <div class="intent-header-left">
                 <h1>Edit blog post</h1>
@@ -20,7 +21,10 @@
                 <button type="button" class="btn btn--primary" id="save-document-btn">Download document</button>
             </div>
         </header>
+
         <section id="edit-view" class="stack">
+
+            <!-- Metadata -->
             <section class="stack">
                 <div class="form-row">
                     <div class="intent-field">
@@ -51,6 +55,8 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Rendered content (authoritative display) -->
             <section class="stack">
                 <div class="intent-field">
                     <div class="intent-label-row">
@@ -58,28 +64,12 @@
                     </div>
                     <article id="article-text"></article>
                 </div>
-                <div class="intent-field">
-                    <div class="intent-label-row">
-                        <label for="article-editor" class="intent-label-text">Content editor</label>
-                        <button
-                            type="button"
-                            class="intent-help"
-                            data-help="Edit the markdown content for this post."
-                            aria-label="Help for Content editor"
-                        >
-                            ?
-                        </button>
-                    </div>
-                    <textarea id="article-editor"></textarea>
-                    <textarea id="article-source" hidden>{{ content | e }}</textarea>
-                </div>
-                <section class="action-row">
-                    <div class="actions-right">
-                        <button type="button" class="btn btn--primary" id="edit-content-btn">Edit content</button>
-                        <button type="button" class="btn btn--primary" id="apply-edit-btn">Apply edit</button>
-                    </div>
-                </section>
+
+                <!-- REQUIRED for JS bootstrapping -->
+                <textarea id="article-source" hidden>{{ content | e }}</textarea>
             </section>
+
+            <!-- Policy editor (unchanged) -->
             <section class="stack">
                 <div class="intent-field">
                     <div class="intent-label-row">
@@ -113,95 +103,10 @@
                     <pre id="policy-edit-result"></pre>
                 </div>
             </section>
-        </section>
-        <section id="download-modal" hidden>
-            <div class="modal-panel">
-                <header class="modal-header">
-                    <h2>Download document</h2>
-                </header>
-                <div class="modal-body">
-                    <div class="intent-field">
-                        <div class="intent-label-row">
-                            <label for="download-filename" class="intent-label-text">Filename</label>
-                            <button
-                                type="button"
-                                class="intent-help"
-                                data-help="File name for the markdown download."
-                                aria-label="Help for Filename"
-                            >
-                                ?
-                            </button>
-                        </div>
-                        <input type="text" id="download-filename" value="article.md" />
-                    </div>
-                </div>
-                <div class="inline-controls modal-actions">
-                    <button type="button" class="btn btn--ghost" id="download-cancel-btn">Cancel</button>
-                    <button type="button" class="btn btn--primary" id="download-confirm-btn">Download</button>
-                </div>
-            </div>
-        </section>
-        <section id="title-modal" hidden>
-            <div class="modal-panel">
-                <header class="modal-header">
-                    <h2>Change title</h2>
-                </header>
-                <div class="modal-body">
-                    <div class="intent-field">
-                        <div class="intent-label-row">
-                            <label for="title-modal-input" class="intent-label-text">Title</label>
-                            <button
-                                type="button"
-                                class="intent-help"
-                                data-help="A generated suggestion may appear below. Apply title uses the current input value."
-                                aria-label="Help for Title"
-                            >
-                                ?
-                            </button>
-                        </div>
-                        <input type="text" id="title-modal-input" value="{{ meta.title or '' }}" />
-                        <div id="suggested-title-wrap" class="stack" hidden>
-                            <div class="intent-muted" id="suggested-title-text"></div>
-                            <button type="button" class="btn btn--ghost" id="apply-suggested-title-btn">
-                                Use suggested title
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="inline-controls modal-actions">
-                    <button type="button" class="btn btn--ghost" id="title-cancel-btn">Cancel</button>
-                    <button type="button" class="btn btn--primary" id="set-title-btn">Apply title</button>
-                </div>
-            </div>
-        </section>
-        <section id="author-modal" hidden>
-            <div class="modal-panel">
-                <header class="modal-header">
-                    <h2>Change author</h2>
-                </header>
-                <div class="modal-body">
-                    <div class="intent-field">
-                        <div class="intent-label-row">
-                            <label for="author-modal-input" class="intent-label-text">Author</label>
-                            <button
-                                type="button"
-                                class="intent-help"
-                                data-help="This value controls the displayed author name for the post."
-                                aria-label="Help for Author"
-                            >
-                                ?
-                            </button>
-                        </div>
-                        <input type="text" id="author-modal-input" value="{{ meta.author or '' }}" />
-                    </div>
-                </div>
-                <div class="inline-controls modal-actions">
-                    <button type="button" class="btn btn--ghost" id="author-cancel-btn">Cancel</button>
-                    <button type="button" class="btn btn--primary" id="set-author-btn">Apply author</button>
-                </div>
-            </div>
+
         </section>
     </main>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/static/app.js"></script>
 </body>
