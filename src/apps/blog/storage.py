@@ -160,7 +160,7 @@ def apply_blog_update(
     last_revision_id = max(existing_revision_ids, default=0)
     next_revision_id = last_revision_id + 1
     if next_revision_id <= last_revision_id:
-        raise ValueError(f"Invalid next revision_id for post {post_id}")
+        raise ValueError(f"Revision id must increase for post {post_id}")
     resolved_parent_revision_id = (
         last_revision_id if parent_revision_id is None and last_revision_id else parent_revision_id
     )
@@ -169,6 +169,10 @@ def apply_blog_update(
         and resolved_parent_revision_id not in existing_revision_ids
     ):
         raise ValueError(f"Invalid parent_revision_id for post {post_id}")
+    if last_revision_id and resolved_parent_revision_id is None:
+        raise ValueError(f"Missing parent_revision_id for post {post_id}")
+    if resolved_parent_revision_id is not None and resolved_parent_revision_id >= next_revision_id:
+        raise ValueError(f"Invalid parent_revision_id order for post {post_id}")
     revision_entry: dict[str, Any] = {
         "revision_id": next_revision_id,
         "parent_revision_id": resolved_parent_revision_id,
@@ -183,6 +187,8 @@ def apply_blog_update(
         revision_entry["reason"] = reason
     revisions.append(revision_entry)
     meta_payload["revisions"] = revisions
+    if revisions[-1].get("revision_id") != next_revision_id:
+        raise ValueError(f"Revision append mismatch for post {post_id}")
     if meta_updates and status == "applied":
         meta_payload.update(meta_updates)
     temp_path = meta_path.with_suffix(".yaml.tmp")
@@ -193,6 +199,8 @@ def apply_blog_update(
         "content_free_edit",
         "content_policy_edit",
     ):
+        if not isinstance(new_content, str) or not new_content:
+            raise ValueError(f"Applied content delta requires non-empty content for post {post_id}")
         snapshot_chunks = [
             {"index": chunk.index, "text": chunk.text}
             for chunk in split_markdown(new_content)
@@ -220,32 +228,11 @@ def ensure_draft(post_id: str) -> None:
 
 
 def next_revision_id(post_id: str) -> int:
-    post_dir = POSTS_ROOT / post_id
-    meta_path = post_dir / "meta.yaml"
-    if meta_path.exists():
-        meta_payload = yaml.safe_load(meta_path.read_text()) or {}
-        if not isinstance(meta_payload, dict):
-            raise ValueError(f"Invalid meta.yaml for post {post_id}")
-        revisions = meta_payload.get("revisions")
-        if revisions is not None:
-            if not isinstance(revisions, list):
-                raise ValueError(f"Invalid revisions for post {post_id}")
-            revision_ids: list[int] = []
-            for entry in revisions:
-                if not isinstance(entry, dict):
-                    raise ValueError(f"Invalid revision entry for post {post_id}")
-                revision_id = entry.get("revision_id")
-                if not isinstance(revision_id, int):
-                    raise ValueError(f"Invalid revision_id for post {post_id}")
-                revision_ids.append(revision_id)
-            return max(revision_ids, default=0) + 1
-    return 1
+    raise ValueError("Revision ids must be computed via apply_blog_update only.")
 
 
 def append_revision_meta(post_id: str, revision_entry: dict) -> None:
-    raise NotImplementedError(
-        "Revisions must be appended via PostRevisionWriter.apply_delta."
-    )
+    raise ValueError("Revisions must be appended via apply_blog_update only.")
 
 
 def read_post_intent(post_id: str) -> dict:
