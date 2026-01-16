@@ -1,6 +1,4 @@
-function $(id) {
-  return document.getElementById(id);
-}
+import { $ } from "./dom.js";
 
 function initBlogEditorPage() {
   let currentMarkdown = null;
