@@ -114,6 +114,7 @@ def write_revision_snapshots(
     revision_id: int,
     snapshot_chunks: list[dict],
 ) -> None:
+    # Snapshots are artifacts; revision history is authoritative in meta.yaml.
     revisions_dir = POSTS_ROOT / post_id / "revisions"
     revisions_dir.mkdir(parents=True, exist_ok=True)
     for snapshot in snapshot_chunks:
@@ -238,17 +239,7 @@ def next_revision_id(post_id: str) -> int:
                     raise ValueError(f"Invalid revision_id for post {post_id}")
                 revision_ids.append(revision_id)
             return max(revision_ids, default=0) + 1
-    revisions_dir = post_dir / "revisions"
-    if not revisions_dir.exists():
-        return 1
-    revision_ids: list[int] = []
-    for entry in revisions_dir.glob("*.md"):
-        stem = entry.stem
-        if "_" in stem:
-            stem = stem.split("_", 1)[0]
-        if stem.isdigit():
-            revision_ids.append(int(stem))
-    return max(revision_ids, default=0) + 1
+    return 1
 
 
 def append_revision_meta(post_id: str, revision_entry: dict) -> None:
@@ -361,6 +352,8 @@ def _replay_post_content(post_id: str) -> str:
 
 
 def _migrate_legacy_revisions(post_id: str) -> None:
+    # Revision files are non-authoritative artifacts; do not infer metadata.
+    return
     post_dir = POSTS_ROOT / post_id
     meta_path = post_dir / "meta.yaml"
     if not meta_path.exists():
@@ -379,7 +372,10 @@ def _migrate_legacy_revisions(post_id: str) -> None:
                 raise ValueError(f"Invalid revision entry for post {post_id}")
             existing_revisions.append(dict(entry))
 
-    snapshots_by_revision = _load_snapshot_groups(post_dir)
+    snapshots_by_revision = _load_snapshot_groups(
+        post_dir,
+        [entry["revision_id"] for entry in existing_revisions],
+    )
 
     revisions_by_id: dict[int, dict] = {}
     for entry in existing_revisions:
@@ -423,21 +419,21 @@ def _migrate_legacy_revisions(post_id: str) -> None:
     meta_path.write_text(yaml.safe_dump(meta_payload, sort_keys=False, default_flow_style=False))
 
 
-def _load_snapshot_groups(post_dir: Path) -> dict[int, dict[int, str]]:
+def _load_snapshot_groups(post_dir: Path, revision_ids: list[int]) -> dict[int, dict[int, str]]:
     revisions_dir = post_dir / "revisions"
     if not revisions_dir.exists():
         return {}
     snapshots_by_revision: dict[int, dict[int, str]] = {}
-    for snapshot_path in revisions_dir.glob("*.md"):
-        stem = snapshot_path.stem
-        if "_" not in stem:
-            raise ValueError(f"Invalid snapshot filename {snapshot_path}")
-        revision_str, index_str = stem.split("_", 1)
-        if not revision_str.isdigit() or not index_str.isdigit():
-            raise ValueError(f"Invalid snapshot filename {snapshot_path}")
-        revision_id = int(revision_str)
-        index = int(index_str)
-        snapshots_by_revision.setdefault(revision_id, {})[index] = snapshot_path.read_text()
+    for revision_id in revision_ids:
+        for snapshot_path in revisions_dir.glob(f"{revision_id}_*.md"):
+            stem = snapshot_path.stem
+            if "_" not in stem:
+                raise ValueError(f"Invalid snapshot filename {snapshot_path}")
+            revision_str, index_str = stem.split("_", 1)
+            if revision_str != str(revision_id) or not index_str.isdigit():
+                raise ValueError(f"Invalid snapshot filename {snapshot_path}")
+            index = int(index_str)
+            snapshots_by_revision.setdefault(revision_id, {})[index] = snapshot_path.read_text()
     return snapshots_by_revision
 
 
