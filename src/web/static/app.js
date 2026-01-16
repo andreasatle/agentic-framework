@@ -1,11 +1,16 @@
 import { $ } from "./dom.js";
+import {
+  getCurrentMarkdown,
+  getCurrentPostId,
+  getIsEditingContent,
+  getSuggestedTitleValue,
+  setCurrentMarkdown,
+  setCurrentPostId,
+  setIsEditingContent,
+  setSuggestedTitleValue as setSuggestedTitleValueState,
+} from "./editor_state.js";
 
 function initBlogEditorPage() {
-  let currentMarkdown = null;
-  let currentPostId = null;
-  let suggestedTitleValue = "";
-  let isEditingContent = false;
-
   const errorArea = $("error-area");
 
   function setError(message) {
@@ -184,14 +189,15 @@ function initBlogEditorPage() {
   }
 
   function setSuggestedTitleValue(title) {
-    suggestedTitleValue = (title || "").trim();
+    setSuggestedTitleValueState(title);
     const target = $("suggested-title-text");
     const wrap = $("suggested-title-wrap");
     if (target) {
+      const suggestedTitleValue = getSuggestedTitleValue();
       target.textContent = suggestedTitleValue ? `Suggested: "${suggestedTitleValue}"` : "";
     }
     if (wrap) {
-      wrap.hidden = !suggestedTitleValue;
+      wrap.hidden = !getSuggestedTitleValue();
     }
   }
 
@@ -210,19 +216,19 @@ function initBlogEditorPage() {
   }
 
   function setEditMode(enabled) {
-    isEditingContent = enabled;
+    setIsEditingContent(enabled);
     const article = $("article-text");
     const editor = $("article-editor");
     const applyBtn = $("apply-edit-btn");
     const editBtn = $("edit-content-btn");
     if (editor) {
-      if (enabled) editor.value = currentMarkdown || "";
+      if (enabled) editor.value = getCurrentMarkdown() || "";
     }
     if (editBtn) editBtn.textContent = enabled ? "Cancel edit" : "Edit content";
   }
 
   async function setTitle() {
-    if (!currentPostId) {
+    if (!getCurrentPostId()) {
       setError("No post available to set title.");
       return;
     }
@@ -236,7 +242,7 @@ function initBlogEditorPage() {
       const resp = await fetch("/blog/set-title", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ post_id: currentPostId, title }),
+        body: JSON.stringify({ post_id: getCurrentPostId(), title }),
       });
       if (resp.status === 409) {
         setError("Title already set.");
@@ -261,7 +267,7 @@ function initBlogEditorPage() {
   }
 
   async function setAuthor() {
-    if (!currentPostId) {
+    if (!getCurrentPostId()) {
       setError("No post available to set author.");
       return;
     }
@@ -275,7 +281,7 @@ function initBlogEditorPage() {
       const resp = await fetch("/blog/set-author", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ post_id: currentPostId, author }),
+        body: JSON.stringify({ post_id: getCurrentPostId(), author }),
       });
       if (!resp.ok) {
         const detail = await resp.text();
@@ -353,7 +359,7 @@ function initBlogEditorPage() {
     openModal("title-modal", "title-modal-input");
     setSuggestedTitleValue("");
     const editor = $("article-editor");
-    const source = isEditingContent && editor ? editor.value : currentMarkdown;
+    const source = getIsEditingContent() && editor ? editor.value : getCurrentMarkdown();
     if (source) {
       suggestTitle(source);
     }
@@ -374,6 +380,7 @@ function initBlogEditorPage() {
 
   function applySuggestedTitle() {
     const input = $("title-modal-input");
+    const suggestedTitleValue = getSuggestedTitleValue();
     if (input && suggestedTitleValue) {
       input.value = suggestedTitleValue;
       input.focus();
@@ -381,13 +388,13 @@ function initBlogEditorPage() {
   }
 
   function toggleEditContent() {
-    if (!currentPostId) return;
-    setEditMode(!isEditingContent);
+    if (!getCurrentPostId()) return;
+    setEditMode(!getIsEditingContent());
   }
 
   async function applyEdit() {
     try {
-      if (!currentPostId || !isEditingContent) {
+      if (!getCurrentPostId() || !getIsEditingContent()) {
         return;
       }
       const editor = $("article-editor");
@@ -399,7 +406,7 @@ function initBlogEditorPage() {
       const resp = await fetch("/blog/edit-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ post_id: currentPostId, content: rawContent }),
+        body: JSON.stringify({ post_id: getCurrentPostId(), content: rawContent }),
       });
       if (!resp.ok) {
         const detail = await resp.text();
@@ -407,10 +414,10 @@ function initBlogEditorPage() {
         return;
       }
       const data = await resp.json();
-      currentMarkdown = data.content || "";
+      setCurrentMarkdown(data.content || "");
       const articleArea = $("article-text");
       if (articleArea) {
-        articleArea.innerHTML = marked.parse(currentMarkdown);
+        articleArea.innerHTML = marked.parse(getCurrentMarkdown());
       }
       setSuggestedTitleValue("");
       setEditMode(false);
@@ -424,7 +431,7 @@ function initBlogEditorPage() {
     setPolicyEditStatus("editing…");
     setPolicyEditResult("");
     try {
-      if (!currentPostId) {
+      if (!getCurrentPostId()) {
         return;
       }
       const policyText = $("policy-text");
@@ -436,7 +443,7 @@ function initBlogEditorPage() {
       const resp = await fetch("/blog/edit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ post_id: currentPostId, policy_text: policyValue }),
+        body: JSON.stringify({ post_id: getCurrentPostId(), policy_text: policyValue }),
       });
       if (!resp.ok) {
         const detail = await resp.text();
@@ -444,10 +451,10 @@ function initBlogEditorPage() {
         return;
       }
       const data = await resp.json();
-      currentMarkdown = data.content || "";
+      setCurrentMarkdown(data.content || "");
       const articleArea = $("article-text");
       if (articleArea) {
-        articleArea.innerHTML = marked.parse(currentMarkdown);
+        articleArea.innerHTML = marked.parse(getCurrentMarkdown());
       }
       const changed = (data.changed_chunks || []).join(", ");
       const rejected = (data.rejected_chunks || [])
@@ -501,7 +508,7 @@ function initBlogEditorPage() {
     const resp = await fetch("/document/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown: currentMarkdown, filename }),
+      body: JSON.stringify({ markdown: getCurrentMarkdown(), filename }),
     });
     if (!resp.ok) {
       const detail = await resp.text();
@@ -553,8 +560,8 @@ function initBlogEditorPage() {
   if (!postId) {
     return;
   }
-  currentPostId = postId;
-  fetch(`/blog/editor/data?post_id=${currentPostId}`)
+  setCurrentPostId(postId);
+  fetch(`/blog/editor/data?post_id=${getCurrentPostId()}`)
     .then((resp) => (resp.ok ? resp.json() : null))
     .then((data) => {
       const target = $("post-revision-indicator");
@@ -576,8 +583,8 @@ function initBlogEditorPage() {
   const article = $("article-text");
   const articleSource = $("article-source");
   if (article && articleSource) {
-    currentMarkdown = articleSource.value || "";
-    article.innerHTML = marked.parse(currentMarkdown);
+    setCurrentMarkdown(articleSource.value || "");
+    article.innerHTML = marked.parse(getCurrentMarkdown());
   }
 
   const intentForm = $("intent-form");
