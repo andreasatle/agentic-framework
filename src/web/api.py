@@ -254,33 +254,6 @@ def read_editor_data(
         last_revision_id = max(revision_ids) if revision_ids else None
     if last_revision_id is not None and not isinstance(last_revision_id, int):
         raise HTTPException(status_code=500, detail="Invalid revision metadata")
-    logger.info(
-        "editor_data revision_summary",
-        extra={
-            "post_id": post_id,
-            "revision_count": len(revisions),
-            "last_revision_id": last_revision_id,
-        },
-    )
-    revisions_dir = POSTS_ROOT / post_id / "revisions"
-    revision_file_count = 0
-    revision_file_ids: list[int] = []
-    if revisions_dir.exists():
-        for entry in revisions_dir.glob("*.md"):
-            revision_file_count += 1
-            stem = entry.stem
-            if "_" in stem:
-                stem = stem.split("_", 1)[0]
-            if stem.isdigit():
-                revision_file_ids.append(int(stem))
-    logger.info(
-        "editor_data revision_files",
-        extra={
-            "post_id": post_id,
-            "revision_file_count": revision_file_count,
-            "revision_file_max_id": max(revision_file_ids) if revision_file_ids else None,
-        },
-    )
     meta_payload = meta.model_dump() if hasattr(meta, "model_dump") else meta
     return {
         "post_id": post_id,
