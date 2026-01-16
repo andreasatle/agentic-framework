@@ -10,22 +10,23 @@
     <main class="container">
         <p><a href="/" class="nav-link">Home</a></p>
 
+        <!-- HEADER: title + actions -->
         <header class="intent-header">
             <div class="intent-header-left">
                 <h1>Edit blog post</h1>
             </div>
-        </header>
 
-        <section class="intent-header-right">
-            <a href="/blog/edit/{{ post_id }}/manual" class="btn btn--primary">Manual edit</a>
-            <a href="/blog/edit/{{ post_id }}/policy" class="btn btn--ghost">Policy edit</a>
-            <button type="button" class="btn btn--ghost" id="open-title-modal-btn">Edit title</button>
-            <button type="button" class="btn btn--ghost" id="open-author-modal-btn">Edit author</button>
-            <form method="post" action="/document/save" class="inline-form">
-                <textarea name="markdown" hidden>{{ content | e }}</textarea>
-                <button type="submit" class="btn btn--ghost">Download</button>
-            </form>
-        </section>
+            <div class="intent-header-right">
+                <a href="/blog/edit/{{ post_id }}/manual" class="btn btn--ghost">Manual edit</a>
+                <a href="/blog/edit/{{ post_id }}/policy" class="btn btn--ghost">Policy edit</a>
+                <button type="button" class="btn btn--ghost" id="open-title-modal-btn">Edit title</button>
+                <button type="button" class="btn btn--ghost" id="open-author-modal-btn">Edit author</button>
+                <form method="post" action="/document/save" class="inline-form">
+                    <textarea name="markdown" hidden>{{ content | e }}</textarea>
+                    <button type="submit" class="btn btn--ghost">Download</button>
+                </form>
+            </div>
+        </header>
 
         <section id="edit-view" class="stack">
 
@@ -45,6 +46,7 @@
                         <div id="author-display">{{ meta.author or "—" }}</div>
                     </div>
                 </div>
+
                 <div class="form-row">
                     <div class="intent-field">
                         <div class="intent-label-row">
@@ -63,7 +65,7 @@
                 </div>
             </section>
 
-            <!-- Rendered content (authoritative display) -->
+            <!-- Rendered content -->
             <section class="stack">
                 <div class="intent-field">
                     <div class="intent-label-row">
@@ -76,6 +78,7 @@
         </section>
     </main>
 
+    <!-- Edit title modal -->
     <section id="edit-title-modal" hidden>
         <div class="modal-panel">
             <header class="modal-header">
@@ -99,6 +102,7 @@
         </div>
     </section>
 
+    <!-- Edit author modal -->
     <section id="edit-author-modal" hidden>
         <div class="modal-panel">
             <header class="modal-header">
