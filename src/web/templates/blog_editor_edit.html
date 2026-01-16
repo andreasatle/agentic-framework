@@ -21,7 +21,10 @@
             <a href="/blog/edit/{{ post_id }}/policy" class="btn btn--ghost">Policy edit</a>
             <button type="button" class="btn btn--ghost" id="open-title-modal-btn">Edit title</button>
             <button type="button" class="btn btn--ghost" id="open-author-modal-btn">Edit author</button>
-            <button type="button" class="btn btn--ghost">Download</button>
+            <form method="post" action="/document/save" class="inline-form">
+                <textarea name="markdown" hidden>{{ content | e }}</textarea>
+                <button type="submit" class="btn btn--ghost">Download</button>
+            </form>
         </section>
 
         <section id="edit-view" class="stack">
