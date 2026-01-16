@@ -241,14 +241,11 @@ export function initEditorController() {
         setError(result.error || "Error applying edit.");
         return;
       }
-      setMarkdown(result.data.content || "");
-      const articleArea = $("article-text");
-      if (articleArea) {
-        articleArea.innerHTML = marked.parse(getMarkdown());
+      if (result.redirectUrl) {
+        window.location = result.redirectUrl;
+        return;
       }
-      setSuggestedTitleValue("");
-      setEditMode(false);
-      setError("");
+      setError("Failed to apply edit.");
     } catch (err) {
       setError(err?.message || "Error applying edit.");
     }

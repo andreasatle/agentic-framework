@@ -528,7 +528,7 @@ def set_blog_author_route(
 def edit_blog_content_route(
     payload: EditContentRequest,
     creds = Depends(security),
-) -> dict[str, str]:
+) -> RedirectResponse:
     require_admin(creds)
     # UI state is non-authoritative; content mutations are revision-led only.
     try:
@@ -616,7 +616,7 @@ def edit_blog_content_route(
     if not revision_recorded:
         raise HTTPException(status_code=500, detail="Revision required before content write")
     write_post_content(payload.post_id, response.edited_document)
-    return {"post_id": payload.post_id, "content": response.edited_document}
+    return RedirectResponse(url=f"/blog/editor/{payload.post_id}", status_code=303)
 
 
 @app.post("/blog/edit", response_model=BlogEditResponse)
