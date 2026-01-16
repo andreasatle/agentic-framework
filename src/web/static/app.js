@@ -553,7 +553,7 @@ function initBlogEditorPage() {
 
   const postId = document.body?.dataset?.postId;
   if (!postId) {
-    throw new Error("Missing required post_id data attribute on <body>.");
+    return;
   }
   currentPostId = postId;
   fetch(`/blog/editor/data?post_id=${currentPostId}`)
