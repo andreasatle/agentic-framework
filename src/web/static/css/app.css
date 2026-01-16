@@ -86,6 +86,22 @@ label {
   text-decoration: none;
 }
 
+.btn:hover,
+.btn:active {
+  text-decoration: none;
+}
+
+a.btn {
+  color: inherit;
+}
+
+.inline-form {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
 input,
 textarea,
 select {
@@ -246,14 +262,18 @@ main.container ul li > a:hover {
 #download-modal[hidden],
 #download-intent-modal[hidden],
 #title-modal[hidden],
-#author-modal[hidden] {
+#author-modal[hidden],
+#edit-title-modal[hidden],
+#edit-author-modal[hidden] {
   display: none;
 }
 
 #download-modal,
 #download-intent-modal,
 #title-modal,
-#author-modal {
+#author-modal,
+#edit-title-modal,
+#edit-author-modal {
   position: fixed;
   inset: 0;
   display: flex;
@@ -267,7 +287,9 @@ main.container ul li > a:hover {
 #download-modal .modal-panel,
 #download-intent-modal .modal-panel,
 #title-modal .modal-panel,
-#author-modal .modal-panel {
+#author-modal .modal-panel,
+#edit-title-modal .modal-panel,
+#edit-author-modal .modal-panel {
   width: min(520px, 100%);
   padding: 1rem;
   background: var(--bg-panel);
@@ -280,21 +302,27 @@ main.container ul li > a:hover {
 #download-modal .modal-header h2,
 #download-intent-modal .modal-header h2,
 #title-modal .modal-header h2,
-#author-modal .modal-header h2 {
+#author-modal .modal-header h2,
+#edit-title-modal .modal-header h2,
+#edit-author-modal .modal-header h2 {
   margin: 0 0 0.75rem;
 }
 
 #download-modal .modal-body,
 #download-intent-modal .modal-body,
 #title-modal .modal-body,
-#author-modal .modal-body {
+#author-modal .modal-body,
+#edit-title-modal .modal-body,
+#edit-author-modal .modal-body {
   margin-bottom: 1rem;
 }
 
 #download-modal .modal-actions,
 #download-intent-modal .modal-actions,
 #title-modal .modal-actions,
-#author-modal .modal-actions {
+#author-modal .modal-actions,
+#edit-title-modal .modal-actions,
+#edit-author-modal .modal-actions {
   justify-content: flex-end;
 }
 
@@ -309,7 +337,13 @@ main.container ul li > a:hover {
 #title-modal select,
 #author-modal input,
 #author-modal textarea,
-#author-modal select {
+#author-modal select,
+#edit-title-modal input,
+#edit-title-modal textarea,
+#edit-title-modal select,
+#edit-author-modal input,
+#edit-author-modal textarea,
+#edit-author-modal select {
   background: var(--bg-input);
   color: var(--text-main);
   border-color: var(--border-subtle);
