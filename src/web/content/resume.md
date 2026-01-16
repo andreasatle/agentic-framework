@@ -2,12 +2,23 @@
 
 Houston, TX (Remote)
 
-- Phone: (832) 488‑9813
-- Email: [atle.andreas@gmail.com](mailto:atle.andreas@gmail.com)
-- GitHub: [https://github.com/andreasatle](https://github.com/andreasatle)
-- LinkedIn: [https://linkedin.com/in/andreasatle/](https://linkedin.com/in/andreasatle/)
-- Website: [https://atle.dev](https://atle.dev)
-
+- Phone: (832) 488-9813
+- Email:
+  <a href="mailto:atle.andreas@gmail.com" class="nav-link">
+    atle.andreas@gmail.com
+  </a>
+- GitHub:
+  <a href="https://github.com/andreasatle" class="nav-link">
+    https://github.com/andreasatle
+  </a>
+- LinkedIn:
+  <a href="https://linkedin.com/in/andreasatle/" class="nav-link">
+    https://linkedin.com/in/andreasatle/
+  </a>
+- Website:
+  <a href="https://atle.dev" class="nav-link">
+    https://atle.dev
+  </a>
 ---
 
 ## Senior AI Engineer — Agentic Systems
