@@ -16,13 +16,21 @@ body {
   padding: 0;
 }
 
-a {
+/* ==============================
+   NAVIGATION INTENT
+   ============================== */
+
+.nav-link {
   text-decoration: none;
 }
 
-a:hover {
+.nav-link:hover {
   text-decoration: underline;
 }
+
+/* ==============================
+   LAYOUT
+   ============================== */
 
 main.container {
   max-width: 960px;
@@ -69,13 +77,16 @@ label {
   font-size: 0.9rem;
 }
 
+/* ==============================
+   ACTION INTENT
+   ============================== */
+
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   height: var(--control-height);
   padding: 0 0.75rem;
-  box-sizing: border-box;
   font-size: 0.9rem;
   font-weight: 500;
   line-height: 1;
@@ -91,9 +102,18 @@ label {
   text-decoration: none;
 }
 
+/* Works for <a> and <button> */
 a.btn {
-  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-height);
+  line-height: 1;
 }
+
+/* ==============================
+   FORMS
+   ============================== */
 
 .inline-form {
   display: inline-flex;
@@ -108,9 +128,7 @@ select {
   width: 100%;
   font-size: 0.9rem;
   padding: 0.4rem;
-  box-sizing: border-box;
   height: var(--control-height);
-  background-color: var(--bg-input);
   border: 1px solid transparent;
   border-radius: 4px;
 }
@@ -125,23 +143,8 @@ textarea {
   min-height: 6rem;
 }
 
-.help-tooltip {
-  position: absolute;
-  width: min(320px, 90vw);
-  max-width: 320px;
-  padding: 0.5rem 0.6rem;
-  font-size: 0.85rem;
-  line-height: 1.4;
-  background: #1a1a1d;
-  color: #e6e6eb;
-  border: 1px solid #2a2a30;
-  border-radius: 6px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-  z-index: 1000;
-}
-
 /* ==============================
-   INTENT LABEL ROW (CRITICAL)
+   HELP / LABEL ROW
    ============================== */
 
 .intent-label-row {
@@ -167,7 +170,6 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: 50%;
   cursor: pointer;
@@ -198,7 +200,6 @@ textarea {
 }
 
 .intent-muted {
-  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -209,23 +210,8 @@ textarea {
   resize: vertical;
 }
 
-main.container article,
-main.container ul {
-  line-height: 1.6;
-}
-
-main.container article header,
-main.container ul li div {
-  font-size: 0.85rem;
-}
-
-main.container article a:hover,
-main.container ul li > a:hover {
-  text-decoration: underline;
-}
-
 /* ==============================
-   ACTIONS
+   ACTION ROWS
    ============================== */
 
 .action-row {
@@ -251,12 +237,12 @@ main.container ul li > a:hover {
   flex: 1 1 auto;
 }
 
-.inline-controls button {
+.inline-controls .btn {
   flex: 0 0 auto;
 }
 
 /* ==============================
-   MODAL
+   MODALS
    ============================== */
 
 #download-modal[hidden],
@@ -280,7 +266,6 @@ main.container ul li > a:hover {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: color-mix(in srgb, var(--bg-panel) 70%, transparent);
   z-index: 1000;
 }
 
@@ -292,61 +277,8 @@ main.container ul li > a:hover {
 #edit-author-modal .modal-panel {
   width: min(520px, 100%);
   padding: 1rem;
-  background: var(--bg-panel);
-  color: var(--text-main);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid transparent;
   border-radius: 8px;
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--bg-panel) 60%, transparent);
-}
-
-#download-modal .modal-header h2,
-#download-intent-modal .modal-header h2,
-#title-modal .modal-header h2,
-#author-modal .modal-header h2,
-#edit-title-modal .modal-header h2,
-#edit-author-modal .modal-header h2 {
-  margin: 0 0 0.75rem;
-}
-
-#download-modal .modal-body,
-#download-intent-modal .modal-body,
-#title-modal .modal-body,
-#author-modal .modal-body,
-#edit-title-modal .modal-body,
-#edit-author-modal .modal-body {
-  margin-bottom: 1rem;
-}
-
-#download-modal .modal-actions,
-#download-intent-modal .modal-actions,
-#title-modal .modal-actions,
-#author-modal .modal-actions,
-#edit-title-modal .modal-actions,
-#edit-author-modal .modal-actions {
-  justify-content: flex-end;
-}
-
-#download-modal input,
-#download-modal textarea,
-#download-modal select,
-#download-intent-modal input,
-#download-intent-modal textarea,
-#download-intent-modal select,
-#title-modal input,
-#title-modal textarea,
-#title-modal select,
-#author-modal input,
-#author-modal textarea,
-#author-modal select,
-#edit-title-modal input,
-#edit-title-modal textarea,
-#edit-title-modal select,
-#edit-author-modal input,
-#edit-author-modal textarea,
-#edit-author-modal select {
-  background: var(--bg-input);
-  color: var(--text-main);
-  border-color: var(--border-subtle);
 }
 
 /* ==============================

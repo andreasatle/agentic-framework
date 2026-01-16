@@ -8,7 +8,7 @@
 </head>
 <body>
     <main class="container">
-        <p><a href="/">Home</a></p>
+        <p><a href="/" class="nav-link">Home</a></p>
         <header>
             <h1>Blog (read-only)</h1>
             <p>Read-only view of posts.</p>
@@ -19,7 +19,7 @@
                 <ul>
                     {% for p in posts %}
                         <li>
-                            <a href="/blog/{{ p.post_id }}">
+                            <a href="/blog/{{ p.post_id }}" class="nav-link">
                                 {{ p.title or '(untitled)' }}
                             </a>
                             <div>By {{ p.author }} · {{ p.created_at }}</div>

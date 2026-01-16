@@ -24,16 +24,15 @@ body {
   color: var(--text-main);
 }
 
-/* Links — explicit, dark-safe */
-a {
+.nav-link {
   color: var(--accent-blue);
 }
 
-a:visited {
+.nav-link:visited {
   color: var(--accent-blue);
 }
 
-a:active {
+.nav-link:active {
   color: var(--accent-blue-hover);
 }
 
@@ -135,8 +134,7 @@ main.container article li {
 /* Blog titles */
 main.container article h1,
 main.container article h2,
-main.container article h3,
-main.container ul li > a {
+main.container article h3 {
   color: #e6e6eb;
 }
 
@@ -144,10 +142,4 @@ main.container ul li > a {
 main.container article header,
 main.container ul li div {
   color: var(--text-muted);
-}
-
-/* Blog links (index + article) */
-main.container article a,
-main.container ul li > a {
-  color: #9bbcff;
 }
