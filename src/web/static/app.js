@@ -9,6 +9,7 @@ import {
   setIsEditingContent,
   setSuggestedTitleValue as setSuggestedTitleValueState,
 } from "./editor_state.js";
+import { closeModal, openModal } from "./modals.js";
 
 function initBlogEditorPage() {
   const errorArea = $("error-area");
@@ -300,63 +301,19 @@ function initBlogEditorPage() {
     }
   }
 
-  let lastFocusedElement = null;
-
-  function trapFocus(modal, event) {
-    if (!modal) return;
-    if (event.key === "Escape") {
-      if (modal.id === "title-modal") {
-        closeTitleModal();
-      } else if (modal.id === "author-modal") {
-        closeAuthorModal();
-      }
-      return;
-    }
-    if (event.key !== "Tab") return;
-    const focusable = modal.querySelectorAll(
-      'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
-    );
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
-  function openModal(modalId, focusId) {
-    const modal = $(modalId);
-    if (!modal) return;
-    lastFocusedElement = document.activeElement;
-    modal.hidden = false;
-    const focusTarget = focusId ? $(focusId) : null;
-    if (focusTarget) {
-      focusTarget.focus();
-    }
-    if (!modal._trapHandler) {
-      modal._trapHandler = (event) => trapFocus(modal, event);
-    }
-    modal.addEventListener("keydown", modal._trapHandler);
-  }
-
-  function closeModal(modalId) {
-    const modal = $(modalId);
-    if (!modal) return;
-    modal.hidden = true;
-    if (modal._trapHandler) {
-      modal.removeEventListener("keydown", modal._trapHandler);
-    }
-    if (lastFocusedElement instanceof HTMLElement) {
-      lastFocusedElement.focus();
-    }
-  }
-
   function openTitleModal() {
     openModal("title-modal", "title-modal-input");
+    const modal = $("title-modal");
+    if (modal) {
+      if (!modal._escapeHandler) {
+        modal._escapeHandler = (event) => {
+          if (event.key === "Escape") {
+            closeTitleModal();
+          }
+        };
+      }
+      modal.addEventListener("keydown", modal._escapeHandler);
+    }
     setSuggestedTitleValue("");
     const editor = $("article-editor");
     const source = getIsEditingContent() && editor ? editor.value : getCurrentMarkdown();
@@ -367,14 +324,33 @@ function initBlogEditorPage() {
 
   function closeTitleModal() {
     setSuggestedTitleValue("");
+    const modal = $("title-modal");
+    if (modal && modal._escapeHandler) {
+      modal.removeEventListener("keydown", modal._escapeHandler);
+    }
     closeModal("title-modal");
   }
 
   function openAuthorModal() {
     openModal("author-modal", "author-modal-input");
+    const modal = $("author-modal");
+    if (modal) {
+      if (!modal._escapeHandler) {
+        modal._escapeHandler = (event) => {
+          if (event.key === "Escape") {
+            closeAuthorModal();
+          }
+        };
+      }
+      modal.addEventListener("keydown", modal._escapeHandler);
+    }
   }
 
   function closeAuthorModal() {
+    const modal = $("author-modal");
+    if (modal && modal._escapeHandler) {
+      modal.removeEventListener("keydown", modal._escapeHandler);
+    }
     closeModal("author-modal");
   }
 
