@@ -11,7 +11,6 @@ import {
 import { closeModal, openModal } from "./modals.js";
 
 export function initEditorController() {
-  const errorArea = $("error-area");
 
   function getPostId() {
     return document.body?.dataset?.postId || null;
@@ -40,6 +39,7 @@ export function initEditorController() {
   }
 
   function setError(message) {
+    const errorArea = $("error-area");
     if (errorArea) {
       errorArea.textContent = message || "";
     }
@@ -363,11 +363,10 @@ export function initEditorController() {
       });
   }
 
-  const postId = document.body?.dataset?.postId;
-  if (!postId) {
+  if (!getPostId()) {
     return;
   }
-  fetchEditorData(postId)
+  fetchEditorData(getPostId())
     .then((result) => (result.ok ? result.data : null))
     .then((data) => {
       const target = $("post-revision-indicator");
