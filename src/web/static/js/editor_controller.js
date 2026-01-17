@@ -120,9 +120,18 @@ export function initEditorController() {
         return;
       }
       const postId = document.body?.dataset?.postId ?? "";
+      const currentStatus = document.body?.dataset?.postStatus ?? "";
       const targetStatus = button.dataset.statusAction ?? "";
       if (!postId || !targetStatus) {
         return;
+      }
+      if (targetStatus === "archived" && currentStatus === "published") {
+        const confirmed = confirm(
+          "Archive this post? It will be removed from public view.",
+        );
+        if (!confirmed) {
+          return;
+        }
       }
       try {
         const response = await fetch("/blog/status", {
