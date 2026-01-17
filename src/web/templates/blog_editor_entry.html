@@ -22,7 +22,7 @@
                         <a href="/blog/editor/{{ post.post_id }}" class="nav-link">
                             {{ post.title or '(untitled)' }}
                         </a>
-                        <div>By {{ post.author }} · {{ post.created_at }}</div>
+                        <div>By {{ post.author }} · {{ post.created_at }} · Status: {{ post.status }}</div>
                     </li>
                 {% endfor %}
             </ul>
