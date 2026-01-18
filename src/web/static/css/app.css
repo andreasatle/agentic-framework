@@ -130,6 +130,25 @@ label {
   font-size: 0.9rem;
 }
 
+.intent-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.intent-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 0.35rem;
+  height: 1.2rem;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  vertical-align: baseline;
+}
+
 input,
 textarea,
 select {
