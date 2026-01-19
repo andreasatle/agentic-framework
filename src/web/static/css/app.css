@@ -295,6 +295,12 @@ a.btn {
   border: 1px solid var(--accent-blue, #2a6fd6);
 }
 
+.revision-action-btn {
+  height: 1.4rem;
+  font-size: 0.8rem;
+  padding: 0 0.5rem;
+}
+
 /* ==============================
    MODALS — CANONICAL CONTRACT
    ============================== */

@@ -27,6 +27,8 @@ from apps.blog.storage import (
     read_post_intent,
     write_post_content,
     read_revision_metadata,
+    read_revision_content,
+    apply_blog_update,
     set_post_status,
 )
 from web.schemas import (
@@ -692,6 +694,59 @@ async def edit_blog_post_route(
         actor_id=payload.policy_id or "inline",
     )
     return RedirectResponse(url=f"/blog/editor/{payload.post_id}", status_code=303)
+
+
+@app.post("/blog/{post_id}/revisions/{source_revision_id}/copy")
+def copy_blog_revision(
+    post_id: str,
+    source_revision_id: int,
+    creds = Depends(security),
+) -> dict[str, int]:
+    require_admin(creds)
+    try:
+        read_post_meta(post_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Post not found")
+    revisions = read_revision_metadata(post_id)
+    if not isinstance(revisions, list):
+        raise HTTPException(status_code=500, detail="Invalid revisions")
+    revision_ids: list[int] = []
+    for entry in revisions:
+        if not isinstance(entry, dict):
+            raise HTTPException(status_code=500, detail="Invalid revision entry")
+        revision_id = entry.get("revision_id")
+        if not isinstance(revision_id, int):
+            raise HTTPException(status_code=500, detail="Invalid revision id")
+        revision_ids.append(revision_id)
+    if not revision_ids or source_revision_id not in revision_ids:
+        raise HTTPException(status_code=404, detail="Revision not found")
+
+    try:
+        source_content = read_revision_content(post_id, source_revision_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Revision content not found")
+
+    current_content = read_post_content(post_id)
+    delta_payload = {
+        "reverted_to_revision_id": source_revision_id,
+        "before_hash": _hash_text(current_content),
+        "after_hash": _hash_text(source_content),
+    }
+    actor_id = getattr(creds, "username", None) or "editor"
+    result = apply_blog_update(
+        post_id=post_id,
+        new_content=source_content,
+        delta_type="revert",
+        source="manual",
+        parent_revision_id=None,
+        delta_payload=delta_payload,
+        actor={"type": "human", "id": actor_id},
+        status="applied",
+        reason=None,
+        meta_updates=None,
+    )
+    write_post_content(post_id, source_content)
+    return {"revision_id": result.revision_id}
 
 
 @app.get("/blog/revisions")

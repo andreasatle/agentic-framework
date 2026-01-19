@@ -264,6 +264,51 @@ async function initRevisionHistory() {
       noteCell.textContent = note || "—";
       row.appendChild(noteCell);
 
+      const actionCell = document.createElement("td");
+      if (revision.revision_id !== headRevisionId) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn--ghost revision-action-btn";
+        button.textContent = "Create new revision from this";
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          statusEl.textContent = "Creating new revision...";
+          try {
+            const response = await fetch(
+              `/blog/${encodeURIComponent(postId)}/revisions/${revision.revision_id}/copy`,
+              { method: "POST" },
+            );
+            if (!response.ok) {
+              let message = "Failed to create revision.";
+              try {
+                const payload = await response.json();
+                if (payload?.detail) {
+                  message =
+                    typeof payload.detail === "string"
+                      ? payload.detail
+                      : JSON.stringify(payload.detail);
+                }
+              } catch {
+                const text = await response.text();
+                if (text) {
+                  message = text;
+                }
+              }
+              throw new Error(message);
+            }
+            window.location.reload();
+          } catch (error) {
+            statusEl.textContent =
+              error instanceof Error
+                ? error.message
+                : "Failed to create revision.";
+            button.disabled = false;
+          }
+        });
+        actionCell.appendChild(button);
+      }
+      row.appendChild(actionCell);
+
       bodyEl.appendChild(row);
     }
     statusEl.textContent = "";

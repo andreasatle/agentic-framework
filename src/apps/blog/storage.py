@@ -282,6 +282,7 @@ def apply_blog_update(
         "content_chunks_modified",
         "content_free_edit",
         "content_policy_edit",
+        "revert",
     ):
         if not isinstance(new_content, str) or not new_content:
             raise ValueError(f"Applied content delta requires non-empty content for post {post_id}")
@@ -308,6 +309,43 @@ def read_revision_metadata(post_id: str) -> list[dict]:
     if revisions is None:
         return []
     return revisions
+
+
+def read_revision_content(
+    post_id: str,
+    revision_id: int,
+    posts_root: str | Path | None = None,
+) -> str:
+    resolved_root = Path(posts_root) if posts_root is not None else POSTS_ROOT
+    post_dir = resolved_root / post_id
+    meta_path = post_dir / "meta.yaml"
+    if not meta_path.exists():
+        raise FileNotFoundError(f"meta.yaml not found for post {post_id}")
+    meta_payload = yaml.safe_load(meta_path.read_text()) or {}
+    if not isinstance(meta_payload, dict):
+        raise ValueError(f"Invalid meta.yaml for post {post_id}")
+    revisions = meta_payload.get("revisions")
+    if not isinstance(revisions, list):
+        raise ValueError(f"Invalid revisions for post {post_id}")
+    revision_ids: set[int] = set()
+    for entry in revisions:
+        if not isinstance(entry, dict):
+            raise ValueError(f"Invalid revision entry for post {post_id}")
+        entry_id = entry.get("revision_id")
+        if not isinstance(entry_id, int):
+            raise ValueError(f"Invalid revision_id for post {post_id}")
+        revision_ids.add(entry_id)
+    if revision_id not in revision_ids:
+        raise FileNotFoundError(f"Revision {revision_id} not found for post {post_id}")
+
+    snapshots_by_revision = _load_snapshot_groups(post_dir, [revision_id])
+    snapshot_chunks = snapshots_by_revision.get(revision_id)
+    if not snapshot_chunks:
+        raise FileNotFoundError(
+            f"Missing snapshots for revision {revision_id} in post {post_id}"
+        )
+    content, _after_hash = _build_content_from_snapshots(snapshot_chunks)
+    return content
 
 
 def ensure_draft(post_id: str) -> None:
@@ -363,6 +401,7 @@ def _replay_post_content(post_id: str, posts_root: str | Path | None = None) -> 
             "content_chunks_modified",
             "content_free_edit",
             "content_policy_edit",
+            "revert",
         ):
             continue
         revision_id = entry.get("revision_id")
