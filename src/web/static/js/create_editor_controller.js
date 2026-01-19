@@ -1,5 +1,6 @@
 import { $ } from "./dom.js";
 import { closeModal, openModal } from "./modals.js";
+import { initHelpPopovers } from "./help_popovers.js";
 
 const FIELD_MAP = [
   { key: "document_goal", id: "document-goal", type: "scalar" },
@@ -147,6 +148,7 @@ export function initCreateEditorController() {
   if (!form) {
     return;
   }
+  initHelpPopovers(document.body);
 
   $("download-intent-btn")?.addEventListener("click", () =>
     openModal("download-intent-modal", "download-intent-filename"),

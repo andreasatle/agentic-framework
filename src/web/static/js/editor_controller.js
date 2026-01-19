@@ -1,5 +1,6 @@
 import { $ } from "./dom.js";
 import { closeModal, openModal } from "./modals.js";
+import { initHelpPopovers } from "./help_popovers.js";
 
 export function initEditorController() {
   const titleModal = $("edit-title-modal");
@@ -7,6 +8,7 @@ export function initEditorController() {
   if (!titleModal && !authorModal) {
     return;
   }
+  initHelpPopovers(document.body);
 
   $("open-title-modal-btn")?.addEventListener("click", () =>
     openModal("edit-title-modal", "edit-title-input"),
