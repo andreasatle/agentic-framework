@@ -220,6 +220,8 @@ def apply_blog_update(
     meta_updates: dict | None = None,
     posts_root: str | Path | None = None,
 ) -> RevisionResult:
+    # A “revert” never changes history.
+    # It creates a new revision whose content equals a previous revision.
     resolved_root = Path(posts_root) if posts_root is not None else POSTS_ROOT
     post_dir = resolved_root / post_id
     meta_path = post_dir / "meta.yaml"
