@@ -724,6 +724,43 @@ def list_blog_revisions(
     return summaries
 
 
+@app.get("/blog/{post_id}/revisions")
+def list_blog_revisions_for_post(
+    post_id: str,
+    creds = Depends(security),
+) -> list[dict[str, object]]:
+    require_admin(creds)
+    try:
+        read_post_meta(post_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Post not found")
+    revisions = read_revision_metadata(post_id)
+    if not isinstance(revisions, list):
+        raise HTTPException(status_code=500, detail="Invalid revisions")
+    summaries: list[dict[str, object]] = []
+    for entry in revisions:
+        if not isinstance(entry, dict):
+            raise HTTPException(status_code=500, detail="Invalid revision entry")
+        revision_id = entry.get("revision_id")
+        if not isinstance(revision_id, int):
+            raise HTTPException(status_code=500, detail="Invalid revision id")
+        summary: dict[str, object] = {
+            "revision_id": revision_id,
+            "parent_revision_id": entry.get("parent_revision_id"),
+            "timestamp": entry.get("timestamp"),
+            "delta_type": entry.get("delta_type"),
+        }
+        if "delta_payload" in entry and entry.get("delta_payload") is not None:
+            summary["delta_payload"] = entry.get("delta_payload")
+        if "actor" in entry and entry.get("actor") is not None:
+            summary["actor"] = entry.get("actor")
+        if "author" in entry and entry.get("author") is not None:
+            summary["author"] = entry.get("author")
+        summaries.append(summary)
+    summaries.sort(key=lambda item: item["revision_id"])
+    return summaries
+
+
 @app.post("/document/save")
 def save_document(payload: DocumentSaveRequest):
     filename = (payload.filename or "article.md").strip() or "article.md"
