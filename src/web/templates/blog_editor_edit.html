@@ -73,7 +73,7 @@
         <section id="edit-view" class="stack">
 
             <!-- Metadata -->
-            <section class="stack">
+            <section class="stack" id="current-content-section">
                 <div class="form-row">
                     <div class="intent-field">
                         <div class="intent-label-row">
@@ -109,6 +109,23 @@
                     </div>
                     <article id="article-text">{{ content_html | safe }}</article>
                 </div>
+            </section>
+
+            <!-- Historical revision viewer (read-only) -->
+            <section class="stack revision-viewer" id="revision-viewer" hidden>
+                <div class="revision-viewer-banner" id="revision-viewer-banner">
+                    Viewing revision r— (read-only)
+                </div>
+                <div class="revision-viewer-actions">
+                    <button type="button" class="btn btn--ghost" id="revision-viewer-copy-btn">
+                        Create new revision from this
+                    </button>
+                    <button type="button" class="btn btn--ghost" id="revision-viewer-return-btn">
+                        Return to current version
+                    </button>
+                    <div class="revision-viewer-status" id="revision-viewer-status"></div>
+                </div>
+                <pre class="revision-viewer-content" id="revision-viewer-content"></pre>
             </section>
 
             <!-- Revision history -->

@@ -749,6 +749,45 @@ def copy_blog_revision(
     return {"revision_id": result.revision_id}
 
 
+@app.get("/blog/{post_id}/revisions/{revision_id}")
+def read_blog_revision(
+    post_id: str,
+    revision_id: int,
+    creds = Depends(security),
+) -> dict[str, object]:
+    require_admin(creds)
+    try:
+        read_post_meta(post_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Post not found")
+    revisions = read_revision_metadata(post_id)
+    if not isinstance(revisions, list):
+        raise HTTPException(status_code=500, detail="Invalid revisions")
+    revision_entry = None
+    for entry in revisions:
+        if not isinstance(entry, dict):
+            raise HTTPException(status_code=500, detail="Invalid revision entry")
+        entry_id = entry.get("revision_id")
+        if not isinstance(entry_id, int):
+            raise HTTPException(status_code=500, detail="Invalid revision id")
+        if entry_id == revision_id:
+            revision_entry = entry
+            break
+    if revision_entry is None:
+        raise HTTPException(status_code=404, detail="Revision not found")
+    try:
+        content = read_revision_content(post_id, revision_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Revision content not found")
+    return {
+        "revision_id": revision_id,
+        "content": content,
+        "delta_type": revision_entry.get("delta_type"),
+        "delta_payload": revision_entry.get("delta_payload"),
+        "timestamp": revision_entry.get("timestamp"),
+    }
+
+
 @app.get("/blog/revisions")
 def list_blog_revisions(
     post_id: str,

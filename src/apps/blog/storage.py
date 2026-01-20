@@ -330,6 +330,7 @@ def read_revision_content(
     if not isinstance(revisions, list):
         raise ValueError(f"Invalid revisions for post {post_id}")
     revision_ids: set[int] = set()
+    content_revision_id: int | None = None
     for entry in revisions:
         if not isinstance(entry, dict):
             raise ValueError(f"Invalid revision entry for post {post_id}")
@@ -337,14 +338,30 @@ def read_revision_content(
         if not isinstance(entry_id, int):
             raise ValueError(f"Invalid revision_id for post {post_id}")
         revision_ids.add(entry_id)
+        if entry_id > revision_id:
+            continue
+        if entry.get("status") != "applied":
+            continue
+        if entry.get("delta_type") not in (
+            "content_chunks_modified",
+            "content_free_edit",
+            "content_policy_edit",
+            "revert",
+        ):
+            continue
+        content_revision_id = entry_id
     if revision_id not in revision_ids:
         raise FileNotFoundError(f"Revision {revision_id} not found for post {post_id}")
+    if content_revision_id is None:
+        raise FileNotFoundError(
+            f"No content snapshots available for revision {revision_id} in post {post_id}"
+        )
 
-    snapshots_by_revision = _load_snapshot_groups(post_dir, [revision_id])
-    snapshot_chunks = snapshots_by_revision.get(revision_id)
+    snapshots_by_revision = _load_snapshot_groups(post_dir, [content_revision_id])
+    snapshot_chunks = snapshots_by_revision.get(content_revision_id)
     if not snapshot_chunks:
         raise FileNotFoundError(
-            f"Missing snapshots for revision {revision_id} in post {post_id}"
+            f"Missing snapshots for revision {content_revision_id} in post {post_id}"
         )
     content, _after_hash = _build_content_from_snapshots(snapshot_chunks)
     return content

@@ -189,6 +189,12 @@ async function initRevisionHistory() {
   const statusEl = document.getElementById("revision-history-status");
   const tableEl = document.getElementById("revision-history-table");
   const bodyEl = document.getElementById("revision-history-body");
+  const viewerEl = document.getElementById("revision-viewer");
+  const viewerBanner = document.getElementById("revision-viewer-banner");
+  const viewerContent = document.getElementById("revision-viewer-content");
+  const viewerStatus = document.getElementById("revision-viewer-status");
+  const viewerCopyBtn = document.getElementById("revision-viewer-copy-btn");
+  const viewerReturnBtn = document.getElementById("revision-viewer-return-btn");
   if (!statusEl || !tableEl || !bodyEl) {
     return;
   }
@@ -198,6 +204,26 @@ async function initRevisionHistory() {
     return;
   }
   statusEl.textContent = "Loading...";
+  if (viewerCopyBtn && viewerStatus && viewerEl) {
+    viewerCopyBtn.addEventListener("click", async () => {
+      const revisionId = Number(viewerEl.dataset.revisionId);
+      if (!Number.isFinite(revisionId)) {
+        viewerStatus.textContent = "Missing revision id.";
+        return;
+      }
+      await createRevisionFromSource(
+        postId,
+        revisionId,
+        viewerStatus,
+        viewerCopyBtn,
+      );
+    });
+  }
+  if (viewerReturnBtn) {
+    viewerReturnBtn.addEventListener("click", () => {
+      window.location.reload();
+    });
+  }
   try {
     const response = await fetch(
       `/blog/${encodeURIComponent(postId)}/revisions`,
@@ -266,20 +292,32 @@ async function initRevisionHistory() {
 
       const actionCell = document.createElement("td");
       if (revision.revision_id !== headRevisionId) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "btn btn--ghost revision-action-btn";
-        button.textContent = "Create new revision from this";
-        button.addEventListener("click", async () => {
-          button.disabled = true;
-          statusEl.textContent = "Creating new revision...";
+        const viewButton = document.createElement("button");
+        viewButton.type = "button";
+        viewButton.className = "btn btn--ghost revision-action-btn";
+        viewButton.textContent = "View";
+        viewButton.addEventListener("click", async () => {
+          if (
+            !viewerEl ||
+            !viewerBanner ||
+            !viewerContent ||
+            !viewerStatus ||
+            !viewerCopyBtn ||
+            !viewerReturnBtn
+          ) {
+            return;
+          }
+          viewerEl.hidden = false;
+          document.body?.classList.add("history-mode");
+          viewerBanner.textContent = `Viewing revision r${revision.revision_id} (read-only)`;
+          viewerContent.textContent = "";
+          viewerStatus.textContent = "Loading revision...";
           try {
             const response = await fetch(
-              `/blog/${encodeURIComponent(postId)}/revisions/${revision.revision_id}/copy`,
-              { method: "POST" },
+              `/blog/${encodeURIComponent(postId)}/revisions/${revision.revision_id}`,
             );
             if (!response.ok) {
-              let message = "Failed to create revision.";
+              let message = "Failed to load revision.";
               try {
                 const payload = await response.json();
                 if (payload?.detail) {
@@ -296,16 +334,33 @@ async function initRevisionHistory() {
               }
               throw new Error(message);
             }
-            window.location.reload();
+            const payload = await response.json();
+            viewerContent.textContent =
+              typeof payload.content === "string" ? payload.content : "";
+            viewerEl.dataset.revisionId = String(revision.revision_id);
+            viewerStatus.textContent = "";
           } catch (error) {
-            statusEl.textContent =
+            viewerStatus.textContent =
               error instanceof Error
                 ? error.message
-                : "Failed to create revision.";
-            button.disabled = false;
+                : "Failed to load revision.";
           }
         });
-        actionCell.appendChild(button);
+        actionCell.appendChild(viewButton);
+
+        const copyButton = document.createElement("button");
+        copyButton.type = "button";
+        copyButton.className = "btn btn--ghost revision-action-btn";
+        copyButton.textContent = "Create new revision from this";
+        copyButton.addEventListener("click", async () => {
+          await createRevisionFromSource(
+            postId,
+            revision.revision_id,
+            statusEl,
+            copyButton,
+          );
+        });
+        actionCell.appendChild(copyButton);
       }
       row.appendChild(actionCell);
 
@@ -364,4 +419,47 @@ function deriveRevisionNote(revision) {
     return `revert -> r${target}`;
   }
   return "revert";
+}
+
+async function createRevisionFromSource(
+  postId,
+  revisionId,
+  statusEl,
+  buttonEl,
+) {
+  if (buttonEl) {
+    buttonEl.disabled = true;
+  }
+  statusEl.textContent = "Creating new revision...";
+  try {
+    const response = await fetch(
+      `/blog/${encodeURIComponent(postId)}/revisions/${revisionId}/copy`,
+      { method: "POST" },
+    );
+    if (!response.ok) {
+      let message = "Failed to create revision.";
+      try {
+        const payload = await response.json();
+        if (payload?.detail) {
+          message =
+            typeof payload.detail === "string"
+              ? payload.detail
+              : JSON.stringify(payload.detail);
+        }
+      } catch {
+        const text = await response.text();
+        if (text) {
+          message = text;
+        }
+      }
+      throw new Error(message);
+    }
+    window.location.reload();
+  } catch (error) {
+    statusEl.textContent =
+      error instanceof Error ? error.message : "Failed to create revision.";
+    if (buttonEl) {
+      buttonEl.disabled = false;
+    }
+  }
 }

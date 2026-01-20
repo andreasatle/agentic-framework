@@ -302,6 +302,63 @@ a.btn {
 }
 
 /* ==============================
+   HISTORICAL REVISION VIEW
+   ============================== */
+
+.revision-viewer {
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, #d0d0d0);
+  padding: 1rem;
+}
+
+.revision-viewer-banner {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: rgba(247, 201, 72, 0.2);
+  border: 1px solid rgba(247, 201, 72, 0.6);
+  font-weight: 600;
+}
+
+.revision-viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.revision-viewer-status {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b6b6b);
+}
+
+.revision-viewer-content {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-subtle, #d0d0d0);
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+body.history-mode #current-content-section {
+  display: none;
+}
+
+body.history-mode #revision-viewer {
+  background: rgba(247, 201, 72, 0.08);
+}
+
+body.history-mode .editor-actions {
+  display: none;
+}
+
+body.history-mode .revision-action-btn {
+  display: none;
+}
+
+/* ==============================
    MODALS — CANONICAL CONTRACT
    ============================== */
 
