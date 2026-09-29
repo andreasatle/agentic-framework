@@ -1,0 +1,43 @@
+{% macro status_tag(status) -%}
+  {%- if status == 'active' -%}<span class="tag tag--teal">active</span>
+  {%- elif status == 'complete' -%}<span class="tag tag--amber">complete</span>
+  {%- elif status == 'paused' -%}<span class="tag">paused</span>
+  {%- else -%}<span class="tag">archived</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro project_media(p) -%}
+  {%- if p.media.startswith('video:') -%}
+    <div class="card__media card__media--contain">
+      <video src="{{ p.media[6:] }}" poster="{{ p.poster }}" muted loop playsinline preload="metadata" data-autoplay aria-label="{{ p.title }} — demo video"></video>
+    </div>
+  {%- elif p.media.startswith('img:') -%}
+    <div class="card__media"><img src="{{ p.media[4:] }}" alt="{{ p.title }}" loading="lazy"></div>
+  {%- elif p.media == 'html:ocr' -%}
+    <div class="card__media" aria-hidden="true"><div class="viz-ocr">
+      <div class="viz-ocr__row"><span>tesseract</span><span>Instrument <span class="fold">I</span>-2009-002893</span></div>
+      <div class="viz-ocr__row"><span>textract</span><span>Instrument <span class="fold">1</span>-2009-002893</span></div>
+      <div class="viz-ocr__row"><span>claude</span><span>Instrument I-2009-00289<span class="bad">8</span></span></div>
+      <div class="viz-ocr__row"><span>gpt</span><span>Instrument I-2009-002893</span></div>
+      <div class="viz-ocr__row viz-ocr__vote"><span>vote 3/4</span><span>Instrument I-2009-002893 ✓</span></div>
+    </div></div>
+  {%- elif p.media == 'html:fsm' -%}
+    <div class="card__media" aria-hidden="true"><div class="viz-fsm">
+      <span>PLAN</span><i>→</i><span>WORK</span><i>→</i><span>TOOL</span><i>→</i><span class="on">CRITIC</span><i>→</i><span>END</span>
+    </div></div>
+  {%- elif p.media.startswith('canvas:') -%}
+    <div class="card__media"><canvas data-viz="{{ p.media[7:] }}" aria-label="Animated maze exploration"></canvas></div>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro project_card(p, wide=false) -%}
+<a class="card reveal{% if wide %} card--wide{% endif %}{% if not p.media %} card--compact{% endif %}" href="/work/{{ p.slug }}">
+  {{ project_media(p) }}
+  <div class="card__body">
+    <div class="tags">{{ status_tag(p.status) }}<span class="tag">{{ p.period }}</span></div>
+    <h3>{{ p.title }}</h3>
+    <p>{{ p.summary }}</p>
+    <div class="tags">{% for t in p.tags %}<span class="tag">{{ t }}</span>{% endfor %}</div>
+    {% if p.stat %}<div class="card__stat"><strong>{{ p.stat }}</strong><span>{{ p.stat_label }}</span></div>{% endif %}
+  </div>
+</a>
+{%- endmacro %}

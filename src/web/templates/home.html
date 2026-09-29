@@ -1,86 +1,142 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Andreas Atle</title>
-    <link rel="stylesheet" href="/static/css/app.css">
-    <link rel="stylesheet" href="/static/css/theme-dark.css">
-</head>
-<body>
-    <main class="container">
-                <!-- Home navigation (EXACTLY like other pages) -->
-        <p>
-            <a href="/" class="nav-link">Home</a> ·
-            <a href="/architecture" class="nav-link">Architecture</a> ·
-            <a href="/blog/editor" class="nav-link">Blog Editor</a> ·
-            <a href="/blog" class="nav-link">Blog</a> ·
-            <a href="/me" class="nav-link">About me</a>
-        </p>
+{% extends "base.html" %}
+{% from "_macros.html" import project_card %}
+{% set section = "home" %}
 
-        <header>
-            <h1>Andreas Atle</h1>
+{% block content %}
+<section class="hero">
+  <canvas class="hero__canvas" data-viz="poincare" aria-hidden="true"></canvas>
+  <div class="hero__fade"></div>
+  <div class="wrap">
+    <div class="hero__content">
+      <div class="eyebrow">Scientific computing → agents → world models</div>
+      <h1>Agents you can <span class="accent">audit</span>.<br>World models that <span class="accent-2">plan</span>.</h1>
+      <p class="lede">
+        I'm Andreas Atle. Forty years of programming, most of it numerical and scientific
+        computing: seismic imaging, HPC, eikonal solvers. Now I point that discipline at AI,
+        building LLM agents with explicit, verifiable behaviour, and self-supervised world
+        models that learn to predict and plan.
+      </p>
+      <div class="hero__cta">
+        <a class="btn btn--primary" href="/work">See the work →</a>
+        <a class="btn" href="/me">About me</a>
+      </div>
+    </div>
+  </div>
+  <div class="hero__caption">A 3-ary tree in the Poincaré disk, panned by a Möbius transform. Hyperbolic space has room for exponentially many branches. That idea drives my current research.</div>
+</section>
 
-            <h2>
-                Senior AI / Platform Engineer focused on
-                deterministic agent orchestration, explicit constraints,
-                and production-grade control planes.
-            </h2>
+<section class="section--tight">
+  <div class="wrap">
+    <div class="kicker">Right now · {{ now_label }}</div>
+    <div class="now">
+      <div class="now__item reveal">
+        <div class="pulse">in progress</div>
+        <h3>Hyperbolic JEPA on mazes</h3>
+        <p>Found a clean dimension crossover. Now working on why the planner fails on the final approach to the goal.</p>
+      </div>
+      <div class="now__item reveal">
+        <div class="pulse">in progress</div>
+        <h3>Title-document OCR</h3>
+        <p>Reconciling four OCR/vision engines per page, checked by domain verifiers, so the numbers come out exactly as printed.</p>
+      </div>
+      <div class="now__item reveal">
+        <div class="pulse">next</div>
+        <h3>Multi-stride world models</h3>
+        <p>One predictor per time scale (dt, 2dt, 4dt, …), each conditioned on its full action sequence, for planning over longer horizons.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-            <p>
-                I design and implement <strong>agentic systems that are governed,
-                auditable, and predictable</strong>. My work prioritizes
-                execution correctness, cost control, and failure containment
-                over autonomous behavior or prompt cleverness.
-            </p>
+<section class="section" id="work">
+  <div class="wrap">
+    <div class="section__head">
+      <div>
+        <div class="kicker">Selected work</div>
+        <h2>What I've been building</h2>
+        <p>Every project page covers the approach and the numbers, including results that didn't hold up.</p>
+      </div>
+      <a class="btn" href="/work">All projects →</a>
+    </div>
+    <div class="cards">
+      {% for p in projects if p.featured %}
+        {{ project_card(p, wide=loop.first) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
 
-            <ul>
-                <li>
-                    <strong>Agent orchestration & control:</strong>
-                    Planner–Worker–Critic execution with explicit FSM
-                    (PLAN → WORK → TOOL → CRITIC → END)
-                </li>
-                <li>
-                    <strong>Constraints & guardrails:</strong>
-                    Schema-validated I/O, bounded retries, isolated side effects,
-                    deterministic termination
-                </li>
-                <li>
-                    <strong>Platform architecture:</strong>
-                    Controller-driven execution, untrusted agents,
-                    typed tool registries, immutable traces
-                </li>
-                <li>
-                    <strong>Operational readiness:</strong>
-                    Traceability, auditability, cost predictability,
-                    and explicit failure modes
-                </li>
-            </ul>
+<section class="section section--raise">
+  <div class="wrap">
+    <div class="section__head">
+      <div>
+        <div class="kicker">How I work</div>
+        <h2>Habits from scientific computing</h2>
+      </div>
+    </div>
+    <div class="principles">
+      <div class="principle reveal">
+        <div class="principle__n">01</div>
+        <h3>Measure, don't assume</h3>
+        <p>Build the diagnostic and run it. In ball-in-cup, a probe that was 12× more accurate changed nothing, and only an n=30 closed-loop test showed that.</p>
+      </div>
+      <div class="principle reveal">
+        <div class="principle__n">02</div>
+        <h3>Explicit over implicit</h3>
+        <p>Typed state, pure transitions, bounded retries. If a system does something, I want to be able to point at the line that made it happen.</p>
+      </div>
+      <div class="principle reveal">
+        <div class="principle__n">03</div>
+        <h3>Ablate your fixes</h3>
+        <p>When a stack of changes finally works, find out which ones carry the result. Keeping only those is how the next person understands the system.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-            <p>
-                <em>
-                    No autonomous looping. No agent-owned tools.
-                    No hidden control flow. No silent degradation.
-                </em>
-            </p>
-        </header>
+<section class="section">
+  <div class="wrap narrow">
+    <div class="kicker">Path</div>
+    <h2 style="margin-bottom:36px">From PDEs to world models</h2>
+    <div class="timeline">
+      <div class="tl reveal">
+        <div class="tl__when">late 1980s</div>
+        <div class="tl__what"><h3>C, C++ and numerical code</h3><p>Started programming in scientific computing and never really left it.</p></div>
+      </div>
+      <div class="tl reveal">
+        <div class="tl__when">Stockholm</div>
+        <div class="tl__what"><h3>M.Sc. Scientific Computing (KTH) · Ph.D. Applied Mathematics (Stockholm University)</h3><p>Numerical analysis and PDEs.</p></div>
+      </div>
+      <div class="tl reveal">
+        <div class="tl__when">2006 – 2009</div>
+        <div class="tl__what"><h3>Postdoc, Memorial University of Newfoundland</h3><p>Finite-difference and eikonal solvers, later used in seismic inversion workflows.</p></div>
+      </div>
+      <div class="tl reveal">
+        <div class="tl__when">2009 – 2020</div>
+        <div class="tl__what"><h3>Scientific researcher, Total E&amp;P USA, Houston</h3><p>High-performance algorithms for seismic imaging and inversion on HPC clusters, with MPI and CUDA.</p></div>
+      </div>
+      <div class="tl reveal">
+        <div class="tl__when">2021 – 2026</div>
+        <div class="tl__what"><h3>Independent AI engineer</h3><p>LLM agent pipelines for legal documents with schema-validated I/O and auditable outputs. Several agent frameworks built on explicit state machines.</p></div>
+      </div>
+      <div class="tl tl--now reveal">
+        <div class="tl__when">2026 →</div>
+        <div class="tl__what"><h3>World models and planning</h3><p>JEPA from scratch: pixels to latent dynamics to MPC, then hyperbolic latents for branching futures.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
 
-        <section>
-            <h2>What this site demonstrates</h2>
-            <ul>
-                <li>
-                    A working <strong>agentic control plane</strong> implemented
-                    with strict architectural boundaries
-                </li>
-                <li>
-                    An <strong>intent-driven document system</strong> that treats
-                    human intent as structured input, not free-form prompts
-                </li>
-                <li>
-                    How to reason about <strong>failure modes</strong>,
-                    not just features, in AI systems
-                </li>
-            </ul>
-        </section>
-    </main>
-</body>
-</html>
+<section class="section section--raise">
+  <div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap">
+    <div>
+      <h2 style="margin-bottom:6px">Want to talk agents or world models?</h2>
+      <p class="muted" style="margin:0">I'm looking for work in the agent space. The best way to reach me is email.</p>
+    </div>
+    <div class="hero__cta" style="margin:0">
+      <a class="btn btn--primary" href="mailto:atle.andreas@gmail.com">Email me</a>
+      <a class="btn" href="/blog">Read the writing</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

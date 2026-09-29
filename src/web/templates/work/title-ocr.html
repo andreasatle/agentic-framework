@@ -1,0 +1,74 @@
+{% extends "work/_project.html" %}
+
+{% block body %}
+<h2>The problem</h2>
+<p>
+  Title work runs on scanned public records: deeds, mortgages, liens, plats, closing letters. The text has to
+  be <strong>verbatim</strong>, and the numbers most of all. A recording number, a bearing in a metes-and-bounds
+  description, or a book/page reference that is one digit off is worse than useless.
+</p>
+
+<div class="callout">
+  <strong>Design premise</strong>
+  LLM vision (Claude, GPT) is good at prose, structure and reading order, but unreliable on numbers. It normalises,
+  rounds and "fixes" digits that have no linguistic context to constrain them. Pixel OCR (Tesseract, AWS Textract)
+  is worse at layout, but it doesn't invent numbers. So: prose and structure from the LLMs, numeric fields from
+  the deterministic engines, and a reconcile step over the disagreements.
+</div>
+
+<h2>Pipeline</h2>
+<div class="pipeline">
+  <div class="pipeline__step"><b>Render</b>PDF page → high-DPI PNG (poppler)</div>
+  <div class="pipeline__step pipeline__step--teal"><b>Extract</b>Tesseract · Textract · Claude · GPT, cached by content hash</div>
+  <div class="pipeline__step pipeline__step--teal"><b>Align</b>Token alignment to the cleanest engine, with moved-block repair</div>
+  <div class="pipeline__step pipeline__step--amber"><b>Vote</b>Majority over normalised keys, with ID-aware glyph folding</div>
+  <div class="pipeline__step pipeline__step--amber"><b>Verify</b>Domain checks catch what voting can't</div>
+</div>
+
+<h3>Details that matter</h3>
+<ul>
+  <li>
+    <strong>Moved-block repair.</strong> Engines linearise a 2-D page differently. Two-column headers and marginal
+    stamps land in different places. Plain alignment turns a moved run into local noise. A repair pass then refills
+    gaps from tokens the engine did read, just somewhere else on the page.
+  </li>
+  <li>
+    <strong>Glyph folding only where it's safe.</strong> Identifier-shaped tokens fold ambiguous glyphs, so
+    <code>1-2009-002893</code> and <code>I-2009-002893</code> vote together. Plain words are only case- and
+    punctuation-folded. "Section" must never become "5ect10n".
+  </li>
+  <li>
+    <strong>Domain verifiers.</strong> Pure functions over the transcription: instrument-number grammars,
+    section/township/range calls that must be possible, and years that must agree with their own recording date.
+    Metes-and-bounds closure and transfer-tax ratios are on the list. The rules are state-specific, starting with Oklahoma.
+  </li>
+  <li>
+    <strong>Repeatable runs.</strong> LLM APIs aren't bit-reproducible even at temperature 0. A content-addressed cache
+    makes a run repeatable, so reconcile logic can be tuned without spending tokens.
+  </li>
+</ul>
+
+<h2>Output</h2>
+<p>
+  One clean text file per document, plus a <code>.review.txt</code> listing exactly where a human should look:
+  weak votes and verifier findings. The goal isn't to replace review. It's to point the reviewer at the few places that need it.
+</p>
+{% endblock %}
+
+{% block aside %}
+<div class="aside__box">
+  <h4>Stack</h4>
+  <ul>
+    <li>Python · uv</li>
+    <li>Tesseract · AWS Textract</li>
+    <li>Claude vision · GPT vision</li>
+    <li>difflib alignment, pure-function verifiers</li>
+  </ul>
+</div>
+<div class="aside__box">
+  <h4>Related</h4>
+  <ul>
+    <li><a href="/work/governed-agents">Governed agent systems</a></li>
+  </ul>
+</div>
+{% endblock %}

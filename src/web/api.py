@@ -43,6 +43,7 @@ from web.schemas import (
     TitleSuggestRequest,
 )
 from web.security import require_admin, security
+from web.projects import PROJECTS, get_project
 from document_writer.domain.intent.types import IntentEnvelope
 
 
@@ -103,7 +104,32 @@ def validate_generated_dir() -> None:
 
 @app.get("/", response_class=HTMLResponse)
 def read_home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    return templates.TemplateResponse(
+        "home.html",
+        {"request": request, "projects": PROJECTS, "now_label": NOW_LABEL},
+    )
+
+
+# Shown in the "Right now" strip on the home page. Update when that strip changes.
+NOW_LABEL = "September 2026"
+
+
+@app.get("/work", response_class=HTMLResponse)
+def read_work_index(request: Request):
+    return templates.TemplateResponse(
+        "work_index.html", {"request": request, "projects": PROJECTS}
+    )
+
+
+@app.get("/work/{slug}", response_class=HTMLResponse)
+def read_work_project(request: Request, slug: str):
+    project = get_project(slug)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return templates.TemplateResponse(
+        f"work/{project.slug}.html",
+        {"request": request, "project": project, "projects": PROJECTS},
+    )
 
 
 @app.get("/blog/editor")
@@ -316,7 +342,7 @@ def redirect_writer():
 
 
 @app.get("/me")
-def read_me(request: Request):
+def read_me(request: Request, view: str = "profile"):
     resume_html = markdown.markdown(
         open(os.path.join(BASE_DIR, "content", "resume.md"), "r", encoding="utf-8").read(),
         extensions=BLOG_MARKDOWN_EXTENSIONS,
@@ -332,6 +358,7 @@ def read_me(request: Request):
             "request": request,
             "resume_html": resume_html,
             "profile_html": profile_html,
+            "view": "resume" if view == "resume" else "profile",
         },
     )
 

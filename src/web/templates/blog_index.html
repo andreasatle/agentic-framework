@@ -1,35 +1,31 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Blog (read-only)</title>
-    <link rel="stylesheet" href="/static/css/app.css">
-    <link rel="stylesheet" href="/static/css/theme-dark.css">
-</head>
-<body>
-    <main class="container">
-        <p><a href="/" class="nav-link">Home</a></p>
-        <header>
-            <h1>Blog (read-only)</h1>
-            <p>Read-only view of posts.</p>
-            <p>Showing published posts only.</p>
-        </header>
-        <section>
-            {% if posts %}
-                <ul>
-                    {% for p in posts %}
-                        <li>
-                            <a href="/blog/{{ p.post_id }}" class="nav-link">
-                                {{ p.title or '(untitled)' }}
-                            </a>
-                            <div>By {{ p.author }} · {{ p.created_at }}</div>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p>No posts available.</p>
-            {% endif %}
-        </section>
-    </main>
-</body>
-</html>
+{% extends "base.html" %}
+{% set section = "blog" %}
+{% block title %}Writing · Andreas Atle{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="wrap narrow">
+    <div class="breadcrumb"><a href="/">atle.dev</a> / writing</div>
+    <h1>Writing</h1>
+    <p class="lede">Notes on agents, world models, and the engineering in between.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:40px">
+  <div class="wrap narrow">
+    {% if posts %}
+      <div class="post-list">
+        {% for p in posts %}
+          <a class="post-row reveal" href="/blog/{{ p.post_id }}">
+            <time>{{ (p.created_at | string)[:10] }}</time>
+            <h3>{{ p.title or '(untitled)' }}</h3>
+            <span class="arrow">→</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">No posts yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

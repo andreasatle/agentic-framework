@@ -1,0 +1,66 @@
+{% extends "work/_project.html" %}
+
+{% block body %}
+<figure class="figure">
+  <div class="figure__frame"><img src="/static/img/work/ijepa-masks.jpg" alt="PathMNIST tiles with I-JEPA context and target block masks" loading="lazy"></div>
+  <figcaption>I-JEPA masking on PathMNIST tiles. Left: image. Middle: the context the encoder sees (132 patches). Right: four target blocks the predictor must predict in latent space.</figcaption>
+</figure>
+
+<h2>Why</h2>
+<p>
+  Ball-in-cup taught the action-conditioned side of JEPA. The other big use case is a self-supervised
+  <em>visual backbone</em> for domains with many images and few labels, like pathology. I wanted to see it work at a
+  realistic resolution on my own hardware: PathMNIST at 224 px, ViT encoder, block masking, no EMA target.
+</p>
+
+<h2>Engineering on a 24 GB Mac</h2>
+<p>
+  The 224 px split ships as a compressed <code>.npz</code>, and loading it pulls ~13.5 GB into RAM, which put training
+  straight into swap. Decompressing each split once to an uncompressed <code>.npy</code> and memory-mapping it brought
+  data RAM to roughly zero. It also let multiple data-loader workers share pages instead of copying.
+</p>
+
+<h2>Probing the frozen encoder</h2>
+<p>Frozen features, 9 tissue classes, 7,180 test images. The same probes run on a randomly initialised encoder as a baseline:</p>
+<div class="bars js-chart">
+  <div class="bar"><div class="bar__label">Random-init encoder<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="74.3"></div></div><div class="bar__val">74.3%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">I-JEPA, epoch 1<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="77.2"></div></div><div class="bar__val">77.2%</div></div>
+  <div class="bar bar--hi"><div class="bar__label">I-JEPA, epoch 4<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="78.6"></div></div><div class="bar__val">78.6%</div></div>
+  <div class="bar"><div class="bar__label">Random-init encoder<small>5-NN</small></div><div class="bar__track"><div class="bar__fill" data-fill="63.1"></div></div><div class="bar__val">63.1%</div></div>
+  <div class="bar bar--hi"><div class="bar__label">I-JEPA, epoch 4<small>5-NN</small></div><div class="bar__track"><div class="bar__fill" data-fill="78.1"></div></div><div class="bar__val">78.1%</div></div>
+</div>
+<p>
+  The linear-probe gain over random init is real but modest. The nearest-neighbour gain (+15 points) is the clearer
+  sign that the representation organises tissue types. The features' effective rank also roughly doubled between epochs 1 and 4.
+</p>
+
+<div class="callout">
+  <strong>Lesson</strong>
+  A random-init baseline is essential. A linear probe on random ViT features already reaches 74%, so an absolute
+  number on its own says little about what pretraining did. Longer runs weren't automatically better either: probe
+  accuracy has to be tracked across checkpoints, not just read at the end.
+</div>
+
+<figure class="figure">
+  <div class="figure__frame" style="background:#fff"><img src="/static/img/work/ijepa-cluster.jpg" alt="2-D embedding of mean-pooled encoder features coloured by tissue class" loading="lazy"></div>
+  <figcaption>Mean-pooled features from a later checkpoint, projected to 2-D. Background, adipose and debris separate cleanly. The epithelial and stromal classes stay entangled.</figcaption>
+</figure>
+{% endblock %}
+
+{% block aside %}
+<div class="aside__box">
+  <h4>Stack</h4>
+  <ul>
+    <li>PyTorch · ViT, 384-d</li>
+    <li>MedMNIST PathMNIST-224</li>
+    <li>Block masking, EMA-free</li>
+    <li>Linear, k-NN probes</li>
+  </ul>
+</div>
+<div class="aside__box">
+  <h4>Related</h4>
+  <ul>
+    <li><a href="/work/jepa-ball-in-cup">Ball-in-cup JEPA</a></li>
+  </ul>
+</div>
+{% endblock %}

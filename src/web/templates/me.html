@@ -1,43 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Me</title>
-    <link rel="stylesheet" href="/static/css/app.css" />
-    <link rel="stylesheet" href="/static/css/theme-dark.css" />
-  </head>
-  <body>
-    <main class="container">
-      <header class="page-header compact header-inner">
-        <a href="/" class="nav-link">Home</a>
-        <h1>Andreas Atle</h1>
-        <button class="btn btn--ghost" id="me-toggle" onclick="toggleMeView()">
-          {% if view == "profile" %}Resume{% else %}Profile{% endif %}
-        </button>
-      </header>
+{% extends "base.html" %}
+{% set section = "me" %}
+{% block title %}About · Andreas Atle{% endblock %}
 
-      <section id="resume-view"{% if view == "profile" %} hidden{% endif %}>
-        <article>
-          {{ resume_html | safe }}
-        </article>
-      </section>
+{% block content %}
+<section class="page-hero">
+  <div class="wrap narrow">
+    <div class="breadcrumb"><a href="/">atle.dev</a> / about</div>
+    <h1>Andreas Atle</h1>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <div class="toggle" role="group" aria-label="View">
+        <button type="button" data-view="profile" aria-pressed="{{ 'true' if view == 'profile' else 'false' }}">Profile</button>
+        <button type="button" data-view="resume" aria-pressed="{{ 'false' if view == 'profile' else 'true' }}">Resume</button>
+      </div>
+      <a class="btn" href="mailto:atle.andreas@gmail.com">Email me</a>
+    </div>
+  </div>
+</section>
 
-      <section id="profile-view"{% if view != "profile" %} hidden{% endif %}>
-        <article>
-          {{ profile_html | safe }}
-        </article>
-      </section>
+<section class="section" style="padding-top:48px">
+  <div class="wrap narrow">
+    <article class="prose" id="profile-view"{% if view != "profile" %} hidden{% endif %}>
+      {{ profile_html | safe }}
+    </article>
+    <article class="prose" id="resume-view"{% if view == "profile" %} hidden{% endif %}>
+      {{ resume_html | safe }}
+    </article>
+  </div>
+</section>
+{% endblock %}
 
-      <script>
-        function toggleMeView() {
-          const resumeView = document.getElementById("resume-view");
-          const profileView = document.getElementById("profile-view");
-          const toggleButton = document.getElementById("me-toggle");
-          resumeView.hidden = !resumeView.hidden;
-          profileView.hidden = !profileView.hidden;
-          toggleButton.textContent = resumeView.hidden ? "Resume" : "Profile";
-        }
-      </script>
-    </main>
-  </body>
-</html>
+{% block scripts %}
+<script>
+  document.querySelectorAll(".toggle [data-view]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const v = b.dataset.view;
+      document.getElementById("profile-view").hidden = v !== "profile";
+      document.getElementById("resume-view").hidden = v !== "resume";
+      document.querySelectorAll(".toggle [data-view]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      history.replaceState(null, "", v === "profile" ? "/me" : "/me?view=resume");
+    });
+  });
+</script>
+{% endblock %}

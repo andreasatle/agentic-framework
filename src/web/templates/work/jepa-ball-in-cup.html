@@ -1,0 +1,114 @@
+{% extends "work/_project.html" %}
+
+{% block body %}
+<figure class="figure">
+  <div class="figure__frame figure__frame--video">
+    <video src="/static/img/work/ball-in-cup-solve.mp4" poster="/static/img/work/ball-in-cup-poster.jpg" muted loop playsinline controls preload="metadata" data-autoplay></video>
+  </div>
+  <figcaption>A closed-loop episode. The planner only ever sees 64×64 frames through the learned encoder. It has to pump the swing to build energy, then damp it to land the ball in the cup.</figcaption>
+</figure>
+
+<h2>Why this project</h2>
+<p>
+  I wanted to understand JEPA (Joint-Embedding Predictive Architecture) by building one end to end,
+  not by reading about it. Ball-in-cup was a deliberately unimportant proxy task. The point was the
+  whole loop: self-supervised pretraining on pixels, checking what the latent space actually knows,
+  and planning through the learned model. Solving the task at 97% was a bonus.
+</p>
+
+<div class="stats">
+  <div class="stat"><strong>32</strong><span>latent dims per frame</span></div>
+  <div class="stat"><strong>R² 0.97</strong><span>position recovered from z (MLP probe)</span></div>
+  <div class="stat"><strong>~150</strong><span>real steps of stable rollout</span></div>
+  <div class="stat"><strong>29/30</strong><span>solved from random starts</span></div>
+</div>
+
+<h2>Architecture</h2>
+<div class="pipeline">
+  <div class="pipeline__step pipeline__step--teal"><b>E · encoder</b>One 64×64 RGB frame → 32-d latent <code>z</code>. Purely spatial.</div>
+  <div class="pipeline__step pipeline__step--teal"><b>P · predictor</b>Window of K=3 latents + action → next latent. All velocity reasoning lives here.</div>
+  <div class="pipeline__step pipeline__step--amber"><b>Probe</b>Fit after E and P are frozen. Reads position back out of <code>z</code> for the cost.</div>
+  <div class="pipeline__step pipeline__step--amber"><b>CEM / MPC</b>Sample action sequences, roll them through P, refit to the elites, execute one step, replan.</div>
+</div>
+<p>
+  The loss is VICReg-style: prediction error plus variance and covariance terms against collapse,
+  with no EMA target and no stop-gradient. Numerical gradient checks found a vanishing-gradient-at-collapse
+  bug in the covariance term, fixed by square-rooting it before the penalty.
+</p>
+<div class="callout callout--teal">
+  <strong>Design decision</strong>
+  An early version stacked frames into the encoder. A linear probe showed it couldn't recover
+  velocity at all (R² ≈ 0). Ball-in-cup is a second-order ODE, so position alone isn't Markovian.
+  The fix: a single-frame encoder, with a K=3 window in the predictor. K=2 was rejected because a
+  two-point finite difference amplifies position noise about 2500× at dt = 0.02 s.
+</div>
+
+<h2>The drift problem</h2>
+<p>
+  Planning needs long horizons, since the swing has to be pumped over 100+ steps. But feeding the
+  predictor its own outputs made rollout error <em>explode</em> past 30–50 steps. The model had only
+  ever been trained on real context windows (exposure bias).
+</p>
+<p>Two changes fixed it together:</p>
+<ul>
+  <li><strong>Unrolled training loss.</strong> P is supervised on 5 successive self-fed predictions, not just one.</li>
+  <li><strong>Predictor stride.</strong> One P call advances 5 real control steps under a held action. This needed new action-repeat data, because the original data changed action every step.</li>
+</ul>
+<p>After that, ball-position error stayed flat at about 0.08–0.11 m across the full 150-step horizon, with no compounding.</p>
+
+<h2>Results: 60% → 97%</h2>
+<p>Real closed-loop episodes against the simulator, random initial conditions, n=30 unless noted.</p>
+<div class="bars js-chart">
+  <div class="bar bar--mid"><div class="bar__label">Baseline<small>linear probe, no warm-start, n=10</small></div><div class="bar__track"><div class="bar__fill" data-fill="60"></div></div><div class="bar__val">60%</div></div>
+  <div class="bar"><div class="bar__label">MLP probe<small>12× more accurate offline</small></div><div class="bar__track"><div class="bar__fill" data-fill="67"></div></div><div class="bar__val">67%</div></div>
+  <div class="bar"><div class="bar__label">Linear probe, re-run<small>confirms the null result</small></div><div class="bar__track"><div class="bar__fill" data-fill="63"></div></div><div class="bar__val">63%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">+ warm-start<small>stratified elites carried forward</small></div><div class="bar__track"><div class="bar__fill" data-fill="73"></div></div><div class="bar__val">73%</div></div>
+  <div class="bar bar--hi"><div class="bar__label">+ 24 s time budget<small>was 12 s; search unchanged</small></div><div class="bar__track"><div class="bar__fill" data-fill="97"></div></div><div class="bar__val">97%</div></div>
+</div>
+
+<h3>Three findings that mattered</h3>
+<ol>
+  <li>
+    <strong>A better probe didn't help.</strong> The MLP probe cut per-frame position error from 0.083 m to 0.007 m,
+    and closed-loop success didn't move (63% vs 67%, same at n=30). The cost only uses the
+    <em>difference</em> between ball and cup positions, so shared decoding bias largely cancels.
+  </li>
+  <li>
+    <strong>Failures weren't near-misses.</strong> Filmstrips of every failure showed the same thing: the
+    ball still mid-swing at the cutoff. The planner re-randomised each step and kept abandoning
+    damping trajectories. Carrying forward a slice of elites from <em>every</em> CEM iteration kept
+    diversity and fixed most of it.
+  </li>
+  <li>
+    <strong>The honest kind of retry.</strong> A real robot can't reroll an easier start. It can only keep
+    acting from where it is. Doubling the time budget showed most "failures" were slow, not stuck.
+    Several solved only after 12 s, some as late as 21.7 s.
+  </li>
+</ol>
+
+<div class="callout">
+  <strong>Principle kept throughout</strong>
+  The probe is a readout fitted after E and P are frozen, never a training signal. Training on position
+  would probably have closed the precision gap faster, but then the project would stop testing what
+  self-supervision recovers on its own.
+</div>
+
+<h2>What came next</h2>
+<p>
+  A Gromov δ-hyperbolicity test on the trained latent space came out low (relative δ ≈ 0.15–0.27), even
+  though it was trained with a plain Euclidean loss. That suggested the latent space already has
+  tree-like structure, and led to the <a href="/work/hyperbolic-jepa">hyperbolic latent-space work</a>.
+</p>
+{% endblock %}
+
+{% block aside %}
+<div class="aside__box">
+  <h4>Stack</h4>
+  <ul>
+    <li>PyTorch · dm_control / MuJoCo</li>
+    <li>VICReg-style loss, no EMA</li>
+    <li>CEM + MPC, closed loop</li>
+    <li>Trained locally on a Mac</li>
+  </ul>
+</div>
+{% endblock %}

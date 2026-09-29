@@ -1,0 +1,63 @@
+{% extends "work/_project.html" %}
+
+{% block body %}
+<p>
+  For several years, most of my time went into one question: how do you get LLM agents to do real,
+  multi-step work while staying <strong>auditable</strong>, with every state change typed, bounded and
+  attributable? I built several frameworks to find out. Some ideas held up well. Others turned out to be
+  more machinery than the problem needed. This page is the short version.
+</p>
+
+<h2>In production: legal document pipelines</h2>
+<p>
+  Client work where the stakes were concrete. LLM agent pipelines on strict Pydantic schemas processed
+  1,300+ legal documents, with deterministic validation, bounded retries, explicit ACCEPT/REJECT steps and
+  auditable outputs. Manual review effort dropped by about 70%. The <a href="/work/title-ocr">title OCR</a>
+  work continues this line.
+</p>
+
+<h2>The experiments</h2>
+<div class="pipeline">
+  <div class="pipeline__step pipeline__step--teal"><b>Agentic control plane</b>Planner → Worker → Tool → Critic as an explicit FSM. It powers this site's blog editor. <a href="/architecture">Architecture notes →</a></div>
+  <div class="pipeline__step"><b>CRUD testbed</b>"Tests are the only authority": invariants exist only if a test enforces them.</div>
+  <div class="pipeline__step"><b>BAPS</b>Bounded adversarial production: Blue proposes, Red challenges, a Referee decides, gated by gap analysis against a NorthStar spec.</div>
+  <div class="pipeline__step"><b>Forge / forge-rs</b>Scheduler-owned DAG of bounded "games", ported to Rust as pure <code>state + event → state + effects</code> machines.</div>
+</div>
+
+<h2>What held up</h2>
+<ul>
+  <li><strong>Typed boundaries everywhere.</strong> Schema-validated I/O caught more real failures than any amount of prompt work.</li>
+  <li><strong>Pure transitions, isolated effects.</strong> State machines whose transition functions do no I/O are easy to test and replay, whatever sits inside them.</li>
+  <li><strong>Bounded everything.</strong> Finite retries and explicit terminal states. No loop the model can extend by itself.</li>
+  <li><strong>Adversarial review earns its cost</strong> on code and claims that can be checked, less so on open-ended prose.</li>
+</ul>
+
+<h2>What didn't</h2>
+<p>
+  The later frameworks, Forge especially, grew more orchestration than the tasks justified. When a system has
+  schedulers, deliberation machines, integrators and multiple provider tiers, the framework becomes the thing
+  you debug. Drift, meaning behaviour slowly diverging from the original intent, was never solved by adding
+  structure around the model. That is a large part of why I turned to <a href="/work/jepa-ball-in-cup">world models</a>:
+  I wanted to understand planning against a learned model of consequences, not just orchestrating calls.
+</p>
+{% endblock %}
+
+{% block aside %}
+<div class="aside__box">
+  <h4>Code</h4>
+  <ul>
+    <li><a href="https://github.com/andreasatle/agentic-framework">agentic-framework</a></li>
+    <li><a href="https://github.com/andreasatle/bounded-adversarial-production">bounded-adversarial-production</a></li>
+    <li><a href="https://github.com/andreasatle/forge-rs">forge-rs</a></li>
+  </ul>
+</div>
+<div class="aside__box">
+  <h4>Architecture notes</h4>
+  <ul>
+    <li><a href="/architecture">Control plane</a></li>
+    <li><a href="/architecture/authority">Authority map</a></li>
+    <li><a href="/architecture/trace">Execution trace</a></li>
+    <li><a href="/architecture/dogma">Dogma</a></li>
+  </ul>
+</div>
+{% endblock %}

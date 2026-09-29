@@ -1,22 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ meta.title or '(untitled)' }}</title>
-    <link rel="stylesheet" href="/static/css/app.css">
-    <link rel="stylesheet" href="/static/css/theme-dark.css">
-</head>
-<body>
-    <main class="container">
-        <p><a href="/" class="nav-link">Home</a></p>
-        <header>
-            <h1>{{ meta.title or '(untitled)' }}</h1>
-            <div>By {{ meta.author }} · {{ meta.created_at }} · Status: {{ meta.status }}</div>
-            <a href="/blog" class="nav-link">Back to Blog</a>
-        </header>
-        <article>
-            {{ content_html | safe }}
-        </article>
-    </main>
-</body>
-</html>
+{% extends "base.html" %}
+{% set section = "blog" %}
+{% block title %}{{ meta.title or '(untitled)' }} · Andreas Atle{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="wrap narrow">
+    <div class="breadcrumb"><a href="/">atle.dev</a> / <a href="/blog">writing</a></div>
+    <h1>{{ meta.title or '(untitled)' }}</h1>
+    <div class="meta-row" style="margin-top:12px">
+      <div><span class="k">By</span><span class="v">{{ meta.author }}</span></div>
+      <div><span class="k">Published</span><span class="v">{{ (meta.created_at | string)[:10] }}</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:48px">
+  <article class="wrap narrow prose">
+    {{ content_html | safe }}
+    <hr>
+    <p><a href="/blog">← All writing</a></p>
+  </article>
+</section>
+{% endblock %}

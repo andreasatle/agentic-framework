@@ -1,0 +1,121 @@
+{% extends "work/_project.html" %}
+
+{% macro diverge(title, rows) -%}
+<div class="diverge js-chart">
+  <div class="kicker" style="margin-bottom:14px">{{ title }}</div>
+  <div class="diverge__legend"><span>H</span><span>Euclidean better</span><span>hyperbolic better</span></div>
+  {% for h, e, y in rows %}
+  <div class="diverge__row">
+    <div class="diverge__dim">{{ h }}</div>
+    <div class="diverge__side diverge__side--l"><div class="diverge__fill" data-fill="{{ (e / 70 * 100) | round(1) }}">{{ e }}</div></div>
+    <div class="diverge__side diverge__side--r"><div class="diverge__fill" data-fill="{{ (y / 70 * 100) | round(1) }}">{{ y }}</div></div>
+  </div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% block body %}
+<figure class="figure">
+  <div class="figure__frame" style="aspect-ratio:16/8"><canvas data-viz="maze" style="width:100%;height:100%" aria-label="Animated maze with breadth-first wavefront"></canvas></div>
+  <figcaption>A random spanning-tree maze. Each junction is a fork: from one cell, the set of places you can be H steps later grows combinatorially. That is the structure hyperbolic space should hold well.</figcaption>
+</figure>
+
+<h2>The question</h2>
+<p>
+  Hyperbolic space grows exponentially with radius, so it can hold an exponentially branching tree of
+  distinguishable points in low dimension. Euclidean space can't do that at the same dimension. If a world
+  model has to represent <em>several possible futures at once</em>, does a hyperbolic latent help?
+</p>
+
+<div class="callout">
+  <strong>Fundamental vs. convenience</strong>
+  My first attempt on ball-in-cup just swapped the loss to hyperbolic distance on an ordinary point predictor.
+  That is the same mechanism as Euclidean MSE with a different distance function, and it predictably did nothing
+  special. The "radial hierarchy" hypothesis was cleanly disconfirmed there. Ball-in-cup also has no real forks:
+  its dynamics are one smooth basin. The maze was chosen because it has forks by construction.
+</div>
+
+<h2>Phase 0: synthetic check first</h2>
+<p>
+  Before building any environment, I fit free points to k synthetic "future modes" in both geometries,
+  sweeping k, dimension and separation (20 random placements per cell, paired t-test + Wilcoxon). The result was a
+  clean crossover by branching factor. At k=3, Euclidean wins. At k=8, hyperbolic wins, and the effect grows with
+  separation (p &lt; 0.001 at dim 8). So the maze experiment had to predict several steps ahead through junctions to
+  reach k ≥ 8.
+</p>
+
+<h2>Phase 2: the maze</h2>
+<p>
+  E is an embedding table (one vector per cell). P maps <code>(E(start), horizon)</code> to a predicted end latent,
+  deliberately <em>not</em> conditioned on the action sequence, so the target is genuinely multimodal. Loss is squared
+  distance in each geometry plus a VICReg covariance term, which fixed an early collapse.
+</p>
+<p>
+  The metric is nearest-true-endpoint distance over mean endpoint spacing, per junction, on held-out rollouts.
+  A diagnostic caught an early artifact: with only 8 holdout rollouts per junction, the observable k was capped at 8.
+  The fix was 5× more rollouts and a bigger 16×16 maze with 70 junctions.
+</p>
+
+<h3>Headline: a dimension crossover</h3>
+<p>Same maze, same data, only the latent dimension changes. Number of junctions (of 70) where each geometry did better:</p>
+
+{{ diverge("Latent dim = 8 · hyperbolic wins at every horizon (mostly p < 0.0001)", [(3,24,46),(5,29,41),(8,19,51),(12,15,55),(20,19,51)]) }}
+{{ diverge("Latent dim = 32 · Euclidean wins at every horizon (mostly p < 0.0001)", [(3,56,14),(5,56,14),(8,46,24),(12,48,22),(20,41,29)]) }}
+
+<p>
+  At dim 16 the result was mixed. This is the theory's actual claim: hyperbolic's advantage is a
+  <strong>low-dimension</strong> effect. With enough dimensions, Euclidean space has room too, and here it
+  wins outright. My own guess after the first sweep was the opposite ("hyperbolic needs more room"), and
+  the data corrected it.
+</p>
+
+<h3>Geometry of the learned embedding</h3>
+<p>
+  For every fork, are both children closer to their parent than to each other? Hyperbolic E passes
+  63% of these checks. Euclidean E passes <strong>0%</strong>: every sibling pair is inverted, the
+  result of a checkerboard parity pattern competing with real distance.
+</p>
+
+<h2>Phase 3: planning. Open, and honest about it.</h2>
+<p>
+  A CEM planner on top of the dim-8 model has been hard. With an oracle cost it solves 40/40. With the
+  learned model, the best run reached 13/40. Along the way:
+</p>
+<ul>
+  <li>Drift in the one-step predictor. The unrolled loss from ball-in-cup wasn't enough on its own. The real cause was a train/deploy distribution mismatch, reduced with goal-directed data.</li>
+  <li>The predictor never learned that walking into a wall means no movement. A wall-bump fix plus DAgger-style on-policy data gave the first real successes.</li>
+  <li>An automated CEM hyperparameter search showed <em>fewer</em> iterations work better under replanning.</li>
+</ul>
+<p>
+  After several rounds of tuning aggregate metrics, I stopped and built a mechanistic test. A one-step
+  lookahead at every branch cell, with no sampling noise, picks the correct first action 69% of the time.
+  Accuracy <em>rises</em> with distance to the target: 58% within 5 steps, 75% beyond 30. The encoder
+  resolves global structure well and local structure poorly, and it is worst exactly where the goal is decided.
+</p>
+<div class="callout callout--teal">
+  <strong>Where it stands</strong>
+  I'm now tracking down why specific branch cells are misresolved. The latest suspect is training windows
+  that step into a dead end and straight back out. After that comes a direct objective for E: every maze edge
+  should have unit length. In hyperbolic space, Sarkar's construction shows unit edges plus small angular
+  separation are enough to keep whole subtrees apart. It will run as a separate, labelled experiment, so the
+  Euclidean vs. hyperbolic comparison stays clean.
+</div>
+{% endblock %}
+
+{% block aside %}
+<div class="aside__box">
+  <h4>Stack</h4>
+  <ul>
+    <li>PyTorch · Poincaré ball ops (exp₀, dist)</li>
+    <li>VICReg covariance term</li>
+    <li>Paired t-test + Wilcoxon per junction</li>
+    <li>CEM, beam search, DAgger</li>
+  </ul>
+</div>
+<div class="aside__box">
+  <h4>Background</h4>
+  <ul>
+    <li><a href="/work/jepa-ball-in-cup">Ball-in-cup JEPA</a></li>
+  </ul>
+</div>
+{% endblock %}

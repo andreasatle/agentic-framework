@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import project_card %}
+{% set section = "work" %}
+{% block title %}Work · Andreas Atle{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="/">atle.dev</a> / work</div>
+    <h1>Work</h1>
+    <p class="lede">Research and engineering projects, newest first. Each page covers the approach, the numbers, and what didn't hold up.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:56px">
+  <div class="wrap">
+    <div class="cards">
+      {% for p in projects %}
+        {{ project_card(p, wide=(loop.first or loop.last)) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

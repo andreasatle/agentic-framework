@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_tag %}
+{% set section = "work" %}
+{% block title %}{{ project.title }} · Andreas Atle{% endblock %}
+{% block description %}{{ project.summary }}{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="/">atle.dev</a> / <a href="/work">work</a> / {{ project.slug }}</div>
+    <div class="tags" style="margin-bottom:16px">{{ status_tag(project.status) }}{% for t in project.tags %}<span class="tag">{{ t }}</span>{% endfor %}</div>
+    <h1>{{ project.title }}</h1>
+    <p class="lede">{{ project.summary }}</p>
+    <div class="meta-row">
+      <div><span class="k">When</span><span class="v">{{ project.period }}</span></div>
+      {% if project.stat %}<div><span class="k">Headline</span><span class="v">{{ project.stat }} <span class="muted">· {{ project.stat_label }}</span></span></div>{% endif %}
+      {% block meta_extra %}{% endblock %}
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="layout-2">
+    <article class="prose">
+      {% block body %}{% endblock %}
+    </article>
+    <aside class="aside">
+      {% block aside %}{% endblock %}
+      <div class="aside__box">
+        <h4>More work</h4>
+        <ul>
+          {% for p in projects if p.slug != project.slug %}
+            <li><a href="/work/{{ p.slug }}">{{ p.title }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}

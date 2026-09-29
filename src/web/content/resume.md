@@ -83,6 +83,15 @@ Schema‑driven design, cost‑aware inference, deterministic workflows, CI/CD, 
 
 ## Selected Projects
 
+**JEPA World Model + CEM/MPC Planner (2026)**
+Self-supervised world model trained from pixels on dm_control ball-in-cup; CEM planner in a closed MPC loop. Fixed long-horizon drift with unrolled training and predictor stride; raised task success from 60% to 97% from random starts. [Details](/work/jepa-ball-in-cup)
+
+**Hyperbolic Latent Spaces for Branching Futures (2026)**
+Controlled Euclidean vs. hyperbolic comparison on a grid maze; hyperbolic wins broadly at latent dim 8, Euclidean at dim 32. [Details](/work/hyperbolic-jepa)
+
+**Multi-Engine OCR for Title Documents (2026)**
+Tesseract, Textract, Claude and GPT reconciled per page with aligned voting and domain verifiers, for verbatim text with reliable numbers. [Details](/work/title-ocr)
+
 **Enterprise Agentic Workflow for Legal Documents**
 OCR → schema‑validated JSON → RAG → structured outputs pipeline using OpenAI SDK and Pydantic, designed for auditability and cost control.
 

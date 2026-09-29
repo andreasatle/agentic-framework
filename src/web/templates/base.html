@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Andreas Atle{% endblock %}</title>
+  <meta name="description" content="{% block description %}Andreas Atle — governed agent systems and learned world models. Forty years of scientific computing, applied to AI.{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/site.css">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="topbar">
+    <div class="wrap topbar__inner">
+      <a href="/" class="brand"><span class="brand__mark" aria-hidden="true"></span>atle<span class="brand__dot">.dev</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="/work" class="{% if section == 'work' %}is-active{% endif %}">Work</a>
+        <a href="/blog" class="{% if section == 'blog' %}is-active{% endif %}">Writing</a>
+        <a href="/me" class="{% if section == 'me' %}is-active{% endif %}">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer__inner">
+      <div>
+        <div class="footer__name">Andreas Atle</div>
+        <div class="muted">Houston, TX · remote</div>
+      </div>
+      <div class="footer__links">
+        <a href="https://github.com/andreasatle">GitHub</a>
+        <a href="https://linkedin.com/in/andreasatle/">LinkedIn</a>
+        <a href="mailto:atle.andreas@gmail.com">Email</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/js/site.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
