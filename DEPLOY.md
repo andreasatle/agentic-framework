@@ -15,34 +15,48 @@ The public site (atle.dev) is the FastAPI app in `src/web`. It runs on an AWS Li
 
 ## Deploy steps
 
-1. On the Mac, in `~/Projects/AgenticFramework`, get the changes onto `main` and push:
+From the Mac, in `~/Projects/AgenticFramework`, with the changes merged into `main`:
 
-   ```
-   git switch main
-   git merge <feature-branch>      # if the work was on a branch
-   git push
-   ```
+```
+scripts/deploy.sh
+```
 
-2. Open a shell on the server. Plain `ssh ubuntu@atle.dev` from the Mac fails with `Permission denied (publickey)` because the Mac's default key isn't authorized. Use the browser console instead: AWS Console → Lightsail → the instance → **Connect using SSH**.
+It pushes `main` to GitHub, then runs `ssh atle` to check the server checkout is clean, run `/opt/agentic/update.sh`, and confirm the `agentic` service is active. Afterwards, check https://atle.dev with a hard refresh so the browser doesn't serve cached CSS/JS.
 
-3. On the server:
+### SSH setup (already done on the Mac mini)
 
-   ```
-   cd /opt/agentic
-   git branch --show-current       # expect: main
-   git status --short              # expect: nothing (update.sh refuses to pull over local changes)
-   ./update.sh
-   ```
+- Key pair: `~/.ssh/id_ed25519_atle` (private, has a passphrase) and `~/.ssh/id_ed25519_atle.pub`. The public key is appended to `/home/ubuntu/.ssh/authorized_keys` on the server.
+- `~/.ssh/config` entry:
 
-4. Check the site: open https://atle.dev and https://atle.dev/work with a hard refresh, so the browser doesn't serve cached CSS/JS.
+  ```
+  Host atle
+      HostName atle.dev
+      User ubuntu
+      IdentityFile ~/.ssh/id_ed25519_atle
+  ```
+
+- Test with `ssh atle hostname`. It should print `ip-172-26-3-207`.
+- New machine: generate a key with `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_atle`, append its `.pub` line to the server's `authorized_keys`, and add the config entry.
+- To revoke a machine, delete its line from the server's `~/.ssh/authorized_keys`.
+
+### Manual fallback (no SSH from the Mac)
+
+AWS Console → Lightsail → the instance → **Connect using SSH**, then:
+
+```
+cd /opt/agentic
+git branch --show-current       # expect: main
+git status --short              # expect: nothing (update.sh refuses to pull over local changes)
+./update.sh
+```
 
 ## If something goes wrong
 
-- Service logs: `sudo journalctl -u agentic -n 50`
-- Service state: `systemctl status agentic`
+- Service logs: `ssh atle sudo journalctl -u agentic -n 50`
+- Service state: `ssh atle systemctl status agentic`
 - `git pull --ff-only` fails: the server checkout has local edits or diverged. Inspect with `git status` / `git log --oneline -3` before changing anything.
 - App refuses to start with `ADMIN_PASSWORD not set` or a generation/posts directory error: `/opt/agentic/.env` is missing or incomplete. It must define `ADMIN_PASSWORD`, `AGENTIC_GENERATED_DIR`, `AGENTIC_BLOG_POSTS_ROOT`, plus the LLM API key(s).
-- Updating `.env`: edit it on the server, or copy it up (`scp .env ubuntu@atle.dev:/opt/agentic/.env` works only once SSH from the Mac is set up), then `sudo systemctl restart agentic`.
+- Updating `.env`: `scp .env atle:/opt/agentic/.env`, then `ssh atle sudo systemctl restart agentic`.
 
 ## Running locally
 
