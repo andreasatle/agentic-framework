@@ -63,7 +63,7 @@
   // an isometry, so the tree keeps its shape while we "move through" it.
   // =====================================================================
   function poincare(canvas) {
-    const BRANCH = 3, DEPTH = 5, STEP = 0.8; // hyperbolic edge length (shorter = less crowding at the rim)
+    const BRANCH = 3, DEPTH = 6, STEP = 0.8; // hyperbolic edge length (shorter = less crowding at the rim)
     const nodes = []; // {r, th, depth, parent}
     (function build(parent, depth, lo, hi) {
       const th = (lo + hi) / 2;
@@ -77,7 +77,7 @@
     // hyperbolic distance r from the centre at Euclidean radius tanh(sqrt(kappa) * r / 2),
     // so changing kappa is the same as rescaling every hyperbolic distance. Oscillating
     // it zooms the tree in and out -- unlike the Mobius pan, this is not an isometry.
-    const KAPPA_MIN = 0.35, KAPPA_MAX = 1.6, KAPPA_PERIOD = 24; // seconds per full cycle
+    const KAPPA_MIN = 0.25, KAPPA_MAX = 1.0, KAPPA_PERIOD = 24; // seconds per full cycle
     const kappaAt = (t) =>
       Math.exp(Math.log(KAPPA_MIN) + (Math.log(KAPPA_MAX) - Math.log(KAPPA_MIN)) * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / KAPPA_PERIOD)));
     const baseAt = (kappa) => nodes.map((n) => {
