@@ -63,7 +63,7 @@
   // an isometry, so the tree keeps its shape while we "move through" it.
   // =====================================================================
   function poincare(canvas) {
-    const BRANCH = 3, DEPTH = 6, STEP = 1.25; // hyperbolic edge length
+    const BRANCH = 3, DEPTH = 5, STEP = 0.8; // hyperbolic edge length (shorter = less crowding at the rim)
     const nodes = []; // {r, th, depth, parent}
     (function build(parent, depth, lo, hi) {
       const th = (lo + hi) / 2;
@@ -131,7 +131,7 @@
       const t = (now - t0) / 1000;
       ctx.clearRect(0, 0, w, h);
       // pan: move the "camera" slowly around a circle in the disk
-      const rad = 0.42, om = 0.05;
+      const rad = 0.3, om = 0.05;
       const a = [rad * Math.cos(om * t), rad * Math.sin(om * t * 1.3)];
       const rot = [Math.cos(t * 0.03), Math.sin(t * 0.03)];
       const P = base.map((z) => mul(mobius(z, a), rot));
