@@ -73,8 +73,15 @@
       const span = (hi - lo) / BRANCH;
       for (let k = 0; k < BRANCH; k++) build(idx, depth + 1, lo + k * span, lo + (k + 1) * span);
     })(-1, 0, 0, Math.PI * 2);
-    const base = nodes.map((n) => {
-      const e = Math.tanh(n.r / 2);
+    // Curvature "breathing": the disk model of curvature -kappa places a point at
+    // hyperbolic distance r from the centre at Euclidean radius tanh(sqrt(kappa) * r / 2),
+    // so changing kappa is the same as rescaling every hyperbolic distance. Oscillating
+    // it zooms the tree in and out -- unlike the Mobius pan, this is not an isometry.
+    const KAPPA_MIN = 0.35, KAPPA_MAX = 1.6, KAPPA_PERIOD = 24; // seconds per full cycle
+    const kappaAt = (t) =>
+      Math.exp(Math.log(KAPPA_MIN) + (Math.log(KAPPA_MAX) - Math.log(KAPPA_MIN)) * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / KAPPA_PERIOD)));
+    const baseAt = (kappa) => nodes.map((n) => {
+      const e = Math.tanh((Math.sqrt(kappa) * n.r) / 2);
       return [e * Math.cos(n.th), e * Math.sin(n.th)];
     });
     const leaves = nodes.map((n, i) => (n.depth === DEPTH ? i : -1)).filter((i) => i >= 0);
@@ -134,7 +141,8 @@
       const rad = 0.3, om = 0.05;
       const a = [rad * Math.cos(om * t), rad * Math.sin(om * t * 1.3)];
       const rot = [Math.cos(t * 0.03), Math.sin(t * 0.03)];
-      const P = base.map((z) => mul(mobius(z, a), rot));
+      const kappa = reduceMotion ? 1 : kappaAt(t);
+      const P = baseAt(kappa).map((z) => mul(mobius(z, a), rot));
 
       // boundary
       ctx.lineWidth = 1;
