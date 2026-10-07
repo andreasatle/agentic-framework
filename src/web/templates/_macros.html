@@ -24,6 +24,10 @@
     <div class="card__media" aria-hidden="true"><div class="viz-fsm">
       <span>PLAN</span><i>→</i><span>WORK</span><i>→</i><span>TOOL</span><i>→</i><span class="on">CRITIC</span><i>→</i><span>END</span>
     </div></div>
+  {%- elif p.media == 'html:swarm' -%}
+    <div class="card__media" aria-hidden="true"><div class="viz-fsm viz-fsm--ladder">
+      <span>production</span><i>↑ gate</i><span class="on">candidate</span><i>↑ gate</i><span>experimental</span><i>↑ gate</i><span>raw</span>
+    </div></div>
   {%- elif p.media.startswith('canvas:') -%}
     <div class="card__media"><canvas data-viz="{{ p.media[7:] }}" aria-label="Animated maze exploration"></canvas></div>
   {%- endif -%}

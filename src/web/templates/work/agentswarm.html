@@ -1,0 +1,95 @@
+{% extends "work/_project.html" %}
+
+{% block body %}
+<p>
+  AgentSwarm is my answer to what went wrong in my <a href="/work/governed-agents">earlier agent frameworks</a>.
+  In Forge, a planner, a worker and an LLM critic depended on each other's output in a fixed order. Roles ended
+  up waiting on each other, the plan-then-execute split was too rigid, and every verdict was a full LLM call
+  with a self-reported "confidence" that nobody had checked.
+</p>
+
+<h2>The design</h2>
+<p>
+  Independent <strong>teams</strong> (an executor, an integration tester, a red team, a planner, ...) each
+  watch one level of a shared, append-only <strong>blackboard</strong>. They never call each other. Each one
+  reacts to the current state of the project, the way a Kubernetes controller reconciles desired and actual
+  state. Because no team waits on another, there is nothing to deadlock.
+</p>
+<p>
+  Work products are <strong>git branches</strong>, and they mature through levels. To move up a level an
+  artifact has to pass a <strong>gate</strong>: deterministic checks first (tests, builds, scanners), then a
+  few narrow yes/no questions answered by <strong>Jev</strong>, a small decision model that returns a
+  probability rather than prose.
+</p>
+<div class="pipeline">
+  <div class="pipeline__step"><b>raw</b>A branch per task. An executor writes code and tests in a Docker sandbox with no network.</div>
+  <div class="pipeline__step pipeline__step--teal"><b>experimental</b>Gate: tests, then Jev on <em>complete</em>, <em>in scope</em>, <em>tested</em>.</div>
+  <div class="pipeline__step"><b>candidate</b>A release train. Integration testers and red teams attack what has merged.</div>
+  <div class="pipeline__step pipeline__step--amber"><b>production</b>The last gate can require a person, configurable per project.</div>
+</div>
+<p>
+  The split of responsibility is the core rule. <strong>Language models produce</strong> code, text, tests and
+  plans. <strong>Jev decides</strong> whether something is in scope, good enough, or drifting.
+  <strong>Plain code controls</strong> everything that has to be reliable: claims, merges, budgets and
+  scheduling. Everything is typed with Pydantic end to end, and every model-backed part has a fake, so the
+  whole system runs offline and deterministically in tests.
+</p>
+
+<h2>A judge that is measured, not trusted</h2>
+<p>
+  Every decision Jev makes is logged and later scored against what turned out to be true. Evaluation suites
+  provide that truth automatically: hidden tests, mutation testing and planted faults. From the log,
+  <code>agentswarm calibrate</code> reports reliability per question (ECE, Brier score), <code>tune</code>
+  picks pass/fail thresholds that reach a target precision, and <code>audit</code> checks the active gate's
+  false promotions, false rejections and escalations against fixed bounds using Wilson intervals.
+</p>
+<p>
+  Jev starts in shadow mode, logged but never blocking, and only gets to act at a gate once its numbers
+  earn it. So far the active gate made 1 false promotion in 41 overall and 0 in 16 on held-out tasks.
+  That isn't enough data yet: the 95% upper bound reaches the 5% target only after about 73 clean
+  promotions, so proving that is still an open item.
+</p>
+
+<h2>One engine, several domains</h2>
+<p>
+  Software and documents are configurations, not separate code. The same engine writes a handbook through
+  <code>draft → reviewed → final → published</code>, with reviewers whose every complaint must quote the text.
+  A swarm runs several projects side by side under one scheduler, each with its own daily budget.
+</p>
+
+<h2>What I'm working on now</h2>
+<ul>
+  <li>
+    <strong>Acceptance checks the producer can't write or change.</strong> Outside the evaluation suites, the
+    gate runs the tests the executor wrote for its own work, and a model that writes weak tests passes.
+    A separate team now writes acceptance tests from the task before the executor starts. They must fail on
+    the current code, and plain code restores them if the producer touches them.
+  </li>
+  <li>
+    <strong>The goldilocks question.</strong> The hypothesis behind the project is that many small, narrow
+    agents can match one bigger model, because the structure asks less of each call. The comparison runs
+    the same task suites under different setups (one big model, one small model, a tiered setup, a full swarm of small
+    models), all scored by hidden tests, with cost in tokens and time.
+  </li>
+</ul>
+{% endblock %}
+
+{% block aside %}
+<div class="aside__box">
+  <h4>Code</h4>
+  <ul>
+    <li><a href="https://github.com/andreasatle/agentswarm">agentswarm</a></li>
+    <li><a href="https://github.com/andreasatle/agentswarm/tree/main/tutorial">Tutorial, step by step</a></li>
+    <li><a href="https://github.com/andreasatle/agentswarm/blob/main/docs/RESEARCH.md">Research notes</a></li>
+  </ul>
+</div>
+<div class="aside__box">
+  <h4>Built on</h4>
+  <ul>
+    <li>Blackboard systems</li>
+    <li>Reconciliation loops</li>
+    <li>Promotion pipelines and merge queues</li>
+    <li>Event sourcing</li>
+  </ul>
+</div>
+{% endblock %}

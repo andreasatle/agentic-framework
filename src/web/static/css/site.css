@@ -190,6 +190,8 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); border-color:
 .viz-fsm span { border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 10px; color: var(--text-2); }
 .viz-fsm span.on { border-color: var(--violet); color: var(--violet); box-shadow: 0 0 16px -4px rgba(167,139,250,0.6); }
 .viz-fsm i { color: var(--text-3); font-style: normal; }
+.viz-fsm--ladder { flex-direction: column; flex-wrap: nowrap; gap: 4px; }
+.viz-fsm--ladder i { font-size: 0.7rem; }
 .card--compact .card__body { padding: 22px; }
 
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }

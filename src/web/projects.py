@@ -25,6 +25,22 @@ class Project:
 
 PROJECTS: tuple[Project, ...] = (
     Project(
+        slug="agentswarm",
+        title="AgentSwarm: teams of small agents, gated by a calibrated judge",
+        summary=(
+            "Independent teams of agents (executor, tester, red team, planner) move "
+            "work up maturity levels on git branches, through gates. Teams never call "
+            "each other, so nothing can deadlock. Language models produce, a calibrated "
+            "judge decides, plain code controls."
+        ),
+        period="Oct 2026 – now",
+        status="active",
+        tags=("agents", "blackboard", "calibration", "LangChain", "Pydantic"),
+        stat="0 / 16",
+        stat_label="false promotions by the active gate, held-out tasks",
+        media="html:swarm",
+    ),
+    Project(
         slug="jepa-ball-in-cup",
         title="Planning through a learned world model",
         summary=(
