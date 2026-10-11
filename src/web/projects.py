@@ -36,8 +36,8 @@ PROJECTS: tuple[Project, ...] = (
         period="Oct 2026 – now",
         status="active",
         tags=("agents", "blackboard", "calibration", "LangChain", "Pydantic"),
-        stat="0 / 16",
-        stat_label="false promotions by the active gate, held-out tasks",
+        stat="45%",
+        stat_label="of unseen CommonMark spec examples, built from an empty stub",
         media="html:swarm",
     ),
     Project(

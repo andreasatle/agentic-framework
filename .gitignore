@@ -23,6 +23,10 @@ docs_draft/
 tesseract.py
 data/
 *.dump
+.claude/
+.gitignore
 
 # Temporary to avoid committing unfinished work
 docs/
+posts/
+blogs/

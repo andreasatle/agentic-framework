@@ -2,18 +2,18 @@
 
 {% block body %}
 <p>
-  AgentSwarm is my answer to what went wrong in my <a href="/work/governed-agents">earlier agent frameworks</a>.
-  In Forge, a planner, a worker and an LLM critic depended on each other's output in a fixed order. Roles ended
-  up waiting on each other, the plan-then-execute split was too rigid, and every verdict was a full LLM call
-  with a self-reported "confidence" that nobody had checked.
+  AgentSwarm explores a simple question: can many small, narrowly tasked agents, each checked by others, finish
+  real work that is too big for any single model call? Instead of one model doing everything, independent teams
+  take on what they are good at (building, testing, reviewing, planning) and coordinate only through a shared
+  record of the work.
 </p>
 
 <h2>The design</h2>
 <p>
-  Independent <strong>teams</strong> (an executor, an integration tester, a red team, a planner, ...) each
+  Independent <strong>teams</strong> (an executor, an acceptance tester, a red team, a planner, ...) each
   watch one level of a shared, append-only <strong>blackboard</strong>. They never call each other. Each one
   reacts to the current state of the project, the way a Kubernetes controller reconciles desired and actual
-  state. Because no team waits on another, there is nothing to deadlock.
+  state, so teams can be added, removed or swapped without rewiring anything.
 </p>
 <p>
   Work products are <strong>git branches</strong>, and they mature through levels. To move up a level an
@@ -22,8 +22,8 @@
   probability rather than prose.
 </p>
 <div class="pipeline">
-  <div class="pipeline__step"><b>raw</b>A branch per task. An executor writes code and tests in a Docker sandbox with no network.</div>
-  <div class="pipeline__step pipeline__step--teal"><b>experimental</b>Gate: tests, then Jev on <em>complete</em>, <em>in scope</em>, <em>tested</em>.</div>
+  <div class="pipeline__step"><b>raw</b>A branch per task. An executor writes code in a Docker sandbox with no network.</div>
+  <div class="pipeline__step pipeline__step--teal"><b>experimental</b>Gate: the tests, including acceptance tests the executor can't change.</div>
   <div class="pipeline__step"><b>candidate</b>A release train. Integration testers and red teams attack what has merged.</div>
   <div class="pipeline__step pipeline__step--amber"><b>production</b>The last gate can require a person, configurable per project.</div>
 </div>
@@ -35,6 +35,38 @@
   whole system runs offline and deterministically in tests.
 </p>
 
+<h2>Checks the producer can't write</h2>
+<p>
+  Whoever does the work doesn't decide what counts as done. A separate team writes acceptance tests from the
+  task before anyone builds it; the builder sees them but can't change them, and the gate runs them. On a suite
+  of 25 tasks of growing complexity, building against such tests solved twice as many of the hardest tasks
+  (4 of 5, against 2 of 5).
+</p>
+
+<h2>A first real problem</h2>
+<p>
+  The swarm is building a <strong>CommonMark</strong> converter (Markdown to HTML) in Python from an empty stub,
+  judged by the official specification's 652 examples. A fifth of them are held back and never shown to any
+  agent, so progress on them shows the converter really works rather than fitting what it has seen.
+</p>
+<p>
+  The failing tests decide how the work is split: each section of the spec with failing examples becomes a work
+  item, and a <em>ratchet</em> gate merges a change only if more examples pass and none that passed breaks.
+  So far the swarm has reached <strong>43% of the spec, and 45% of the examples it has never seen</strong>, for
+  about ten dollars of model calls. The remaining sections (lists, nested blocks, links) need the parser
+  restructured first, which is where the planner comes in: it splits the restructuring into steps a small
+  model can do, one after another, each checked by the ratchet.
+</p>
+
+<h2>Choosing models by evidence</h2>
+<p>
+  AgentSwarm doesn't depend on one provider: any model from Anthropic, OpenAI, local Ollama, or the hundreds
+  behind OpenRouter is one line of configuration. Which model takes which role is learned from outcomes: a
+  router keeps a record per role and difficulty and, by Thompson sampling, picks the cheapest model whose
+  measured success is good enough, while still trying uncertain ones now and then. The aim is to minimise cost
+  subject to a product that meets its definition of done.
+</p>
+
 <h2>A judge that is measured, not trusted</h2>
 <p>
   Every decision Jev makes is logged and later scored against what turned out to be true. Evaluation suites
@@ -43,34 +75,24 @@
   picks pass/fail thresholds that reach a target precision, and <code>audit</code> checks the active gate's
   false promotions, false rejections and escalations against fixed bounds using Wilson intervals.
 </p>
-<p>
-  Jev starts in shadow mode, logged but never blocking, and only gets to act at a gate once its numbers
-  earn it. So far the active gate made 1 false promotion in 41 overall and 0 in 16 on held-out tasks.
-  That isn't enough data yet: the 95% upper bound reaches the 5% target only after about 73 clean
-  promotions, so proving that is still an open item.
-</p>
 
 <h2>One engine, several domains</h2>
 <p>
   Software and documents are configurations, not separate code. The same engine writes a handbook through
   <code>draft → reviewed → final → published</code>, with reviewers whose every complaint must quote the text.
-  A swarm runs several projects side by side under one scheduler, each with its own daily budget.
+  A swarm runs several projects side by side under one scheduler, each with its own budget.
 </p>
 
-<h2>What I'm working on now</h2>
+<h2>What's next</h2>
 <ul>
-  <li>
-    <strong>Acceptance checks the producer can't write or change.</strong> Outside the evaluation suites, the
-    gate runs the tests the executor wrote for its own work, and a model that writes weak tests passes.
-    A separate team now writes acceptance tests from the task before the executor starts. They must fail on
-    the current code, and plain code restores them if the producer touches them.
-  </li>
-  <li>
-    <strong>The goldilocks question.</strong> The hypothesis behind the project is that many small, narrow
-    agents can match one bigger model, because the structure asks less of each call. The comparison runs
-    the same task suites under different setups (one big model, one small model, a tiered setup, a full swarm of small
-    models), all scored by hidden tests, with cost in tokens and time.
-  </li>
+  <li><strong>Planning through hard problems:</strong> the restructuring of the CommonMark parser, split by the
+    planner into steps small models can do, and then the rest of the spec.</li>
+  <li><strong>More teams with different focus:</strong> red teams and reviewers on the merged code, each kept
+    only if it measurably helps.</li>
+  <li><strong>A second real problem</strong>, to show the same framework finishes different kinds of work.</li>
+  <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
+    size, against a single large model with the same goal and checks, compared on what gets solved and at what
+    cost.</li>
 </ul>
 {% endblock %}
 
