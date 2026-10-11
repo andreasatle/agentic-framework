@@ -52,10 +52,15 @@
 <p>
   The failing tests decide how the work is split: each section of the spec with failing examples becomes a work
   item, and a <em>ratchet</em> gate merges a change only if more examples pass and none that passed breaks.
-  So far the swarm has reached <strong>43% of the spec, and 45% of the examples it has never seen</strong>, for
-  about ten dollars of model calls. The remaining sections (lists, nested blocks, links) need the parser
-  restructured first, which is where the planner comes in: it splits the restructuring into steps a small
-  model can do, one after another, each checked by the ratchet.
+  That carried the converter to 43%. The rest (lists, nested blocks) needed the parser rebuilt the way the spec
+  itself recommends, so a planner split that restructuring into 19 steps, one block type at a time, each one
+  merged only if nothing that worked broke.
+</p>
+<p>
+  The restructuring is now complete, and the converter passes <strong>89% of the specification's examples, and
+  89% of the ones no agent has ever seen</strong>. Going from 43% to 89% took two days and about fourteen dollars
+  of model calls: in the last runs, around a cent per example gained. Most steps were done by mid-priced models;
+  where every model failed a step, the planner split it into smaller ones instead of handing it to a person.
 </p>
 
 <h2>Choosing models by evidence</h2>
@@ -85,11 +90,12 @@
 
 <h2>What's next</h2>
 <ul>
-  <li><strong>Planning through hard problems:</strong> the restructuring of the CommonMark parser, split by the
-    planner into steps small models can do, and then the rest of the spec.</li>
+  <li><strong>The rest of the spec:</strong> the remaining 11%, back in the swarm's ordinary loop of one failing
+    group of examples at a time.</li>
+  <li><strong>A second real problem:</strong> a TOML parser judged by the official toml-test suite, set up with
+    nothing but a configuration, to show the same framework finishes a different kind of work.</li>
   <li><strong>More teams with different focus:</strong> red teams and reviewers on the merged code, each kept
     only if it measurably helps.</li>
-  <li><strong>A second real problem</strong>, to show the same framework finishes different kinds of work.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
     size, against a single large model with the same goal and checks, compared on what gets solved and at what
     cost.</li>
