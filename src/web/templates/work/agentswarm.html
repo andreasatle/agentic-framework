@@ -43,6 +43,35 @@
   (4 of 5, against 2 of 5).
 </p>
 
+<h2>The real obstacle: knowing when the work is right</h2>
+<p>
+  Agents can only be trusted as far as their work can be checked. Where the check is indisputable, as with a
+  proof a machine verifies or a test suite with known answers, agents can work almost unattended: anything
+  that passes is right. Most real work has no such check. A report, a design or a plan can be fluent and
+  still wrong, and a model checking its own work is known to be unreliable.
+</p>
+<p>
+  So for every kind of goal, the first design question in AgentSwarm is not which agents to use, but what the
+  strongest affordable check is. It works down a ladder:
+</p>
+<ul>
+  <li><strong>Exact checks</strong> where they exist: compilers, type checkers, test suites with known answers.</li>
+  <li><strong>Checks built for the task:</strong> acceptance tests written from the task before the work starts,
+    which the builder can't change; comparison with a reference; properties that must always hold.</li>
+  <li><strong>Checks that can only refute:</strong> they can't prove the work right, but they catch much that is
+    wrong, cheaply. Every claim must cite a source, and every quote must really be on the page it cites.</li>
+  <li><strong>Judges:</strong> narrow yes/no questions answered by a model other than the producer, logged, scored
+    against what turned out to be true, and allowed to act alone only where their measured precision is high
+    enough.</li>
+  <li><strong>People</strong> at the final gate, and as spot checks that keep the judges honest.</li>
+</ul>
+<p>
+  The weaker the check, the more careful the process: smaller steps that are easier to judge, several
+  independent reviewers on different models, earlier escalation to a person, and more modest claims of
+  success. That is why the first real problems are ones with exact answers, where it can be shown beyond doubt
+  whether the swarm works, before it is trusted with goals that can only be judged.
+</p>
+
 <h2>A first real problem</h2>
 <p>
   The swarm is building a <strong>CommonMark</strong> converter (Markdown to HTML) in Python from an empty stub,
