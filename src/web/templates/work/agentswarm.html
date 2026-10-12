@@ -86,10 +86,14 @@
   merged only if nothing that worked broke.
 </p>
 <p>
-  The restructuring is now complete, and the converter passes <strong>89% of the specification's examples, and
-  89% of the ones no agent has ever seen</strong>. Going from 43% to 89% took two days and about fourteen dollars
-  of model calls: in the last runs, around a cent per example gained. Most steps were done by mid-priced models;
-  where every model failed a step, the planner split it into smaller ones instead of handing it to a person.
+  The restructuring took the converter from 43% to 89% in two days, for about fourteen dollars of model calls.
+  Back in the ordinary loop, three more work items finished it: the converter now passes <strong>100% of the
+  specification's examples, and 100% of the ones no agent has ever seen</strong>. The last 11% cost under fifty
+  cents.
+</p>
+<p>
+  A second problem followed with nothing but a configuration: a <strong>TOML parser</strong>, judged by the
+  official toml-test suite with a fifth held out, also reached <strong>100%</strong> on its first run, for $2.44.
 </p>
 
 <h2>Choosing models by evidence</h2>
@@ -119,16 +123,97 @@
 
 <h2>What's next</h2>
 <ul>
-  <li><strong>The rest of the spec:</strong> the remaining 11%, back in the swarm's ordinary loop of one failing
-    group of examples at a time.</li>
-  <li><strong>A second real problem:</strong> a TOML parser judged by the official toml-test suite, set up with
-    nothing but a configuration, to show the same framework finishes a different kind of work.</li>
   <li><strong>More teams with different focus:</strong> red teams and reviewers on the merged code, each kept
     only if it measurably helps.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
     size, against a single large model with the same goal and checks, compared on what gets solved and at what
     cost.</li>
 </ul>
+
+<h2>Changelog</h2>
+<p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
+<div class="timeline">
+  <div class="tl tl--now">
+    <div class="tl__when">2026-10-12</div>
+    <div class="tl__what"><h3>CommonMark done, 100%</h3><p><strong>Problem:</strong> The converter stood at 89%, mostly missing link reference definitions, which links and images depend on. <strong>Solution:</strong> Back in the ordinary loop: one work item per spec section with failing examples, each tried whole by the cheapest model expected to succeed.
+      <strong>Result:</strong> Three items, each merged on its first attempt: 100% of visible and held-out examples, for $0.49.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-12</div>
+    <div class="tl__what"><h3>A stopped sandbox stops the run</h3><p><strong>Problem:</strong> With the container engine down, no test could run, and a run read that as zero of zero tests. <strong>Solution:</strong> The sandbox checks the engine before its first command and stops with a clear message.
+      <strong>Result:</strong> A broken environment can never look like failing work, or mislead the model router.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-11</div>
+    <div class="tl__what"><h3>Try first, split on failure</h3><p><strong>Problem:</strong> The planner split one task into 53 tiny steps before any model tried it; each had to make a test pass alone, which a building block often can't. <strong>Solution:</strong> Tasks are tried whole and split only after every model fails them (ADaPT). Only the step that completes a task must make a test pass; the others must break nothing.
+      <strong>Result:</strong> Decomposition where it is needed, not by default.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-11</div>
+    <div class="tl__what"><h3>TOML: a second problem, 100%</h3><p><strong>Problem:</strong> One solved problem could be a fit to that problem. <strong>Solution:</strong> A TOML 1.0.0 parser from an empty stub, judged by the official toml-test suite, set up with a configuration only.
+      <strong>Result:</strong> 100% of visible and held-out tests on the first run, for $2.44.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-11</div>
+    <div class="tl__what"><h3>No model call for finished work</h3><p><strong>Problem:</strong> Steps kept paying models to redo work that an earlier step had already done. <strong>Solution:</strong> The checks run first; a step whose goal is already met closes without a model call.
+      <strong>Result:</strong> The swarm stops paying twice for the same result.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-11</div>
+    <div class="tl__what"><h3>A live web monitor</h3><p><strong>Problem:</strong> Following a run meant reading text reports. <strong>Solution:</strong> A read-only page on localhost: every project, its teams, models, spend, the plan as a tree, and each step's history.
+      <strong>Result:</strong> Runs can be watched as they happen, several projects at once.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-11</div>
+    <div class="tl__what"><h3>Keep unfinished work</h3><p><strong>Problem:</strong> Attempts that made real progress but didn't finish were thrown away, and a nearly complete step was rejected over the builder's own temporary tests. <strong>Solution:</strong> Passing work stays for the next attempt, which is told what is left; the no-regressions rule guards the independent acceptance tests.
+      <strong>Result:</strong> Progress accumulates across attempts and models instead of restarting.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-10/11</div>
+    <div class="tl__what"><h3>The restructuring, 43% to 89%</h3><p><strong>Problem:</strong> The first design couldn't nest lists and block quotes, and patching had stalled. <strong>Solution:</strong> A planned restructuring in 19 ordered steps, each keeping every passing example passing.
+      <strong>Result:</strong> The swarm can carry out a large, ordered change, not only small fixes.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-10</div>
+    <div class="tl__what"><h3>Models chosen by cost per success</h3><p><strong>Problem:</strong> Models were tried in a hand-written order. <strong>Solution:</strong> A shared ledger of every attempt's cost and outcome; a Thompson-sampling router picks the model with the lowest expected cost per success, and picks again after a failure.
+      <strong>Result:</strong> The cheapest model that does the job gets it, and the choice improves with every task.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-10</div>
+    <div class="tl__what"><h3>Every run is scored</h3><p><strong>Problem:</strong> Whether a run was worth its money was judged by reading logs. <strong>Solution:</strong> Visible and held-out pass rates at every run's start and end, with the cost per example gained.
+      <strong>Result:</strong> Each run's value is a number; overfitting would show as a gap.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-10</div>
+    <div class="tl__what"><h3>A best-practice review</h3><p><strong>Problem:</strong> Mechanisms had grown from experiments. <strong>Solution:</strong> Each was held against published evidence, and six fixes followed.
+      <strong>Result:</strong> Every mechanism has its reason and source written down.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-08/09</div>
+    <div class="tl__what"><h3>Builders that work like developers</h3><p><strong>Problem:</strong> Builders spent most tokens rereading and rewriting whole files. <strong>Solution:</strong> A repository map, reading in parts, search, edits by replacement, short test output, and a countdown of calls left.
+      <strong>Result:</strong> Far fewer tokens per change, so smaller models can do more.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-08</div>
+    <div class="tl__what"><h3>Accurate costs and limits</h3><p><strong>Problem:</strong> Price-list estimates drifted from the bills. <strong>Solution:</strong> What providers actually charge is recorded, and spending limits hold across every run.
+      <strong>Result:</strong> Costs are trustworthy, and no run can overspend.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-07</div>
+    <div class="tl__what"><h3>A first real problem</h3><p><strong>Problem:</strong> Suites of small tasks couldn't show whether a swarm finishes real work. <strong>Solution:</strong> The CommonMark spec, with a worklist of failing sections, a ratchet gate, and a fifth of the examples held out.
+      <strong>Result:</strong> The swarm is judged against an objective definition of done.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-06</div>
+    <div class="tl__what"><h3>Tests the producer can't change</h3><p><strong>Problem:</strong> A builder that writes its own tests can pass them without solving the task. <strong>Solution:</strong> An acceptance team writes tests from the task before any work starts.
+      <strong>Result:</strong> A cheap builder working against them solved 4 of 5 of the hardest tasks instead of 2.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-03/05</div>
+    <div class="tl__what"><h3>The framework</h3><p><strong>Problem:</strong> Agents working toward a goal without a central controller. <strong>Solution:</strong> A blackboard that loosely coupled teams read and write; gated levels; a measured judge; documents as a second domain.
+      <strong>Result:</strong> Every decision and every cent is on the record, and a crash loses nothing.</p></div>
+  </div>
+</div>
 {% endblock %}
 
 {% block aside %}
