@@ -117,6 +117,34 @@
   and to under 1 on HTML5, where the result is a complete parser in about 1,400 lines of Python.
 </p>
 
+<h2>Next: from supervised to self-supervised</h2>
+<p>
+  The five problems have one thing in common: each came with labeled data. Every test is an input together with
+  the answer a correct program must give, just like the labeled examples a model learns from in supervised
+  machine learning. The analogy goes further. The visible tests are the training set, the held-out tests are
+  the test set, and code that passes the visible tests without solving the problem is overfitting. The jq gap
+  above is exactly that, caught by the unseen tests.
+</p>
+<p>
+  Most real work comes without such a test suite. Self-supervised learning has the same problem and the same
+  answer: take the training signal from the data itself. For software there are well-tried ways to do that,
+  which need no one to write down expected answers:
+</p>
+<ul>
+  <li><strong>Round trips:</strong> what a writer produces, a reader must read back unchanged.</li>
+  <li><strong>Properties:</strong> statements that hold for every input, checked on thousands of generated ones.</li>
+  <li><strong>Metamorphic relations:</strong> how an output must change when the input changes in a known way.</li>
+  <li><strong>Differential testing:</strong> two teams, on different models, write the same program; wherever
+    they disagree, at least one is wrong.</li>
+</ul>
+<p>
+  That is the next step for the swarm. The agents get a problem and its specification but no expected answers,
+  only checks they derive themselves. The official test suite stays completely hidden and is used for one thing
+  only: measuring how far self-supervision gets, and where it needs a few labeled examples or a person to stay
+  on track. Self-derived checks catch a program that disagrees with itself; the open question is how often a
+  swarm agrees with itself and is still wrong, and that is what the hidden tests will show.
+</p>
+
 <h2>Choosing models by evidence</h2>
 <p>
   AgentSwarm doesn't depend on one provider: any model from Anthropic, OpenAI, local Ollama, or the hundreds
@@ -144,9 +172,8 @@
 
 <h2>What's next</h2>
 <ul>
-  <li><strong>Without labels:</strong> a project where the agents see no expected answers at all, only checks
-    they can derive themselves (round trips, properties, independent implementations compared), while the
-    official tests stay hidden and only measure how far that gets.</li>
+  <li><strong>Self-supervised development:</strong> a problem with no expected answers given, only checks the
+    agents derive themselves, measured against a hidden test suite (see above).</li>
   <li><strong>More teams with different focus:</strong> red teams and reviewers on the merged code, each kept
     only if it measurably helps.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
