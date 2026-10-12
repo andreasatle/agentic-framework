@@ -91,9 +91,30 @@
   specification's examples, and 100% of the ones no agent has ever seen</strong>. The last 11% cost under fifty
   cents.
 </p>
+
+<h2>Five real problems</h2>
 <p>
-  A second problem followed with nothing but a configuration: a <strong>TOML parser</strong>, judged by the
-  official toml-test suite with a fifth held out, also reached <strong>100%</strong> on its first run, for $2.44.
+  Each further problem was set up with nothing but a configuration and an importer for its official tests, and
+  each started from an empty stub. They were picked to get harder: from data formats to a programming language
+  to the HTML standard's parsing algorithm, which has to build the same tree as a browser for any input, broken
+  markup included.
+</p>
+<table>
+  <thead><tr><th>Problem</th><th>Judged by</th><th>Visible tests</th><th>Held out</th><th>Model cost</th></tr></thead>
+  <tbody>
+    <tr><td>CommonMark (Markdown to HTML)</td><td>the spec's 652 examples</td><td>100%</td><td>100%</td><td>about $40 in all</td></tr>
+    <tr><td>TOML 1.0 parser</td><td>toml-test, 679 files</td><td>100%</td><td>100%</td><td>$2.44</td></tr>
+    <tr><td>jq interpreter</td><td>jq's own 675 tests</td><td>100%</td><td>87%</td><td>$4.14</td></tr>
+    <tr><td>YAML 1.2 parser</td><td>yaml-test-suite, 681 tests</td><td>100%</td><td>97%</td><td>$1.69</td></tr>
+    <tr><td>HTML5 parser</td><td>the browsers' 1,958 tree-construction tests</td><td>100%</td><td>99.7%</td><td>$5.18</td></tr>
+  </tbody>
+</table>
+<p>
+  The held-out column is the interesting one. On jq, the builders wrote exactly what the visible tests asked
+  for: functions the manual documents but no visible test calls were left out, and the unseen tests found them.
+  From then on the agents got the specification itself, without its examples, and were asked to implement each
+  rule as the specification states it. The gap between seen and unseen tests went from 13 points to 3 on YAML
+  and to under 1 on HTML5, where the result is a complete parser in about 1,400 lines of Python.
 </p>
 
 <h2>Choosing models by evidence</h2>
@@ -123,6 +144,9 @@
 
 <h2>What's next</h2>
 <ul>
+  <li><strong>Without labels:</strong> a project where the agents see no expected answers at all, only checks
+    they can derive themselves (round trips, properties, independent implementations compared), while the
+    official tests stay hidden and only measure how far that gets.</li>
   <li><strong>More teams with different focus:</strong> red teams and reviewers on the merged code, each kept
     only if it measurably helps.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
@@ -134,6 +158,21 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline">
   <div class="tl tl--now">
+    <div class="tl__when">2026-10-12</div>
+    <div class="tl__what"><h3>HTML5: 100%</h3><p><strong>Problem:</strong> The hardest problem so far: the HTML standard's parsing algorithm, judged by the 1,958 tests browsers maintain. <strong>Solution:</strong> The standard's parsing chapter as text, its examples left out, and the instruction to follow its algorithms rather than rules guessed from tests.
+      <strong>Result:</strong> All 1,593 visible and 364 of 365 held-out tests, for $5.18: an HTML parser in about 1,400 lines.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-12</div>
+    <div class="tl__what"><h3>YAML 1.2: 100%</h3><p><strong>Problem:</strong> A notoriously intricate spec, and the first test of the lesson from jq. <strong>Solution:</strong> The official yaml-test-suite, the spec without its examples, and the instruction to implement each rule as the spec states it.
+      <strong>Result:</strong> All 563 visible and 115 of 118 held-out tests, for $1.69: the gap between seen and unseen shrank from 13 points to 3.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-12</div>
+    <div class="tl__what"><h3>jq: a language</h3><p><strong>Problem:</strong> The first two problems were formats; an interpreter for a programming language is harder. <strong>Solution:</strong> A jq interpreter judged by jq's own 675 tests, each checked against the real jq first.
+      <strong>Result:</strong> All 550 visible tests for $4.14, but 87% held out: functions no visible test called were never written, a lesson for the next problems.</p></div>
+  </div>
+  <div class="tl">
     <div class="tl__when">2026-10-12</div>
     <div class="tl__what"><h3>CommonMark done, 100%</h3><p><strong>Problem:</strong> The converter stood at 89%, mostly missing link reference definitions, which links and images depend on. <strong>Solution:</strong> Back in the ordinary loop: one work item per spec section with failing examples, each tried whole by the cheapest model expected to succeed.
       <strong>Result:</strong> Three items, each merged on its first attempt: 100% of visible and held-out examples, for $0.49.</p></div>
