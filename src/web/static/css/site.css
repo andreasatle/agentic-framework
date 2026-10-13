@@ -215,6 +215,20 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); border-color:
 .tl__when { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-3); padding-top: 1px; }
 .tl__what h3 { font-size: 1.08rem; margin: 0 0 4px; }
 .tl__what p { margin: 0; color: var(--text-2); font-size: 0.95rem; }
+/* changelog: a timeline of <details>, one open at a time (name="changelog"), the rest just their headline */
+.changelog .tl.cl { display: block; padding-bottom: 6px; }
+.changelog .cl summary {
+  display: grid; grid-template-columns: 140px 1fr; gap: 20px; align-items: baseline;
+  list-style: none; cursor: pointer; padding: 4px 0 8px;
+}
+.changelog .cl summary::-webkit-details-marker { display: none; }
+.changelog .cl__title { font-family: var(--font-head); font-weight: 600; font-size: 1.05rem; color: var(--text); }
+.changelog .cl__title::after { content: " +"; color: var(--text-3); font-family: var(--font-mono); font-size: 0.85rem; }
+.changelog .cl[open] .cl__title::after { content: " –"; }
+.changelog .cl summary:hover .cl__title { color: var(--teal); }
+.changelog .cl > p { margin: 0 0 18px 160px; color: var(--text-2); font-size: 0.95rem; }
+.changelog .cl::before { top: 10px; }
+.changelog .cl[open]::before { border-color: var(--teal); }
 
 /* ---------- principles ---------- */
 .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -252,6 +266,7 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); border-color:
 .prose img { border-radius: 10px; }
 
 .layout-2 { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 56px; padding: 56px 0 96px; }
+.layout-2 > * { min-width: 0; }  /* a wide table scrolls inside its column instead of widening the page */
 .aside { position: sticky; top: 96px; align-self: start; display: grid; gap: 16px; }
 .aside__box { border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; background: var(--bg-card); font-size: 0.92rem; }
 .aside__box h4 { font-family: var(--font-mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 10px; font-weight: 500; }
@@ -358,6 +373,8 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); border-color:
   .card--wide .card__body { padding: 22px; }
   .now, .principles { grid-template-columns: 1fr; }
   .tl { grid-template-columns: 1fr; gap: 2px; }
+  .changelog .cl summary { grid-template-columns: 1fr; gap: 2px; }
+  .changelog .cl > p { margin-left: 0; }
   .hero__fade { background: linear-gradient(0deg, var(--bg) 5%, rgba(10,12,16,0.82) 45%, rgba(10,12,16,0.55) 100%); }
   .hero__caption { display: none; }
   .bar { grid-template-columns: 1fr 56px; }
