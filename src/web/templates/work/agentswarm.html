@@ -117,7 +117,7 @@
   and to under 1 on HTML5, where the result is a complete parser in about 1,400 lines of Python.
 </p>
 
-<h2>Next: from supervised to self-supervised</h2>
+<h2>From supervised to self-supervised</h2>
 <p>
   The five problems have one thing in common: each came with labeled data. Every test is an input together with
   the answer a correct program must give, just like the labeled examples a model learns from in supervised
@@ -138,11 +138,42 @@
     they disagree, at least one is wrong.</li>
 </ul>
 <p>
-  That is the next step for the swarm. The agents get a problem and its specification but no expected answers,
-  only checks they derive themselves. The official test suite stays completely hidden and is used for one thing
-  only: measuring how far self-supervision gets, and where it needs a few labeled examples or a person to stay
-  on track. Self-derived checks catch a program that disagrees with itself; the open question is how often a
-  swarm agrees with itself and is still wrong, and that is what the hidden tests will show.
+  So the swarm was given problems with no expected answers at all: the specification only. The official test
+  suites stayed completely hidden and were used for one thing only, to measure how far self-supervision gets.
+</p>
+
+<h3>How the swarm works without labels</h3>
+<ul>
+  <li><strong>A planner</strong> splits the specification into steps, chapter by chapter.</li>
+  <li><strong>A check writer</strong>, on a different model family from the builder, writes checks for each step
+    before any code exists: round trips, inputs that must mean the same, and rules the specification states.
+    None of them needs an answer worked out by hand, because models are often wrong exactly there.</li>
+  <li><strong>The builder</strong> makes the checks pass. Model-written checks can be wrong, so the builder may
+    dispute one by quoting the specification word for word.</li>
+  <li><strong>A referee</strong>, on a third model family, rules on each dispute: it reasons first, then gives
+    its verdict, three times, and the majority decides. A check ruled wrong is set aside, with the reason on
+    record.</li>
+</ul>
+
+<h3>The results</h3>
+<table>
+  <thead><tr><th>Problem</th><th>With labels (held out)</th><th>Without labels (all tests hidden)</th><th>Cost with / without</th></tr></thead>
+  <tbody>
+    <tr><td>TOML 1.0 parser</td><td>100%</td><td>100% (679 / 679)</td><td>$2.44 / $3.43</td></tr>
+    <tr><td>YAML 1.2 parser, spec examples removed</td><td>97%</td><td>97% (663 / 681)</td><td>$1.69 / $4.60</td></tr>
+  </tbody>
+</table>
+<p>
+  On both formats, a specification plus self-derived checks reached the same pass rates on unseen tests as
+  labeled tests did. The extra cost is the check writing, not the building. Getting there took one lesson: in
+  a first attempt the referee sometimes gave a verdict that contradicted its own reasoning, so wrong checks
+  stood and blocked good work. Asking for the reasoning before the verdict, and taking the majority of three,
+  fixed it; on YAML the referee set aside two wrong checks and kept a right one.
+</p>
+<p>
+  TOML and YAML are well-known formats, so the models' own knowledge surely helps. The next question is how
+  self-supervision does on a problem the models know less well, and where it then needs a few labeled
+  examples or a person to stay on track.
 </p>
 
 <h2>Choosing models by evidence</h2>
@@ -172,8 +203,9 @@
 
 <h2>What's next</h2>
 <ul>
-  <li><strong>Self-supervised development:</strong> a problem with no expected answers given, only checks the
-    agents derive themselves, measured against a hidden test suite (see above).</li>
+  <li><strong>Self-supervision on less familiar ground:</strong> a problem the models know less well, with no
+    expected answers given, to separate what the self-derived checks contribute from what the models already
+    know.</li>
   <li><strong>More teams with different focus:</strong> red teams and reviewers on the merged code, each kept
     only if it measurably helps.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
@@ -185,6 +217,16 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline">
   <div class="tl tl--now">
+    <div class="tl__when">2026-10-13</div>
+    <div class="tl__what"><h3>Without labels: YAML 97%</h3><p><strong>Problem:</strong> Would self-supervision hold on an intricate spec, with even the spec's examples removed? <strong>Solution:</strong> The same setup as TOML: derived checks from another model family, disputes ruled by a referee, all 681 official tests hidden.
+      <strong>Result:</strong> 663 of 681 hidden tests, for $4.60: the same 97% the labeled run reached on its unseen tests.</p></div>
+  </div>
+  <div class="tl">
+    <div class="tl__when">2026-10-13</div>
+    <div class="tl__what"><h3>Without labels: TOML 100%</h3><p><strong>Problem:</strong> Every problem so far came with tests that give the right answers; most real work doesn't. <strong>Solution:</strong> A check writer derives checks from the specification, the builder may dispute a check, a referee rules; the official tests stay hidden and only score.
+      <strong>Result:</strong> All 679 hidden TOML tests pass, for $3.43, after a first attempt taught the referee to reason before its verdict.</p></div>
+  </div>
+  <div class="tl">
     <div class="tl__when">2026-10-12</div>
     <div class="tl__what"><h3>HTML5: 100%</h3><p><strong>Problem:</strong> The hardest problem so far: the HTML standard's parsing algorithm, judged by the 1,958 tests browsers maintain. <strong>Solution:</strong> The standard's parsing chapter as text, its examples left out, and the instruction to follow its algorithms rather than rules guessed from tests.
       <strong>Result:</strong> All 1,593 visible and 364 of 365 held-out tests, for $5.18: an HTML parser in about 1,400 lines.</p></div>
