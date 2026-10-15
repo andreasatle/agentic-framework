@@ -161,6 +161,7 @@
   <tbody>
     <tr><td>TOML 1.0 parser</td><td>100%</td><td>100% (679 / 679)</td><td>$2.44 / $3.43</td></tr>
     <tr><td>YAML 1.2 parser, spec examples removed</td><td>97%</td><td>97% (663 / 681)</td><td>$1.69 / $4.60</td></tr>
+    <tr><td>JSONPath (RFC 9535, a 2024 standard)</td><td>not run</td><td>99% (709 / 715)</td><td>&mdash; / $3.43</td></tr>
   </tbody>
 </table>
 <p>
@@ -171,9 +172,28 @@
   fixed it; on YAML the referee set aside two wrong checks and kept a right one.
 </p>
 <p>
-  TOML and YAML are well-known formats, so the models' own knowledge surely helps. The next question is how
-  self-supervision does on a problem the models know less well, and where it then needs a few labeled
-  examples or a person to stay on track.
+  TOML and YAML are well-known formats, so the models' own knowledge surely helps. JSONPath answers that
+  question: a 2024 standard the models know far less well, given to the swarm as the RFC text alone, with all
+  715 compliance tests hidden. It reached 709 of them, including its own module for the regular-expression
+  standard JSONPath relies on.
+</p>
+
+<h2>Hardening: red teams that keep looking</h2>
+<p>
+  Passing its own checks doesn't make a product right: the checks can miss things. So the swarm now has an
+  outer loop. Once the builders are done, red teams attack the finished product, one section of the
+  specification and one focus at a time: the rules as stated, the boundary values, the inputs that must be
+  rejected, and places that no check covers, found by planting small bugs and seeing which ones nothing
+  notices. A report counts only with a test that fails and the specification's own words it rests on; a
+  referee from another model family confirms it; and each confirmed failure becomes a fix task whose test
+  stays in the product for good. Round after round, the checks grow and the product hardens, until two whole
+  rounds find nothing new. No red team is switched off for being quiet: a rare find can be the most valuable
+  one.
+</p>
+<p>
+  The first campaign is running on the jq interpreter, the problem with the largest gap between visible and
+  unseen tests. In its first sections the red teams found, from the manual alone, several documented
+  functions the builders had never written, and the fixes are merging.
 </p>
 
 <h2>Choosing models by evidence</h2>
@@ -181,8 +201,10 @@
   AgentSwarm doesn't depend on one provider: any model from Anthropic, OpenAI, local Ollama, or the hundreds
   behind OpenRouter is one line of configuration. Which model takes which role is learned from outcomes: a
   router keeps a record per role and difficulty and, by Thompson sampling, picks the cheapest model whose
-  measured success is good enough, while still trying uncertain ones now and then. The aim is to minimise cost
-  subject to a product that meets its definition of done.
+  measured success is good enough, while still trying uncertain ones now and then. A model's record in one
+  difficulty band also informs the others (partial pooling), so a model that keeps failing doesn't get a fresh
+  chance at every new kind of task. The aim is to minimise cost subject to a product that meets its definition
+  of done.
 </p>
 
 <h2>A judge that is measured, not trusted</h2>
@@ -203,11 +225,12 @@
 
 <h2>What's next</h2>
 <ul>
-  <li><strong>Self-supervision on less familiar ground:</strong> a problem the models know less well, with no
-    expected answers given, to separate what the self-derived checks contribute from what the models already
-    know.</li>
-  <li><strong>More teams with different focus:</strong> red teams and reviewers on the merged code, each kept
-    only if it measurably helps.</li>
+  <li><strong>Hardening, measured:</strong> how far red teams raise the score on tests no agent has seen, and
+    what each confirmed failure costs.</li>
+  <li><strong>Goals without a specification:</strong> the swarm drafts the specification itself, and a person
+    approves it or adds a few examples; the same loops then build and harden the product.</li>
+  <li><strong>Long and cheap:</strong> a swarm left running for a week on a small budget, with local models
+    wherever they earn their place.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
     size, against a single large model with the same goal and checks, compared on what gets solved and at what
     cost.</li>
@@ -217,6 +240,21 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-10-15</span><span class="cl__title">Red teams for hardening</span></summary>
+    <p><strong>Problem:</strong> Passing its own checks doesn't make a product right: the checks can miss things. <strong>Solution:</strong> Red teams attack the finished product by spec section and focus; a report needs a failing test and the spec's own words, a referee confirms it, and each confirmed failure becomes a fix task whose test stays for good.
+      <strong>Result:</strong> The first campaign on jq found documented functions the builders had never written, from the manual alone.</p>
+  </details>
+  <details class="tl cl" name="changelog">
+    <summary><span class="tl__when">2026-10-15</span><span class="cl__title">A router that learns across tasks</span></summary>
+    <p><strong>Problem:</strong> The router learned each model's record per difficulty band, so a model failing everywhere got a fresh chance in every new band. <strong>Solution:</strong> Partial pooling: a model starts each band from its record in the others.
+      <strong>Result:</strong> The local model with a poor record now comes last; the reliable one comes first, without manual rules.</p>
+  </details>
+  <details class="tl cl" name="changelog">
+    <summary><span class="tl__when">2026-10-14</span><span class="cl__title">JSONPath without labels: 99%</span></summary>
+    <p><strong>Problem:</strong> Did self-supervision work only because the models already knew TOML and YAML? <strong>Solution:</strong> JSONPath, a 2024 standard, with all 715 compliance tests hidden and the RFC as the only specification.
+      <strong>Result:</strong> 709 of 715 hidden tests, for $3.43.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-13</span><span class="cl__title">Without labels: YAML 97%</span></summary>
     <p><strong>Problem:</strong> Would self-supervision hold on an intricate spec, with even the spec's examples removed? <strong>Solution:</strong> The same setup as TOML: derived checks from another model family, disputes ruled by a referee, all 681 official tests hidden.
       <strong>Result:</strong> 663 of 681 hidden tests, for $4.60: the same 97% the labeled run reached on its unseen tests.</p>
