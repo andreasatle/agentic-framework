@@ -104,7 +104,7 @@
   <tbody>
     <tr><td>CommonMark (Markdown to HTML)</td><td>the spec's 652 examples</td><td>100%</td><td>100%</td><td>about $40 in all</td></tr>
     <tr><td>TOML 1.0 parser</td><td>toml-test, 679 files</td><td>100%</td><td>100%</td><td>$2.44</td></tr>
-    <tr><td>jq interpreter</td><td>jq's own 675 tests</td><td>100%</td><td>87%</td><td>$4.14</td></tr>
+    <tr><td>jq interpreter</td><td>jq's own 675 tests</td><td>100%</td><td>87%, 93% after hardening</td><td>$4.14</td></tr>
     <tr><td>YAML 1.2 parser</td><td>yaml-test-suite, 681 tests</td><td>100%</td><td>97%</td><td>$1.69</td></tr>
     <tr><td>HTML5 parser</td><td>the browsers' 1,958 tree-construction tests</td><td>100%</td><td>99.7%</td><td>$5.18</td></tr>
   </tbody>
@@ -160,7 +160,7 @@
   <thead><tr><th>Problem</th><th>With labels (held out)</th><th>Without labels (all tests hidden)</th><th>Cost with / without</th></tr></thead>
   <tbody>
     <tr><td>TOML 1.0 parser</td><td>100%</td><td>100% (679 / 679)</td><td>$2.44 / $3.43</td></tr>
-    <tr><td>YAML 1.2 parser, spec examples removed</td><td>97%</td><td>97% (663 / 681)</td><td>$1.69 / $4.60</td></tr>
+    <tr><td>YAML 1.2 parser, spec examples removed</td><td>97%</td><td>97% (663 / 681), 98% after hardening</td><td>$1.69 / $4.60</td></tr>
     <tr><td>JSONPath (RFC 9535, a 2024 standard)</td><td>not run</td><td>99% (709 / 715)</td><td>&mdash; / $3.43</td></tr>
   </tbody>
 </table>
@@ -191,9 +191,29 @@
   one.
 </p>
 <p>
-  The first campaign is running on the jq interpreter, the problem with the largest gap between visible and
-  unseen tests. In its first sections the red teams found, from the manual alone, several documented
-  functions the builders had never written, and the fixes are merging.
+  The red teams never see the hidden tests, so those tests measure whether hardening makes the product more
+  right, not just better at its own checks.
+</p>
+<table>
+  <thead><tr><th>Campaign</th><th>Hidden tests</th><th>Confirmed and fixed</th><th>Model cost</th></tr></thead>
+  <tbody>
+    <tr><td>jq interpreter, with labels</td><td>87% &rarr; 93% (109 &rarr; 116 of 125)</td><td>44 fixes, 396 new protected tests</td><td>$14.30</td></tr>
+    <tr><td>YAML 1.2 parser, without labels</td><td>97% &rarr; 98% (663 &rarr; 668 of 681)</td><td>7 fixes, 359 new protected tests</td><td>$9.85</td></tr>
+  </tbody>
+</table>
+<p>
+  On jq, the red teams found from the manual alone documented functions the builders had never written,
+  number-precision rules and regular-expression syntax. The first round on the rules of each section did most
+  of it; later rounds kept finding real problems, but fewer of the kind the hidden tests check. On YAML, the
+  attacks on one rule at a time found narrow cases, while the hidden failures were documents that combine
+  features. A new focus asks the red teams for exactly that, valid inputs that mix a section's constructs
+  with the rest of the specification, and it gave YAML its first gain.
+</p>
+<p>
+  Two safeguards came out of these campaigns. Where a specification is brief, a red team can read it more
+  literally than it is meant; when a fix for such a report would break tests the product already passes, the
+  referee looks again with those tests in view, and they settle what the specification means. And a fix task
+  goes to the builders whole, to be split only if every model fails it.
 </p>
 
 <h2>Choosing models by evidence</h2>
@@ -225,8 +245,8 @@
 
 <h2>What's next</h2>
 <ul>
-  <li><strong>Hardening, measured:</strong> how far red teams raise the score on tests no agent has seen, and
-    what each confirmed failure costs.</li>
+  <li><strong>Hardening that generalizes:</strong> the combination focus on jq, and red teams that learn from
+    the reports already ruled on, so each round looks somewhere new.</li>
   <li><strong>Goals without a specification:</strong> the swarm drafts the specification itself, and a person
     approves it or adds a few examples; the same loops then build and harden the product.</li>
   <li><strong>Long and cheap:</strong> a swarm left running for a week on a small budget, with local models
@@ -240,6 +260,21 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-10-16</span><span class="cl__title">Combinations: YAML 97% to 98%</span></summary>
+    <p><strong>Problem:</strong> On YAML the red teams tested one rule at a time and found narrow cases, while the hidden failures were documents that combine features. <strong>Solution:</strong> A combination focus: valid inputs that mix a section's constructs with the rest of the specification, checked against its rules; a report may quote several passages, and claims already ruled on are shown to later attacks.
+      <strong>Result:</strong> 668 of 681 hidden tests, the first gain from hardening without labels, for $4.81 (with the first round's fixes completing in the same run).</p>
+  </details>
+  <details class="tl cl" name="changelog">
+    <summary><span class="tl__when">2026-10-16</span><span class="cl__title">Fixes tried before they are split</span></summary>
+    <p><strong>Problem:</strong> A project that sizes its tasks first split each red-team fix, one failing test, into several steps before any builder tried it, each step with checks of its own. <strong>Solution:</strong> A fix task goes to the builders whole and is split only if every model fails it, as other tasks already were.
+      <strong>Result:</strong> The combination round's fixes went to the builders whole; three of four merged in the same run.</p>
+  </details>
+  <details class="tl cl" name="changelog">
+    <summary><span class="tl__when">2026-10-15</span><span class="cl__title">jq hardened: 87% to 93%</span></summary>
+    <p><strong>Problem:</strong> Would red teams raise the score on tests no agent has seen? <strong>Solution:</strong> Three runs on jq: every section with four focuses, then the rules of each section again; where the manual was read too literally, the tests the product already passes now settle its meaning.
+      <strong>Result:</strong> Hidden tests from 109 to 116 of 125 and 396 new protected tests, for $14.30; most of the gain came in the first round.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-15</span><span class="cl__title">Red teams for hardening</span></summary>
     <p><strong>Problem:</strong> Passing its own checks doesn't make a product right: the checks can miss things. <strong>Solution:</strong> Red teams attack the finished product by spec section and focus; a report needs a failing test and the spec's own words, a referee confirms it, and each confirmed failure becomes a fix task whose test stays for good.
       <strong>Result:</strong> The first campaign on jq found documented functions the builders had never written, from the manual alone.</p>
