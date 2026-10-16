@@ -243,14 +243,39 @@
   A swarm runs several projects side by side under one scheduler, each with its own budget.
 </p>
 
+<h3>Two kinds of critics</h3>
+<p>
+  The swarm's critics come in two kinds. <strong>Red teams</strong> are adversaries: they try to make the
+  product fail, and they must demonstrate the failure, with a failing test, a working exploit or a claim its
+  source contradicts. <strong>Perspective reviewers</strong> look from one point of view, such as the facts,
+  the coverage of the brief, the intended reader or consistency, and argue a shortfall, quoting the text.
+  Demonstrated failures can be confirmed almost mechanically; arguments need a referee and a measure.
+</p>
+
+<h3>Documents, measured</h3>
+<p>
+  To measure documents the way hidden tests measure software, the swarm writes a guide to six research papers
+  on summarization, using only the papers as sources. People who read each paper's title and abstract wrote
+  questions about it (the Qasper dataset); a separate model answers them from the guide alone, and questions
+  it can answer from memory are left out. Reviewers then work through the guide section by section, every
+  finding quoting the guide or the papers, and a referee rules on each.
+</p>
+<p>
+  The first experiments set up the measure more than they settle the question. Writing to a brief that asks
+  for what readers want to know (each paper's data, baselines, metrics and results) raised the first draft
+  from 8 to 10 of 22 questions answered. The reviewers' revisions kept the guide accurate and fully cited, and
+  so far moved the score by about a question either way, within what a single edit does. Next come records of
+  which questions each revision gains or loses, and enough questions to tell the reviewers apart.
+</p>
+
 <h2>What's next</h2>
 <ul>
   <li><strong>Hardening that generalizes:</strong> the combination focus on jq, and red teams that learn from
     the reports already ruled on, so each round looks somewhere new.</li>
+  <li><strong>Reviewers that measurably help:</strong> documents scored question by question, so each
+    perspective's revisions can be traced to what a reader can look up.</li>
   <li><strong>Goals without a specification:</strong> the swarm drafts the specification itself, and a person
     approves it or adds a few examples; the same loops then build and harden the product.</li>
-  <li><strong>Long and cheap:</strong> a swarm left running for a week on a small budget, with local models
-    wherever they earn their place.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
     size, against a single large model with the same goal and checks, compared on what gets solved and at what
     cost.</li>
@@ -260,6 +285,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-10-16</span><span class="cl__title">Documents with reviewers, measured</span></summary>
+    <p><strong>Problem:</strong> A document has no tests, so its critics are mostly reviewers with a point of view, and there was no way to tell whether they help. <strong>Solution:</strong> A guide to six research papers, scored by hidden questions people wrote about them and answered from the guide alone; reviewers by perspective (facts, coverage, reader, consistency) against one broad reviewer at equal cost, each finding quoting its evidence and ruled on by a referee that answers "shown, matters, fits" separately.
+      <strong>Result:</strong> A brief that asks for what readers want to know raised the first draft from 8 to 10 of 22 questions; the reviewers kept the guide accurate and cited, with no measurable gain yet. Next: question-by-question records.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-16</span><span class="cl__title">Combinations: YAML 97% to 98%</span></summary>
     <p><strong>Problem:</strong> On YAML the red teams tested one rule at a time and found narrow cases, while the hidden failures were documents that combine features. <strong>Solution:</strong> A combination focus: valid inputs that mix a section's constructs with the rest of the specification, checked against its rules; a report may quote several passages, and claims already ruled on are shown to later attacks.
       <strong>Result:</strong> 668 of 681 hidden tests, the first gain from hardening without labels, for $4.81 (with the first round's fixes completing in the same run).</p>
