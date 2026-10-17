@@ -104,7 +104,7 @@
   <tbody>
     <tr><td>CommonMark (Markdown to HTML)</td><td>the spec's 652 examples</td><td>100%</td><td>100%</td><td>about $40 in all</td></tr>
     <tr><td>TOML 1.0 parser</td><td>toml-test, 679 files</td><td>100%</td><td>100%</td><td>$2.44</td></tr>
-    <tr><td>jq interpreter</td><td>jq's own 675 tests</td><td>100%</td><td>87%, 93% after hardening</td><td>$4.14</td></tr>
+    <tr><td>jq interpreter</td><td>jq's own 675 tests</td><td>100%</td><td>87%, 94% after hardening</td><td>$4.14</td></tr>
     <tr><td>YAML 1.2 parser</td><td>yaml-test-suite, 681 tests</td><td>100%</td><td>97%</td><td>$1.69</td></tr>
     <tr><td>HTML5 parser</td><td>the browsers' 1,958 tree-construction tests</td><td>100%</td><td>99.7%</td><td>$5.18</td></tr>
   </tbody>
@@ -197,7 +197,7 @@
 <table>
   <thead><tr><th>Campaign</th><th>Hidden tests</th><th>Confirmed and fixed</th><th>Model cost</th></tr></thead>
   <tbody>
-    <tr><td>jq interpreter, with labels</td><td>87% &rarr; 93% (109 &rarr; 116 of 125)</td><td>44 fixes, 396 new protected tests</td><td>$14.30</td></tr>
+    <tr><td>jq interpreter, with labels</td><td>87% &rarr; 94% (109 &rarr; 117 of 125)</td><td>52 fixes, 446 new protected tests</td><td>$19.01</td></tr>
     <tr><td>YAML 1.2 parser, without labels</td><td>97% &rarr; 98% (663 &rarr; 668 of 681)</td><td>7 fixes, 359 new protected tests</td><td>$9.85</td></tr>
   </tbody>
 </table>
@@ -254,18 +254,24 @@
 
 <h3>Documents, measured</h3>
 <p>
-  To measure documents the way hidden tests measure software, the swarm writes a guide to six research papers
+  To measure documents the way hidden tests measure software, the swarm writes a guide to research papers
   on summarization, using only the papers as sources. People who read each paper's title and abstract wrote
   questions about it (the Qasper dataset); a separate model answers them from the guide alone, and questions
   it can answer from memory are left out. Reviewers then work through the guide section by section, every
   finding quoting the guide or the papers, and a referee rules on each.
 </p>
 <p>
-  The first experiments set up the measure more than they settle the question. Writing to a brief that asks
-  for what readers want to know (each paper's data, baselines, metrics and results) raised the first draft
-  from 8 to 10 of 22 questions answered. The reviewers' revisions kept the guide accurate and fully cited, and
-  so far moved the score by about a question either way, within what a single edit does. Next come records of
-  which questions each revision gains or loses, and enough questions to tell the reviewers apart.
+  Most of the work so far went into making the measure trustworthy, and each step showed in the numbers. A
+  brief that asks for what readers want to know (each paper's data, baselines, metrics and results) gave a
+  better first draft. Deciding each question by the majority of three readings, at temperature 0, cut the
+  scorer's own variation in half. Telling the reader which paper a question is about raised every score by
+  about seven questions: "which is the baseline?" means the baseline of one paper, not of all ten.
+</p>
+<p>
+  With those in place, a guide to ten papers (36 hidden questions) went from 15&ndash;18 answered to 19 after
+  four perspective reviewers, and to 17 after one broad reviewer at the same cost, every revision cited and
+  checked by a referee. The perspectives' lead is suggestive rather than settled; the next run scores each
+  version several times and lets every perspective finish two full rounds.
 </p>
 
 <h2>What's next</h2>
@@ -285,6 +291,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-10-17</span><span class="cl__title">A measure worth reading</span></summary>
+    <p><strong>Problem:</strong> The guide's hidden-question score moved on its own: the same text scored differently, and questions flipped where nothing had changed. <strong>Solution:</strong> Each question decided by three readings at temperature 0, the reader told which paper a question is about, every score recorded question by question, and a failed model call never counted as a quiet review.
+      <strong>Result:</strong> Ten papers, 36 questions: 19 answered after four perspective reviewers, 17 after one broad reviewer, 15&ndash;18 before. The combination focus also took jq to 94%.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-16</span><span class="cl__title">Documents with reviewers, measured</span></summary>
     <p><strong>Problem:</strong> A document has no tests, so its critics are mostly reviewers with a point of view, and there was no way to tell whether they help. <strong>Solution:</strong> A guide to six research papers, scored by hidden questions people wrote about them and answered from the guide alone; reviewers by perspective (facts, coverage, reader, consistency) against one broad reviewer at equal cost, each finding quoting its evidence and ruled on by a referee that answers "shown, matters, fits" separately.
       <strong>Result:</strong> A brief that asks for what readers want to know raised the first draft from 8 to 10 of 22 questions; the reviewers kept the guide accurate and cited, with no measurable gain yet. Next: question-by-question records.</p>
@@ -300,7 +311,7 @@
       <strong>Result:</strong> The combination round's fixes went to the builders whole; three of four merged in the same run.</p>
   </details>
   <details class="tl cl" name="changelog">
-    <summary><span class="tl__when">2026-10-15</span><span class="cl__title">jq hardened: 87% to 93%</span></summary>
+    <summary><span class="tl__when">2026-10-15</span><span class="cl__title">jq hardened: 87% to 93%, then 94%</span></summary>
     <p><strong>Problem:</strong> Would red teams raise the score on tests no agent has seen? <strong>Solution:</strong> Three runs on jq: every section with four focuses, then the rules of each section again; where the manual was read too literally, the tests the product already passes now settle its meaning.
       <strong>Result:</strong> Hidden tests from 109 to 116 of 125 and 396 new protected tests, for $14.30; most of the gain came in the first round.</p>
   </details>
