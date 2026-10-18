@@ -305,6 +305,13 @@
   right 34 times in 38. Most of what remains is wording a little stronger than the source, the next thing to
   check statement by statement.
 </p>
+<p>
+  The papers themselves can be found too: <code>agentswarm find-papers "test-time compute for LLM reasoning"</code>
+  has a model plan the search and name the well-known papers, looks each one up on arXiv (so every paper is real),
+  picks five that build on one another with a line on why, and downloads them for the reader to check before the
+  tutorial is written. On test-time compute it chose verifiers and best-of-N, self-consistency, process
+  supervision, compute-optimal scaling and DeepSeek-R1, and the tutorial written from them cost about $0.22.
+</p>
 
 <h2>What's next</h2>
 <ul>
@@ -323,6 +330,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-10-18</span><span class="cl__title">From a topic to a tutorial</span></summary>
+    <p><strong>Problem:</strong> A tutorial needs the right papers, and finding them is the first hurdle when learning a field. <strong>Solution:</strong> <code>agentswarm find-papers</code>: a model plans the search and names the well-known papers, arXiv confirms each one, the model picks five that build on one another, and the PDFs and their records are downloaded for the reader to check; <code>learn</code> then takes the folder.
+      <strong>Result:</strong> A test-time compute reading list from the topic alone, and a tutorial from it for about $0.22, with references taken from arXiv's records.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-18</span><span class="cl__title">Tutorials from papers, citations audited</span></summary>
     <p><strong>Problem:</strong> Learning a field from its papers takes days, and a generated summary is only as good as its citations. <strong>Solution:</strong> <code>agentswarm learn</code>: papers, what the reader knows and what they want, in; a tutorial with LaTeX formulas and author-year citations out, each section written in one step from its assigned parts. <code>audit-citations</code> checks a random sample of cited statements against their pages.
       <strong>Result:</strong> A JEPA tutorial from five papers for about $0.20; about 75% of cited statements fully supported after one review round, up from 65%.</p>
