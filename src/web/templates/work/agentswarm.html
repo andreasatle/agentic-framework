@@ -274,6 +274,20 @@
   version several times and lets every perspective finish two full rounds.
 </p>
 
+<h3>Your own documents: a report on Challenger</h3>
+<p>
+  The same machinery now works on documents a person brings. Given three public investigations of the Space
+  Shuttle Challenger accident (the Rogers Commission report, the House committee report and Richard Feynman's
+  appendix, about 255,000 words) and the goal "a report for engineers on why Challenger was lost", the swarm
+  cut the sources into parts, drafted a brief and an outline and paused for approval, then wrote each section
+  from its own parts of the sources, citing the part, and the page where the source has pages, for every
+  statement. The writing cost about $0.33.
+</p>
+<p>
+  <a href="/static/agentswarm/challenger-report.html">Read the report: <em>Why Challenger Was Lost</em></a>
+  (about 4,000 words, not yet reviewed).
+</p>
+
 <h2>What's next</h2>
 <ul>
   <li><strong>Hardening that generalizes:</strong> the combination focus on jq, and red teams that learn from
@@ -291,6 +305,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-10-18</span><span class="cl__title">A report from your own documents</span></summary>
+    <p><strong>Problem:</strong> Turning a pile of documents into a report for a particular reader is useful work, and the documents are long. <strong>Solution:</strong> <code>import-docs</code> turns PDFs, Word and text into sources cut into parts; a briefer drafts the brief and outline from a one-line goal and pauses for the person to approve; each section is written in one step from its assigned parts, citing them by page.
+      <strong>Result:</strong> A 4,000-word report on the Challenger accident for engineers, from three investigations totalling 255,000 words, for about $0.33.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-17</span><span class="cl__title">A measure worth reading</span></summary>
     <p><strong>Problem:</strong> The guide's hidden-question score moved on its own: the same text scored differently, and questions flipped where nothing had changed. <strong>Solution:</strong> Each question decided by three readings at temperature 0, the reader told which paper a question is about, every score recorded question by question, and a failed model call never counted as a quiet review.
       <strong>Result:</strong> Ten papers, 36 questions: 19 answered after four perspective reviewers, 17 after one broad reviewer, 15&ndash;18 before. The combination focus also took jq to 94%.</p>
