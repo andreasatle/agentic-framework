@@ -288,12 +288,30 @@
   (about 4,000 words, not yet reviewed).
 </p>
 
+<h3>Learning from papers: a tutorial on demand</h3>
+<p>
+  One command now turns a handful of papers into a tutorial for one reader:
+  <code>agentswarm learn papers/*.pdf --know "graduate-level ML" --want "understand JEPA"</code>. Tried on five
+  papers that trace joint-embedding predictive architectures from energy-based learning to V-JEPA 2.1 (about
+  97,000 words), it produced a tutorial of about 7,000 words for about $0.20: organized
+  around concepts rather than papers, with formulas in LaTeX, a side-by-side comparison of the methods,
+  questions to check understanding, and citations in the form (Assran et al., 2023, p. 4) with a reference list
+  built from the papers' title pages.
+</p>
+<p>
+  Citation quality is measured, not assumed: <code>agentswarm audit-citations</code> draws cited statements at
+  random and has a referee check each against the exact page it cites. Before review, about 65% were fully
+  supported; one round of fact reviewers, about $0.10 a section, raised that to about 75%, with cited pages
+  right 34 times in 38. Most of what remains is wording a little stronger than the source, the next thing to
+  check statement by statement.
+</p>
+
 <h2>What's next</h2>
 <ul>
   <li><strong>Hardening that generalizes:</strong> the combination focus on jq, and red teams that learn from
     the reports already ruled on, so each round looks somewhere new.</li>
-  <li><strong>Reviewers that measurably help:</strong> documents scored question by question, so each
-    perspective's revisions can be traced to what a reader can look up.</li>
+  <li><strong>Citations a reader can trust:</strong> every cited statement checked against its page, not a
+    sample, and the overstated ones rewritten.</li>
   <li><strong>Goals without a specification:</strong> the swarm drafts the specification itself, and a person
     approves it or adds a few examples; the same loops then build and harden the product.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
@@ -305,6 +323,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-10-18</span><span class="cl__title">Tutorials from papers, citations audited</span></summary>
+    <p><strong>Problem:</strong> Learning a field from its papers takes days, and a generated summary is only as good as its citations. <strong>Solution:</strong> <code>agentswarm learn</code>: papers, what the reader knows and what they want, in; a tutorial with LaTeX formulas and author-year citations out, each section written in one step from its assigned parts. <code>audit-citations</code> checks a random sample of cited statements against their pages.
+      <strong>Result:</strong> A JEPA tutorial from five papers for about $0.20; about 75% of cited statements fully supported after one review round, up from 65%.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-18</span><span class="cl__title">A report from your own documents</span></summary>
     <p><strong>Problem:</strong> Turning a pile of documents into a report for a particular reader is useful work, and the documents are long. <strong>Solution:</strong> <code>import-docs</code> turns PDFs, Word and text into sources cut into parts; a briefer drafts the brief and outline from a one-line goal and pauses for the person to approve; each section is written in one step from its assigned parts, citing them by page.
       <strong>Result:</strong> A 4,000-word report on the Challenger accident for engineers, from three investigations totalling 255,000 words, for about $0.33.</p>
