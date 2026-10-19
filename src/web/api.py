@@ -44,6 +44,7 @@ from web.schemas import (
 )
 from web.security import require_admin, security
 from web.projects import PROJECTS, get_project
+from web.tutorials import TUTORIALS
 from document_writer.domain.intent.types import IntentEnvelope
 
 
@@ -896,7 +897,7 @@ async def get_blog_index(request: Request, format: str = "html"):
     if format == "html":
         return templates.TemplateResponse(
             "blog_index.html",
-            {"request": request, "posts": posts, "include_drafts": False},
+            {"request": request, "posts": posts, "tutorials": TUTORIALS, "include_drafts": False},
         )
     result = [
         {

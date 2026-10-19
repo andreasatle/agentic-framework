@@ -26,6 +26,19 @@
     {% else %}
       <p class="muted">No posts yet.</p>
     {% endif %}
+    {% if tutorials %}
+      <h2 style="margin-top:48px">Tutorials written by AgentSwarm</h2>
+      <p class="muted">Written by the agent swarm from research papers, citing them by page; not reviewed by an expert. Each page says how it was made and checked.</p>
+      <div class="post-list">
+        {% for t in tutorials %}
+          <a class="post-row reveal" href="{{ t.href }}">
+            <time>{{ t.date }}</time>
+            <h3>{{ t.title }}</h3>
+            <span class="arrow">→</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}
