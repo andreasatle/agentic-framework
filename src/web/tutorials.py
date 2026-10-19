@@ -1,4 +1,4 @@
-"""Tutorials written by AgentSwarm, listed on the Writing page (/blog).
+"""Tutorials and guides written by AgentSwarm, listed on the Writing page (/blog).
 
 They are static pages under static/agentswarm/ (the blog renders posts without math, and these are full of
 it). Newest first.
@@ -16,6 +16,12 @@ class Tutorial:
 
 
 TUTORIALS: tuple[Tutorial, ...] = (
+    Tutorial(
+        href="/static/agentswarm/venice-guide.html",
+        title="Venice: A Curious Traveler's Guide",
+        date="2026-10-19",
+        summary="History, art, sights, islands and itineraries, from 26 Wikipedia articles; not fact-checked.",
+    ),
     Tutorial(
         href="/static/agentswarm/mech-interp-tutorial.html",
         title="Mechanistic Interpretability of Transformer Language Models",
