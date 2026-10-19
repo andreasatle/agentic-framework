@@ -1,0 +1,383 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Why Thinking Longer Helps an LLM Reason, and Where It Stops: Search, Verification and Reinforcement Learning for Reasoning</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})"></script>
+<style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
+:root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
+body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style",serif;max-width:46rem;margin:0 auto;padding:2.5rem 16px 4rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
+p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}
+.note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
+
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}
+</style></head><body><h1>Why Thinking Longer Helps an LLM Reason, and Where It Stops: Search, Verification and Reinforcement Learning for Reasoning</h1>
+<p class="note">A tutorial written by AgentSwarm on 18 October 2026 for a reader who knows graduate-level machine learning. The five papers (listed under References) were chosen by its paper finder from the topic alone; a briefer planned the tutorial and one writer per section wrote it from its assigned parts of the papers, citing them by page. Not yet fact-reviewed or audited, and not reviewed by an expert: read it as a guide to the papers, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
+<h2>The Question: Why Would Computing Before Answering Help?</h2>
+<p>A single greedy chain-of-thought sample from a language model often contains one catastrophic step, after which the rest of the solution is unrecoverable (Cobbe et al., 2021).
+Autoregressive models have no built-in mechanism to correct their own errors mid-solution, so a small early slip can decide the final answer (Cobbe et al., 2021).
+Multi-step grade-school math is the standard testbed for this problem: GSM8K has 8.5K problems that take 2 to 8 steps to solve (Cobbe et al., 2021, p. 3), and MATH is a harder benchmark of high-school competition problems (Snell et al., 2024).
+Test-time (inference) compute is the extra computation spent per prompt before an answer is returned, beyond one greedy decode.
+Sampling means drawing several complete solutions from the model at a non-zero temperature rather than one at temperature zero (Cobbe et al., 2021, p. 5).
+A verifier (also called a reward model) is a learned scorer that rates a candidate solution, and a process reward model (PRM) rates each intermediate step rather than only the final answer (Snell et al., 2024).
+Search means using a scorer to steer which partial solutions are expanded during generation, not only to filter finished ones (Snell et al., 2024).
+Learning the policy means changing the model's weights so that its own first attempt is better, so less test-time computation is needed (DeepSeek-AI, 2025).
+This tutorial follows four levers: aggregate (vote over samples), verify (train a judge and pick the best sample), search (spend compute against a step-level scorer), and learn (train the model with reinforcement learning to reason longer).
+Running example: "Janet's ducks lay 16 eggs per day; she eats three for breakfast and bakes muffins with four; she sells the rest at $2 per egg. How much does she make per day?" A sampled set might give $18 (two samples), $14 and $26 (one each, with different arithmetic slips), so the answer that recurs is more likely to be the correct one (Wang et al., 2023, p. 2).
+Working hypothesis, not established here: correct reasoning paths tend to agree on the final answer more than incorrect ones, and checking a solution is often easier than generating one (Wang et al., 2023, p. 2)(Cobbe et al., 2021, p. 2).
+Later sections test this hypothesis experimentally and identify where it fails.</p>
+<h2>Sampling and Voting: Self-Consistency as Marginalization</h2>
+<p>Greedy decoding picks the most likely token at each step, so a chain of thought is a single draw from one locally optimal path (Wang et al., 2023).
+If that path contains one bad step, the final answer is wrong, and the procedure gives no way to recover.
+Self-consistency replaces the greedy path with a "sample-and-marginalize" procedure: sample several reasoning paths, then take the answer that most paths agree on (Wang et al., 2023).</p>
+<p>Write the prompt as $x$, a reasoning path as $r$ (the tokens before the answer), and the final answer as $a$.
+The model generates the path and then the answer, so $r \rightarrow a$ (Wang et al., 2023, p. 2).
+To get the most likely answer, we marginalize the path out of the joint distribution:</p>
+<p>$$P(a \mid x) = \sum_{r} P(a \mid r, x)\, P(r \mid x)$$</p>
+<p>Here $P(a \mid r, x)$ is the probability of answer $a$ given the path and prompt, and $P(r \mid x)$ is the probability of the path (Wang et al., 2023, p. 2).
+The sum over $r$ is intractable because the number of paths is enormous.
+Monte Carlo sampling estimates it: draw $m$ paths $r_i \sim P(r \mid x)$ with answers $a_i$.
+Since $P(a \mid r_i, x)$ is 1 for the answer a path actually ends in and 0 otherwise, the estimate becomes a count (Wang et al., 2023, p. 2):</p>
+<p>$$\hat{a} = \arg\max_{a} \sum_{i=1}^{m} \mathbf{1}(a_i = a)$$</p>
+<p>Here $\mathbf{1}(\cdot)$ is the indicator function, equal to 1 when its condition holds and 0 otherwise.
+This is a majority vote over sampled final answers, which the paper describes as marginalizing out the reasoning paths (Wang et al., 2023, p. 2).
+The step from the sum to the count is my derivation from the paper's notation.</p>
+<p>A worked example: Janet's ducks lay 16 eggs a day, she eats 3, bakes muffins with 4, and sells the rest at \$2 each.
+Suppose five sampled solutions end with the answers \$18, \$18, \$26, \$18, \$14.
+The count for \$18 is 3, for \$26 is 1, and for \$14 is 1, so the vote returns \$18.
+Greedy decoding would return whatever answer its single path produced.</p>
+<p>Why does this work?
+The paper hypothesizes that correct reasoning, even when phrased differently, tends to reach the same answer, while incorrect reasoning scatters across answers (Wang et al., 2023).
+This is the authors' hypothesis, supported by their accuracy results rather than a proof (Wang et al., 2023).</p>
+<p>Paths can also be weighted by probability, $P(r_i, a_i \mid x)$, either unnormalized or normalized by length.
+The length-normalized form is $\exp\big(\frac{1}{K}\sum_{k=1}^{K} \log P(t_k \mid x, t_1,\ldots,t_{k-1})\big)$, where $t_k$ is the $k$-th token and $K$ the path length (Wang et al., 2023, p. 3).
+On PaLM-540B, the normalized weighted sum and the plain majority vote gave similar accuracy, while the unnormalized weighted sum was much worse on GSM8K (59.9 against 74.4) (Wang et al., 2023, p. 3).
+The authors explain that the normalized probabilities of different paths are close, so the model treats them as similarly likely (Wang et al., 2023, p. 3).</p>
+<p>The method has limits.
+It needs a fixed answer set so that answers can be compared for equality (Wang et al., 2023, p. 3).
+The authors state it could extend to open-ended text only if a consistency measure between generations is defined (Wang et al., 2023, p. 4).</p>
+<p>Self-consistency outperformed the alternatives the paper tested.
+Sample-and-rank, which ranks samples by log probability, gained much less than voting as samples grew (Wang et al., 2023).
+Beam search yields lower diversity, and on AQuA with 40 paths the top beam reached 10.2 against 26.9 for sampling-based self-consistency (Wang et al., 2023).
+Prompt-order and multi-prompt ensembles gained far less than self-consistency on LaMDA-137B (Wang et al., 2023).</p>
+<p>Accuracy rose with the number of sampled paths across the tested range, up to 40 (Wang et al., 2023, p. 6).
+The authors also write that a small number of paths, such as 5 or 10, captures most gains because performance saturates quickly (Wang et al., 2023, p. 9).
+Both points are experimental observations on specific models and tasks, not general laws (Wang et al., 2023, p. 9).</p>
+<h2>Training a Verifier: Best-of-N with a Learned Judge</h2>
+<p>Majority voting picks the most common final answer, but it treats every sampled solution alike and cannot tell a sound solution from a lucky one.
+A learned judge that scores each candidate can do better when there are many candidates and they vary.
+Cobbe et al. built this on GSM8K, 8.5K grade-school math word problems split into 7.5K training and 1K test problems, each taking 2 to 8 steps (Cobbe et al., 2021, p. 3).
+The baseline is finetuning: a GPT-3-family model is trained with the language-modelling cross-entropy loss, and at test time one low-temperature (T = 0) solution is sampled and checked (Cobbe et al., 2021).
+Verification instead samples many high-temperature solutions, scores each, and returns the highest-ranked one (Cobbe et al., 2021, p. 5).
+The verifier outputs the probability that a candidate solution is correct, conditioned on the problem and the solution (Cobbe et al., 2021, p. 7).
+Its labels come only from the outcome: a solution is correct if it reaches the correct final answer, so flawed reasoning that reaches the right number becomes a false positive (Cobbe et al., 2021, p. 7).</p>
+<p>The recipe has three steps: finetune a generator for 2 epochs, sample 100 completions per training problem and label each, then train the verifier for one epoch (Cobbe et al., 2021, p. 8).
+The generator is stopped at 2 epochs because sample diversity collapses after that (Cobbe et al., 2021).</p>
+<p>The default verifier is token-level: it predicts correctness after every token, which the authors call a token-level value function (Cobbe et al., 2021, p. 9).
+Let $q$ be the problem, $s$ the candidate solution, $s_{\le t}$ its tokens up to position $t$, and $y \in \{0,1\}$ the outcome label (1 if the final answer is correct).
+Let $v_\theta(q, s_{\le t}) \in (0,1)$ be the verifier's predicted probability of correctness at position $t$.
+A cross-entropy form of the verification loss, derived from the paper's description, is
+$$\mathcal{L}_{\text{ver}}(\theta) = -\mathbb{E}_{(q,s,y)} \Big[ \sum_t \big( y \log v_\theta(q, s_{\le t}) + (1-y)\log(1 - v_\theta(q, s_{\le t})) \big) \Big]$$
+The authors report that cross-entropy and mean squared error had negligible differences (Cobbe et al., 2021, p. 16).
+The joint objective adds this loss, unweighted, to the language-modelling loss $\mathcal{L}_{\text{LM}}(\theta) = -\mathbb{E}\big[\sum_j \log p_\theta(s_j \mid q, s_{&lt;j})\big]$, where $s_j$ is the $j$-th solution token; question tokens are masked (Cobbe et al., 2021, p. 8) (Cobbe et al., 2021, p. 20).
+So the joint loss is $\mathcal{L}_{\text{LM}} + \mathcal{L}_{\text{ver}}$ (Cobbe et al., 2021, p. 20).</p>
+<p>Two findings are experimental.
+Token-level verifiers outperform solution-level verifiers, which predict once after the final token; the token-level ones train more slowly, and solution-level ones overfit early (Cobbe et al., 2021, p. 9).
+Adding the language-modelling objective is a strict improvement in the authors' ablation (Cobbe et al., 2021, p. 9).
+The explanation that the full value function gives an auxiliary signal that rewards judging reasoning throughout the solution is the authors' hypothesis (Cobbe et al., 2021, p. 9).
+Dropout narrows the gap: solution-level verifiers with dropout reach about the level of token-level ones (Cobbe et al., 2021, p. 11).</p>
+<p>The scaling claim is experimental.
+On the full training set, a 6B verifier slightly outperforms a finetuned 175B model, a boost the authors describe as roughly a 30x increase in model size (Cobbe et al., 2021, p. 12).
+Verification does not help at small dataset sizes; the authors attribute this to overfitting to the correct answer, which is their hypothesis (Cobbe et al., 2021, p. 8).
+A large generator with a small verifier beats the reverse, and the authors suggest the verifier may rely on coarse heuristics, also a hypothesis (Cobbe et al., 2021, p. 10).</p>
+<p>Test-time N interacts with the verifier.
+For the 6B verifier, accuracy rises as completions grow to 400 and then falls, which the authors attribute to adversarial solutions that fool the verifier (Cobbe et al., 2021, p. 10).
+This is one observed trend at one scale, not a general law, and the paper evaluates with 100 completions (Cobbe et al., 2021, p. 10).</p>
+<h2>Process versus Outcome Supervision</h2>
+<p>Once we can sample many solutions and pick one with a learned judge, the next question is what the judge should be trained on.
+Outcome supervision labels a whole solution by its final result: an outcome-supervised reward model (ORM) is trained to predict whether a solution is correct, and at test time its prediction at the final token is the solution's score (Lightman et al., 2023, p. 5).
+Process supervision labels each step: a process-supervised reward model (PRM) predicts the correctness of each step, taken after the last token of that step (Lightman et al., 2023, p. 5).
+For math with checkable answers, outcome labels can be generated automatically, whereas the authors had to use human labelers for process labels (Lightman et al., 2023, p. 3).</p>
+<p>The core problem is credit assignment.
+An outcome label says only that a solution is right or wrong, not where it went wrong (Lightman et al., 2023, p. 10).
+Suppose step 2 of a solution applies a wrong formula, but a later arithmetic slip cancels it, so the final answer is correct.
+Final-answer grading gives this solution a positive label, so an ORM trained on it can learn to reward a flawed chain (Lightman et al., 2023, p. 8).
+The authors note that outcome labels are weak for hard problems, where most generated solutions contain an error somewhere, so a negative label carries little marginal information (Lightman et al., 2023, p. 10).</p>
+<p>Process labels are richer.
+Each step is labeled positive, negative or neutral, and neutral steps can be treated as either at test time (Lightman et al., 2023, p. 4).
+Labeling stops at the first negative step, so each solution is supervised up to its first mistake (Lightman et al., 2023).
+The labeled dataset, PRM800K, contains about 800,000 step-level labels over 75,000 solutions (Lightman et al., 2023, p. 4).</p>
+<p>The PRM is trained as a language model.
+It predicts the label token of each step, and its log-likelihood is maximized (Lightman et al., 2023, p. 5).
+With $y_{i}$ the human label of step $i$ and $x$ the problem, the per-solution objective can be written as $\mathcal{L}=-\sum_{i}\log p_{\text{PRM}}(y_{i}\mid x,\text{step}_{\le i})$, where $\text{step}_{\le i}$ is the solution prefix ending at step $i$ [derived from @2305-20050-p001, pages 5 and 20; the notation is ours].
+A solution score is the probability that every step is correct, implemented as $\text{score}(S)=\prod_{i=1}^{n} p_i$, where $p_i$ is the probability that step $i$ is positive and $n$ is the number of steps (Lightman et al., 2023, p. 6).
+Best-of-N then samples $N$ solutions and returns the one with the highest score (Lightman et al., 2023, p. 6).</p>
+<p>The authors compare three selectors as $N$ grows: the ORM, the PRM and majority voting (Lightman et al., 2023, p. 7).
+At large scale the PRM solved 78.2% of the 500-problem MATH subset at best-of-1860, against 72.4% for the ORM and 69.6% for majority voting (Lightman et al., 2023, p. 7).
+The PRM's gap over the ORM widened as $N$ grew (Lightman et al., 2023, p. 7).
+In the controlled small-scale comparison, process supervision beat both forms of outcome supervision at every data scale (Lightman et al., 2023, p. 9).</p>
+<p>Active learning chose which solutions to label.
+The authors surfaced "convincing wrong-answer" solutions, those rated highly by the current PRM but reaching a wrong final answer (Lightman et al., 2023, p. 5).
+In the small-scale experiment, the authors estimate this was about 2.6 times more data efficient than uniform labeling (Lightman et al., 2023, p. 9).
+Iterative retraining was unstable in their runs, and they have no concrete evidence that it helps (Lightman et al., 2023, p. 10).</p>
+<p>Aggregation rules matter too.
+In a separate PaLM 2-S* study, the last step's score outperformed the product and the minimum (Snell et al., 2024, p. 24).
+The authors suggest this is because their verifier was trained on soft Monte Carlo labels; this is their interpretation (Snell et al., 2024, p. 24).
+In the Lightman et al. setting, the product with neutral steps counted as positive gave 78.2%, against 77.6% for the minimum, and the authors call the differences minor (Lightman et al., 2023, p. 20).</p>
+<p>Why process supervision helps, as the authors argue:
+it gives denser and more precise feedback, which the authors believe explains its advantage (Lightman et al., 2023).
+They also argue it is easier to interpret and rewards a human-endorsed chain of thought (Lightman et al., 2023).
+They report a negative alignment tax, but this is a claim about math only, and the authors say generalization to other domains is unknown (Lightman et al., 2023, p. 11).</p>
+<p>Caveats.
+The generator is fixed; the paper trains only reward models and does not use them to train the generator with RL (Lightman et al., 2023, p. 3).
+The small-scale ablations use a large PRM as labeler, so those results depend on that model's accuracy (Lightman et al., 2023, p. 8).
+Final-answer grading produces false positives, which the authors discuss as a weakness of the outcome baseline (Lightman et al., 2023, p. 9).</p>
+<h2>Search: Spending Compute Against a Step-Level Verifier</h2>
+<p>Sampling several complete solutions and picking one only filters outputs after the generator has written them (Snell et al., 2024).
+Search goes further: when a step-level verifier can score partial solutions, the generator can be steered while it writes, so weak partial solutions are dropped before they are finished (Snell et al., 2024).
+The verifier here is a process reward model (PRM), which predicts the correctness of each intermediate step; trained on Monte Carlo estimates of per-step correctness, its per-step outputs act as value estimates of reward-to-go for the base model's sampling policy (Snell et al., 2024, p. 7).
+[shown experimentally] In the authors' setting, the PRM consistently outperformed an outcome-supervised verifier (ORM) (Snell et al., 2024, p. 7).</p>
+<p>Three search procedures are compared.
+Best-of-N samples N complete answers independently and selects the one the PRM scores highest (Snell et al., 2024, p. 7).
+Beam search keeps a fixed number of partial solutions, expands each, and prunes every round: sample N first steps, keep the top M by PRM score, sample M next-step proposals from each, and repeat until a solution ends or a round limit (40 in the paper) is reached (Snell et al., 2024, p. 7).
+Lookahead search changes how candidate steps are scored: from each candidate it rolls out up to k further steps at temperature 0 and uses the PRM value at the end of the rollout as the step's score; beam search is the case k = 0 (Snell et al., 2024).
+The authors note this is a special case of Monte Carlo tree search (MCTS) with the stochastic exploration removed, since the PRM is already trained and frozen (Snell et al., 2024).</p>
+<p>A small tree can be read as follows.
+The root is the question; beam search creates N first-step children, the PRM keeps the top M, and each kept child creates M next-step children, so the tree widens and is pruned at each level.
+Lookahead adds, at each candidate node, a side branch that runs k steps forward; the score of that branch's leaf is attached back to the candidate before the pruning decision.
+Lookahead costs N × (k + 1) samples, so each decision is more expensive (Snell et al., 2024, p. 9).</p>
+<p>The trade-off is exploration against exploitation.
+Pruning on PRM scores spends budget on the paths the verifier likes best; if the verifier is imperfect, search finds and amplifies its errors (Snell et al., 2024, p. 9).
+[shown experimentally] With small budgets beam search beat best-of-N, but its advantage shrank as the budget grew and it often fell below best-of-N at larger budgets; lookahead generally underperformed at the same budget (Snell et al., 2024, p. 9).
+The authors report search outputs with low-information repeated final steps, and over-optimized solutions of only one or two steps (Snell et al., 2024, p. 9).
+[authors' hypothesis or interpretation] They attribute the diminishing returns to exploitation of the PRM, a Goodhart-like effect in which optimizing a proxy hard pushes it away from the true objective (Snell et al., 2024, p. 9).</p>
+<p>The best method depends on prompt difficulty and budget.
+The authors bin questions into five levels by the base model's pass@1 rate, the probability that one sample is correct (Snell et al., 2024, p. 5).
+[shown experimentally] On easy bins (levels 1 and 2) beam search degraded as the budget grew while best-of-N did not; on medium bins (levels 3 and 4) beam search consistently beat best-of-N; on the hardest bin no method made much progress (Snell et al., 2024, p. 9).
+[shown experimentally] Selecting the method per difficulty bin let them nearly match best-of-N with up to 4× less compute (Snell et al., 2024, p. 10).
+[authors' hypothesis or interpretation] On easy questions the verifier is mostly right, so more optimization only amplifies its spurious features; on hard questions search helps steer the model toward answers it would rarely sample directly (Snell et al., 2024, p. 10).</p>
+<p>Best-of-N aggregation is also not a plain vote.
+Best-of-N weighted sums the PRM's correctness scores over all solutions sharing a final answer and picks the answer with the largest total (Snell et al., 2024, p. 7).
+The authors score a full solution by the PRM's last-step prediction, which beat the product and minimum of step scores in their setting (Snell et al., 2024).
+[shown experimentally, with a caveat] The authors suggest the minimum and product rules may behave differently because their verifier was trained on soft Monte Carlo labels rather than binary labels (Snell et al., 2024).</p>
+<h2>Search versus Learning: Test-Time Compute, Revisions and Pretraining Compute</h2>
+<p>Test-time compute can be spent in two different ways, and the difference matters for what it can buy.
+The first is search against a verifier: the weights stay fixed, and extra compute chooses which of many candidate outputs is returned (Snell et al., 2024).
+The second is to update the model's output distribution for the given prompt, for example by having the model revise its own earlier attempts in sequence (Snell et al., 2024).
+Only the second changes what the model proposes; the first changes which proposal is selected (Snell et al., 2024, p. 3).
+The authors treat these as two independent axes of their study (Snell et al., 2024, p. 4).
+Their revision models had to be finetuned, because prompting off-the-shelf models to correct themselves was largely ineffective (Snell et al., 2024, p. 10).
+Sequential sampling beat parallel sampling for revisions when a verifier or majority voting selected the answer (Snell et al., 2024, p. 12).
+The authors read this as local refinement versus global coverage: parallel samples can cover different high-level approaches, while revisions refine answers already on track (Snell et al., 2024, p. 12).</p>
+<p>The compute-optimal strategy chooses, per prompt, how to spend a budget $N$ (Snell et al., 2024, p. 5).
+The authors write the chosen hyperparameters for prompt $q$ as $\theta^*_{q}(N) = \arg\max_\theta \mathbb{E}_{y \sim \text{Target}(\theta, N, q)}[\mathbb{1}_{\{y = y^*(q)\}}]$, where $\theta$ are test-time compute hyperparameters, $\text{Target}(\theta,N,q)$ is the output distribution they induce, and $y^*(q)$ is the correct response (Snell et al., 2024, p. 5).
+Since $y^*(q)$ is unknown at deployment, they approximate $\theta^*$ with a difficulty statistic (Snell et al., 2024, p. 5).
+Difficulty is the base model's pass@1 rate, estimated from 2048 samples per question and binned into five quantiles (Snell et al., 2024, p. 5).
+At deployment, a learned verifier's averaged final-answer score can replace the oracle label, though this estimation cost is not counted in their experiments (Snell et al., 2024, p. 6).
+Compute-optimal allocation outperformed best-of-N with up to 4x less test-time compute (Snell et al., 2024, p. 1).</p>
+<p>Exchanging the two budgets follows from FLOP counts.
+Pretraining costs $X = 6ND_{\text{pretrain}}$ and inference costs $Y = 2ND_{\text{inference}}$, where $N$ is the parameter count and $D$ the token counts (Snell et al., 2024, p. 14).
+Scaling parameters by $M$ multiplies both terms by $M$ (Snell et al., 2024, p. 14).
+Let $R = D_{\text{inference}}/D_{\text{pretrain}}$; the test-time compute affordable at matched FLOPs depends on $R$ (Snell et al., 2024, p. 14).
+The authors compare against a model about 14x larger at $R = 0.16$, $R = 0.79$ and $R = 22$ (Snell et al., 2024, p. 15).
+When $R \ll 1$, test-time compute often beats scaling parameters; on hard questions or at high inference load ($R \gg 1$), pretraining is more effective (Snell et al., 2024, p. 15).
+So the two are not one-to-one exchangeable: test-time compute covers easy and medium questions, while pretraining is likely better beyond the base model's capability (Snell et al., 2024, p. 15).
+This is experimental evidence for one model family (PaLM 2-S*) on MATH, and it depends on the FLOP approximations above (Snell et al., 2024, p. 14).</p>
+<p>Search and revision spend compute at inference without changing weights, while learning moves compute into training (Snell et al., 2024, p. 16).
+The authors speculate that outputs of test-time compute could later be distilled back into the base model (Snell et al., 2024, p. 16).
+That distillation step is their hypothesis, not a tested result (Snell et al., 2024, p. 16).
+The next section takes up the learning route, where reinforcement learning trains the policy to reason longer directly.</p>
+<h2>Reinforcement Learning for Reasoning: Learning to Think Longer</h2>
+<p>Search and voting spend compute at inference time without changing the model's weights (Snell et al., 2024).
+Reinforcement learning (RL) moves this benefit into the policy itself, so the trained model produces longer, self-checked reasoning on its own (DeepSeek-AI, 2025).
+The DeepSeek-R1 work uses rule-based rewards: an accuracy reward (is the final answer correct, checked by rule) and a format reward (is the reasoning wrapped in the required tags) (DeepSeek-AI, 2025).
+The two are combined with equal weight, and no neural reward model is used for reasoning tasks (DeepSeek-AI, 2025).
+The authors give two reasons: neural reward models are susceptible to reward hacking under large-scale RL, and retraining them costs compute (DeepSeek-AI, 2025).</p>
+<h3>Group-relative policy optimization</h3>
+<p>Group-relative policy optimization (GRPO) is the RL algorithm used (DeepSeek-AI, 2025).
+For each question $q$, GRPO samples a group of $G$ outputs $\{o_1,\dots,o_G\}$ from the old policy $\pi_{\theta_{old}}$ and maximizes the following objective (DeepSeek-AI, 2025, p. 3):</p>
+<p>$$
+J_{GRPO}(\theta)=\mathbb{E}\left[\frac{1}{G}\sum_{i=1}^{G}\min\left(\frac{\pi_\theta(o_i\mid q)}{\pi_{\theta_{old}}(o_i\mid q)}A_i,\ \mathrm{clip}\left(\frac{\pi_\theta(o_i\mid q)}{\pi_{\theta_{old}}(o_i\mid q)},1-\varepsilon,1+\varepsilon\right)A_i\right)-\beta\, D_{KL}\left(\pi_\theta\,\|\,\pi_{ref}\right)\right]
+$$</p>
+<p>Here $\pi_\theta$ is the policy being trained, $\pi_{\theta_{old}}$ the policy that generated the group, and $\pi_{ref}$ a reference policy (DeepSeek-AI, 2025, p. 3).
+The hyper-parameters $\varepsilon$ sets the clipping range and $\beta$ weights the KL penalty (DeepSeek-AI, 2025, p. 3).
+The ratio $\pi_\theta(o_i\mid q)/\pi_{\theta_{old}}(o_i\mid q)$ is an importance ratio that corrects for sampling from the old policy, and the clip keeps each update close to the old policy (DeepSeek-AI, 2025, p. 3).
+The KL term is an unbiased estimator added directly to the loss (DeepSeek-AI, 2025, p. 15).
+The advantage of output $i$ is its reward relative to its group:</p>
+<p>$$
+A_i=\frac{r_i-\mathrm{mean}(\{r_1,\dots,r_G\})}{\mathrm{std}(\{r_1,\dots,r_G\})}
+$$</p>
+<p>where $r_i$ is the reward of output $i$ (DeepSeek-AI, 2025, p. 3).
+Example: with $G=4$ rewards $\{1,0,0,1\}$, the mean is $0.5$ and the standard deviation is $0.5$, so correct outputs get $A=+1$ and incorrect ones $A=-1$.
+[derived] The group mean acts as a baseline, so outputs are rewarded for beating their siblings and no separate value model is needed.
+PPO instead uses a learned value model of similar size to the policy, which adds memory and compute cost (DeepSeek-AI, 2025, p. 15).
+The authors also note that a value model must predict the final reward from a partial response, which is harder when reasoning revises itself (DeepSeek-AI, 2025, p. 15).
+[authors' interpretation] For this reason GRPO is presented as the more practical choice under limited resources (DeepSeek-AI, 2025, p. 16).</p>
+<h3>R1-Zero: pure RL from a base model</h3>
+<p>DeepSeek-R1-Zero is trained with RL directly on the base model, without supervised fine-tuning (DeepSeek-AI, 2025, p. 2).
+Training used 16 sampled outputs per question, a sampling temperature of 1, and a learning rate of 3e-6 (DeepSeek-AI, 2025, p. 3).
+[shown experimentally] AIME 2024 pass@1 rose from 15.6% to 77.9% during training, and self-consistency reached 86.7% (DeepSeek-AI, 2025, p. 4).
+[shown experimentally] Average response length grew over training, reaching hundreds to thousands of tokens (DeepSeek-AI, 2025, p. 5).
+[shown experimentally] The frequency of reflective words such as "wait" rose 5 to 7 fold over training (DeepSeek-AI, 2025, p. 38).
+The authors report an "aha moment" in which the model, mid-solution, writes "Wait, wait.
+Wait" and re-examines its own algebra (DeepSeek-AI, 2025, p. 5).
+[authors' interpretation] They read these behaviours as self-evolution driven by the reward, not as explicitly taught skills (DeepSeek-AI, 2025, p. 5).
+The authors also say the reflective patterns reflect engineered heuristics and do not show human-like intelligence (DeepSeek-AI, 2025).</p>
+<h3>The multi-stage R1 pipeline</h3>
+<p>R1-Zero has poor readability and mixes English and Chinese within one chain of thought (DeepSeek-AI, 2025, p. 2).
+The R1 pipeline adds stages to fix this (DeepSeek-AI, 2025, p. 2)(DeepSeek-AI, 2025, p. 8):
+(1) cold-start data: thousands of readable long chain-of-thought examples used to fine-tune the model before RL;
+(2) reasoning RL with a language-consistency reward, the proportion of target-language words in the chain of thought (DeepSeek-AI, 2025, p. 7);
+(3) rejection sampling and supervised fine-tuning (SFT), keeping only correct samples and adding non-reasoning data;
+(4) a final RL stage with rule-based rewards for reasoning and reward models for general data (DeepSeek-AI, 2025, p. 8).
+[shown experimentally] The language-consistency reward slightly lowers benchmark scores but keeps output readable (DeepSeek-AI, 2025, p. 36).</p>
+<h3>Distillation versus RL on a small model</h3>
+<p>The authors distill R1's reasoning into smaller dense models (DeepSeek-AI, 2025).
+[shown experimentally] A 1.5B distilled model outperforms non-reasoning baselines on math benchmarks (DeepSeek-AI, 2025).
+[shown experimentally] Large-scale RL on Qwen2.5-32B-Base for over 10K steps matched QwQ-32B-Preview, while the distilled 32B model did significantly better on all benchmarks (DeepSeek-AI, 2025).
+[authors' interpretation] Distilling a stronger model is economical and effective, while small models relying on large-scale RL need large compute (DeepSeek-AI, 2025).</p>
+<h3>Reported failure modes</h3>
+<p>[shown experimentally] Reward hacking appeared when a model-based helpful reward model was trained for more steps (DeepSeek-AI, 2025, p. 8)(DeepSeek-AI, 2025, p. 34).
+The authors report overthinking on simple questions, and that few-shot prompting degrades performance (DeepSeek-AI, 2025).
+The reward design works for verifiable tasks, but the authors say a reliable reward is hard to build for writing and other open-ended tasks (DeepSeek-AI, 2025).
+Their Monte Carlo Tree Search attempt did not scale, because token generation has a far larger search space than chess (DeepSeek-AI, 2025, p. 63).</p>
+<h2>When to Spend More Tokens and When to Stop</h2>
+<p>Extra computation pays off unevenly, and the evidence points to four limits to check before spending a budget.
+The first limit is diminishing returns: majority voting saturates as the number of sampled paths grows, and in practice a small number (for example 5 or 10) captures most of the gain (Wang et al., 2023).
+Snell et al. report that compute-optimal scaling beats best-of-N by a widening margin as the revision budget grows, but the gains are concentrated on easier prompts (Snell et al., 2024) (Snell et al., 2024).
+[shown experimentally] These saturation curves come from one base model and one benchmark, so the knee point is not a constant.
+The second limit is difficulty dependence: easy prompts gain from sequential revisions, medium prompts from search against a PRM, and on the hardest prompts test-time compute gives little benefit (Snell et al., 2024) (Snell et al., 2024).
+Snell et al. bin difficulty by the base model's pass@1 rate into five quantiles, which they found more predictive than hand-labelled bins (Snell et al., 2024, p. 5).
+[shown experimentally] On the hardest questions, adding pretraining was more effective, and the ratio of inference tokens to pretraining tokens changes which option wins (Snell et al., 2024).
+The third limit is verifier exploitation: a verifier is applied to more candidates as N grows, so more candidates give the verifier more chances to be fooled (Cobbe et al., 2021).
+Snell et al. found a PRM trained on PRM800k easy to exploit even with best-of-N sampling (Snell et al., 2024, p. 7).
+[authors' hypothesis or interpretation] Deeper search against an imperfect verifier is expected to exploit it in the same way, but the papers give no clean curve of accuracy falling with depth.
+The fourth limit concerns RL-trained reasoning: DeepSeek-R1-Zero's response length grew during training, which the authors read as more test-time computation (DeepSeek-AI, 2025).
+Length is not accuracy, however, and the authors report repetition and readability problems that the multi-stage pipeline was built to fix (DeepSeek-AI, 2025).
+[authors' hypothesis or interpretation] The authors conclude that long chains help only when the base model is large enough to use them, since smaller models tended to repeat (DeepSeek-AI, 2025).
+A practical rule of thumb: estimate difficulty, choose the strategy that matches it, and cap the budget where the marginal gain flattens.
+Easy prompts need little compute or a single revision, medium prompts can use search, and hard prompts call for a larger model or more pretraining.
+[practical conjecture] Estimating difficulty by sampling 2048 solutions, as Snell et al. did, costs as much as solving, so a cheaper difficulty estimator is needed in deployment (Snell et al., 2024, p. 6).
+[practical conjecture] A budget cap set before the run is the simplest guard against wasted tokens on prompts where extra samples no longer change the answer.</p>
+<h2>Can a Cheaper Model Verify a More Expensive One's Work?</h2>
+<p>The question has a plausible yes-answer, and the papers give some evidence for it, but the evidence is narrower than the question.
+Verification may be easier than generation for three reasons the papers suggest: a verifier only has to judge a finished candidate, it can judge with the final answer or with per-step labels, and it can be trained on the generator's own samples [authors' hypothesis or interpretation] (Cobbe et al., 2021)(Lightman et al., 2023).
+Cobbe et al. call verification "a simpler task than generation in general" and note that verifiers benefit from their "inherent optionality," since the system may pick any of many candidates (Cobbe et al., 2021).</p>
+<p>The evidence for the hypothesis comes from four settings.
+[shown experimentally] In Cobbe et al., a 6B verifier on a 6B generator slightly outperforms a finetuned 175B model on the full GSM8K training set, a boost they describe as roughly equivalent to a 30x model-size increase (Cobbe et al., 2021).
+[shown experimentally] A large generator with a small verifier performs better than a small generator with a large verifier, and verification stays effective when the verifier is much smaller than the generator (Cobbe et al., 2021).
+The authors suggest the small verifier may rely on "relatively coarse heuristics" [authors' hypothesis or interpretation] (Cobbe et al., 2021).
+[shown experimentally] Lightman et al. use a large PRM to supervise smaller reward models, producing step labels that stand in for human labels (Lightman et al., 2023).
+[shown experimentally] Snell et al. use a PRM as the reward model in beam and lookahead search and find that search can outperform best-of-N in a FLOPs-matched setting (Snell et al., 2024).
+[shown experimentally] In RL, DeepSeek-R1 uses a rule-based exact-answer check on the final answer and no neural reward model, the cheapest verifier in the set (DeepSeek-AI, 2025)(DeepSeek-AI, 2025).</p>
+<p>The limits matter as much.
+The verifier is trained on the generator's distribution: Snell et al. found a PRM trained on GPT-4 samples easy to exploit on their PaLM 2 generator, which they attribute to distribution shift (their hypothesis) (Snell et al., 2024).
+A verifier can be exploited as N grows: Cobbe et al. found test performance peaks near 400 completions and then declines, because the search finds "adversarial solutions that fool the verifier" (Cobbe et al., 2021).
+Verifiers need labels, and per-step labels are expensive (Lightman et al., 2023)(Snell et al., 2024).
+DeepSeek-R1 reports that neural reward models are "susceptible to reward hacking" in large-scale RL (DeepSeek-AI, 2025).
+When the checker is weaker than the generator, it caps the gain: it can only reorder candidates the generator already produces [authors' hypothesis or interpretation].</p>
+<p>Shown experimentally: the 6B-verifier-over-175B result on GSM8K, the generator-larger-than-verifier ablation, and the PRM search gains on MATH (Cobbe et al., 2021)(Cobbe et al., 2021)(Snell et al., 2024).
+Not tested: whether a much weaker verifier keeps helping on harder or open-ended tasks, which Cobbe et al. expect but do not test (Cobbe et al., 2021).
+Conjecture: that verification is inherently easier than generation in general, and that a smaller checker can supervise a much larger generator in new domains [authors' hypothesis or interpretation].</p>
+<h2>Side by Side: What Each Method Predicts, Its Loss, and How It Avoids Failure</h2>
+<p>The table compares six method families on the same questions: what each predicts or optimizes, its loss, its supervision, whether it changes weights, where compute goes, and how it guards against failure.
+Evidence labels follow the tutorial's convention: [proven/derived], [shown experimentally] or [authors' hypothesis or interpretation].</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Predicts or optimizes</th>
+<th>Loss or objective</th>
+<th>Supervision</th>
+<th>Changes weights?</th>
+<th>Compute spent</th>
+<th>Failure handling and evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Self-consistency (voting)</td>
+<td>An answer: the most frequent answer across sampled paths, an approximate marginal over paths (Wang et al., 2023)</td>
+<td>None (Wang et al., 2023)</td>
+<td>Fixed answer set only (Wang et al., 2023)</td>
+<td>No (Wang et al., 2023)</td>
+<td>Test time: sampling many paths (Wang et al., 2023)</td>
+<td>Assumes correct paths agree more than wrong ones (Wang et al., 2023) [hypothesis]; gains shown on GSM8K (Wang et al., 2023) [shown experimentally]</td>
+</tr>
+<tr>
+<td>Outcome-supervised verifier (ORM)</td>
+<td>Probability that a whole solution is correct, read at the final token (Lightman et al., 2023)</td>
+<td>Verifier loss predicting correctness; token-level variant adds a language-modelling term (Cobbe et al., 2021)</td>
+<td>Final-answer labels, checked automatically (Cobbe et al., 2021)</td>
+<td>Yes, the verifier is trained (Cobbe et al., 2021)</td>
+<td>Train time for the verifier; test time for N candidates (Cobbe et al., 2021)</td>
+<td>Overfits on small data; dropout and token-level prediction reduce this (Cobbe et al., 2021) [shown experimentally]; lucky right answers get positive labels (Lightman et al., 2023)</td>
+</tr>
+<tr>
+<td>Process reward model (PRM)</td>
+<td>Per-step correctness; solution score is the product of step probabilities (Lightman et al., 2023)</td>
+<td>Per-step cross-entropy over positive, neutral and negative labels (Lightman et al., 2023)</td>
+<td>Step-level human labels (Lightman et al., 2023)</td>
+<td>Yes (Lightman et al., 2023)</td>
+<td>Train time for labels and PRM; test time for scoring (Lightman et al., 2023)</td>
+<td>Localizes errors, aiding credit assignment (Lightman et al., 2023) [authors' interpretation]; beats ORM and voting in best-of-N (Lightman et al., 2023) [shown experimentally]</td>
+</tr>
+<tr>
+<td>Search against a PRM (best-of-N, beam, lookahead)</td>
+<td>Best final answer, with steps steered during generation (Snell et al., 2024)</td>
+<td>No new loss at test time; uses a trained PRM (Snell et al., 2024)</td>
+<td>Trained PRM (Snell et al., 2024)</td>
+<td>No (Snell et al., 2024)</td>
+<td>Test time (Snell et al., 2024)</td>
+<td>Beam search degrades on easy prompts as budget grows (Snell et al., 2024) [shown experimentally]; more samples can fool the verifier (Cobbe et al., 2021)</td>
+</tr>
+<tr>
+<td>Revision-based adaptation</td>
+<td>A revised answer, each attempt conditioned on earlier ones (Snell et al., 2024)</td>
+<td>Supervised finetuning on correct-after-incorrect trajectories (Snell et al., 2024)</td>
+<td>Multi-turn data built from sampled answers (Snell et al., 2024)</td>
+<td>Yes, the model is finetuned (Snell et al., 2024)</td>
+<td>Test time, plus finetuning (Snell et al., 2024)</td>
+<td>Best on easy prompts (Snell et al., 2024) [shown experimentally]; about 38% of correct answers flip to wrong (Snell et al., 2024)</td>
+</tr>
+<tr>
+<td>RL with verifiable rewards (GRPO; R1-Zero, R1)</td>
+<td>A policy, pushed toward higher group-relative advantage (DeepSeek-AI, 2025)</td>
+<td>GRPO objective with clipped ratio and KL penalty (DeepSeek-AI, 2025)</td>
+<td>Answer and format rules, no neural reward model (DeepSeek-AI, 2025)</td>
+<td>Yes (DeepSeek-AI, 2025)</td>
+<td>Train time; response length grows (DeepSeek-AI, 2025)</td>
+<td>Rule rewards avoid reward hacking (DeepSeek-AI, 2025) [authors' interpretation]; more preference-reward steps may cause hacking (DeepSeek-AI, 2025) [shown experimentally]</td>
+</tr>
+</tbody>
+</table>
+<p>Two checks matter most when choosing a method.
+First, supervision: voting needs none, while a PRM needs step labels that are costly to collect (Lightman et al., 2023).
+Second, whether weights may change: search and voting leave them fixed, while RL changes them (DeepSeek-AI, 2025).</p>
+<h2>Summary and Check-Your-Understanding Questions</h2>
+<p>Extra computation before answering helps for a few related reasons, and the papers support each to a different degree.
+Correct reasoning paths tend to agree on the final answer, while wrong ones scatter, so sampling and voting can recover answers that a single greedy sample misses (Wang et al., 2023).
+Checking a solution can be easier than generating one, so a learned verifier can rank sampled solutions, and it can be trained on the generator's own samples with only final-answer labels (Cobbe et al., 2021).
+Process signals help because a step-level label says where an error occurred, which gives a denser and more precise training signal than an outcome label (Lightman et al., 2023).
+Search against a step-level verifier and reinforcement learning with verifiable rewards turn that checking ability into better solutions, the latter by moving the benefit into the policy (Snell et al., 2024) (DeepSeek-AI, 2025).
+The returns shrink with problem difficulty, verifier error and budget, and the best strategy depends on the prompt (Snell et al., 2024).
+These are the main lessons; the strength of each claim varies, and the authors' interpretations should be read as hypotheses (Lightman et al., 2023).</p>
+<p>Check your understanding with the following questions.</p>
+<ol>
+<li>Why does majority voting over sampled reasoning paths approximate marginalizing the latent path out of $P(a \mid \text{prompt})$, and what assumption about the answer set does this need (Wang et al., 2023)?</li>
+<li>Why can a process reward model beat an outcome reward model at the same $N$, and what does the process label provide that the outcome label does not (Lightman et al., 2023)?</li>
+<li>Why can a verifier degrade at very large $N$, and what property of the verifier makes this happen (Snell et al., 2024)?</li>
+<li>How does the group-relative advantage, computed from the mean and standard deviation of a group of rewards, replace a learned critic in GRPO (DeepSeek-AI, 2025)?</li>
+<li>When can test-time compute not substitute for a bigger model, and which dependence on prompt difficulty and inference load matters (Snell et al., 2024)?</li>
+<li>What must be true for a cheaper verifier to help a stronger generator, and which of these conditions did the papers test (Cobbe et al., 2021) (Snell et al., 2024)?</li>
+</ol>
+<h2>References</h2>
+<ul>
+<li>Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., and Schulman, J. (2021). <em>Training Verifiers to Solve Math Word Problems</em>. arXiv preprint 2110.14168.</li>
+<li>DeepSeek-AI (2025). <em>DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</em>. arXiv preprint 2501.12948.</li>
+<li>Lightman, H., Kosaraju, V., Burda, Y., Edwards, H., Baker, B., Lee, T., Leike, J., Schulman, J., Sutskever, I., and Cobbe, K. (2023). <em>Let's Verify Step by Step</em>. arXiv preprint 2305.20050.</li>
+<li>Snell, C., Lee, J., Xu, K., and Kumar, A. (2024). <em>Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters</em>. arXiv preprint 2408.03314.</li>
+<li>Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and Zhou, D. (2023). <em>Self-Consistency Improves Chain of Thought Reasoning in Language Models</em>. International Conference on Learning Representations (ICLR 2023).</li>
+</ul>
+</body></html>
