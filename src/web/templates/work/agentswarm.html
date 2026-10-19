@@ -332,6 +332,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-10-19</span><span class="cl__title">The tests that judge the work, hardened</span></summary>
+    <p><strong>Problem:</strong> Before the swarm runs unattended, "passed" must mean passed. <strong>Solution:</strong> An outside review found two ways a test run could look like success: a broken test runner counted as "nothing left to do", and a test setup the builder could change around the protected tests. Both are closed: a run that measures nothing is an error, and tests are counted in a copy where the builder's own pytest hooks and settings are gone.
+      <strong>Result:</strong> Both attacks fail, with tests that prove it; the remaining gap (product code running in the test process) is recorded for the unattended runs.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-18</span><span class="cl__title">From a topic to a tutorial</span></summary>
     <p><strong>Problem:</strong> A tutorial needs the right papers, and finding them is the first hurdle when learning a field. <strong>Solution:</strong> <code>agentswarm find-papers</code>: a model plans the search and names the well-known papers, arXiv confirms each one, the model picks five that build on one another, and the PDFs and their records are downloaded for the reader to check; <code>learn</code> then takes the folder.
       <strong>Result:</strong> A test-time compute reading list from the topic alone, and a tutorial from it for about $0.22, with references taken from arXiv's records.</p>
