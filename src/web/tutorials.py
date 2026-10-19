@@ -17,6 +17,12 @@ class Tutorial:
 
 TUTORIALS: tuple[Tutorial, ...] = (
     Tutorial(
+        href="/static/agentswarm/mech-interp-tutorial.html",
+        title="Mechanistic Interpretability of Transformer Language Models",
+        date="2026-10-19",
+        summary="From superposition and sparse autoencoders to circuits, activation patching and attribution graphs; fact-reviewed.",
+    ),
+    Tutorial(
         href="/static/agentswarm/test-time-compute-tutorial.html",
         title="Why Thinking Longer Helps an LLM Reason, and Where It Stops",
         date="2026-10-18",
