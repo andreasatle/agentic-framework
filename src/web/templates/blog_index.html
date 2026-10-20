@@ -14,6 +14,8 @@
 <section class="section" style="padding-top:40px">
   <div class="wrap narrow">
     {% if posts %}
+      <h2>Posts</h2>
+      <p class="muted">Written with an earlier agent framework of mine, the first attempt at what became AgentSwarm.</p>
       <div class="post-list">
         {% for p in posts %}
           <a class="post-row reveal" href="/blog/{{ p.post_id }}">
