@@ -8,6 +8,23 @@
   record of the work.
 </p>
 
+<h2>How it is built: I decide what, Claude decides how</h2>
+<p>
+  AgentSwarm follows a few earlier attempts of mine at an agent swarm. The lesson they taught: when goals and
+  implementation details get mixed, the work drifts toward the latest detailed instruction and away from good
+  practice. So this project splits the roles. <strong>I own the what and the why</strong>: the goals, their
+  priority, what counts as success, what may be spent and which risks are acceptable. <strong>Claude owns the
+  how</strong>: architecture, code, tests and the design of experiments, held to established practice and to
+  measured evidence.
+</p>
+<p>
+  The split is written down as a short protocol that both of us follow. Claude pushes back by asking, never by
+  overriding: when a goal is unclear, or when I start prescribing implementation details, it asks what goal is
+  behind them. Every decision has a recorded reason, ideas I throw out are triaged rather than built on
+  reflex, and every paid run states its expected cost before I approve it. The next step moves those
+  decisions into the framework itself, so that running it needs only a few approvals from me along the way.
+</p>
+
 <h2>The design</h2>
 <p>
   Independent <strong>teams</strong> (an executor, an acceptance tester, a red team, a planner, ...) each
