@@ -1,10 +1,12 @@
 """Tutorials and guides written by AgentSwarm, listed on the Writing page (/blog).
 
 They are static pages under static/agentswarm/ (the blog renders posts without math, and these are full of
-it). Newest first.
+it), listed newest first in tutorials.json beside this file: AgentSwarm's `publish` step adds its entry there.
 """
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -15,29 +17,5 @@ class Tutorial:
     summary: str
 
 
-TUTORIALS: tuple[Tutorial, ...] = (
-    Tutorial(
-        href="/static/agentswarm/venice-guide.html",
-        title="Venice: A Curious Traveler's Guide",
-        date="2026-10-19",
-        summary="History, art, sights, islands and itineraries, from 26 Wikipedia articles; not fact-checked.",
-    ),
-    Tutorial(
-        href="/static/agentswarm/mech-interp-tutorial.html",
-        title="Mechanistic Interpretability of Transformer Language Models",
-        date="2026-10-19",
-        summary="From superposition and sparse autoencoders to circuits, activation patching and attribution graphs; fact-reviewed.",
-    ),
-    Tutorial(
-        href="/static/agentswarm/test-time-compute-tutorial.html",
-        title="Why Thinking Longer Helps an LLM Reason, and Where It Stops",
-        date="2026-10-18",
-        summary="Search, verification and reinforcement learning for reasoning, from five papers the swarm chose itself.",
-    ),
-    Tutorial(
-        href="/static/agentswarm/jepa-tutorial.html",
-        title="From Energy-Based Learning to V-JEPA 2.1",
-        date="2026-10-18",
-        summary="How joint-embedding predictive architectures developed, from five papers, fact-reviewed.",
-    ),
-)
+LISTING = Path(__file__).with_name("tutorials.json")
+TUTORIALS: tuple[Tutorial, ...] = tuple(Tutorial(**entry) for entry in json.loads(LISTING.read_text()))
