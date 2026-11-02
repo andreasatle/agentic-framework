@@ -345,11 +345,8 @@
   statements to audit) sit in one settings file, not in anyone's head.
 </p>
 <p>
-  The same runs can be started, followed and answered from <strong>a small web app</strong> on my own machine:
-  the expected cost of each step as I type, a card with the choices when a run waits, a drop zone for papers
-  fetched by hand, the document to read, and the live board of the teams writing it. Under the hood, a LangGraph
-  graph orders the steps and keeps every run in SQLite, so a run survives a restart and picks up where it
-  stopped.
+  Under the hood, a LangGraph graph orders the steps and keeps every run in SQLite, so a run survives a restart
+  and picks up where it stopped.
 </p>
 <p>
   The first real run, on how sleep affects memory, gave a document of about 5,900 words in 8 sections from four
@@ -357,6 +354,28 @@
   1 not: the facts review is where the next work goes. The run also did its job as a first real run, turning up
   several problems the tests had missed, each fixed with a test that fails without the fix.
 </p>
+
+<h3>The studio: running it from a browser</h3>
+<p>
+  The runs don't need a terminal. <code>agentswarm studio</code> opens a small web app on my own machine, built
+  with FastAPI and server-rendered pages, where I start a run, follow it and answer it:
+</p>
+<ul>
+  <li><strong>A new run:</strong> topic, reader, budget, length and where the sources come from, with the
+    expected cost of every step updating as I type, and a warning when the budget won't cover them all.</li>
+  <li><strong>When a run waits:</strong> a card that says what it needs, with a button for each answer
+    (approve, stop, raise the budget, try again), and a drop zone for papers I fetched by hand.</li>
+  <li><strong>While it works:</strong> the page follows the step until it ends; the citation audit as a bar of
+    supported, partly supported and unsupported statements; and the live board of the teams writing it.</li>
+  <li><strong>At the end:</strong> the finished document, to read before anything leaves the machine.</li>
+</ul>
+<p>
+  The command line and the studio drive the same runs, so a run started in one can be answered in the other.
+</p>
+<figure class="figure">
+  <div class="figure__frame"><img src="/static/img/work/agentswarm-studio.png" alt="The studio's new-run form: topic, reader, budget, length and source, beside the expected cost of each step" loading="lazy"></div>
+  <figcaption>Starting a run: the expected cost of each step, and a warning when the budget may not cover them all.</figcaption>
+</figure>
 
 <h2>What's next</h2>
 <ul>
@@ -378,7 +397,7 @@
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
     <summary><span class="tl__when">2026-11-01</span><span class="cl__title">From a topic to a page, run without help</span></summary>
-    <p><strong>Problem:</strong> Writing a document took several commands and judgement about what to run next, so it needed someone who knew the internals. <strong>Solution:</strong> One run from a topic to a page (<code>agentswarm write</code>), with a hard budget, a settings file for the decisions, and three pauses for a person: the sources, a budget that won't cover the next step, and publishing. A LangGraph graph orders the steps and keeps each run in SQLite; a small web app on localhost starts, follows and answers the runs and shows the teams' board.
+    <p><strong>Problem:</strong> Writing a document took several commands and judgement about what to run next, so it needed someone who knew the internals. <strong>Solution:</strong> One run from a topic to a page (<code>agentswarm write</code>), with a hard budget, a settings file for the decisions, and three pauses for a person: the sources, a budget that won't cover the next step, and publishing. A LangGraph graph orders the steps and keeps each run in SQLite; the studio, a web app on my own machine, starts, follows and answers the runs and shows the teams' board.
       <strong>Result:</strong> A first real run, on sleep and memory: about 5,900 words for $1.57, with 60% of audited citations fully supported, and several problems found and fixed with tests.</p>
   </details>
   <details class="tl cl" name="changelog">
