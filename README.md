@@ -1,5 +1,11 @@
 # Root README.md
 
+## Shipping (read this first)
+
+This repository is the homepage, atle.dev. To put changes live: `scripts/deploy.sh` (it pushes `main` and has the server pull and restart; no separate push needed; details in [DEPLOY.md](DEPLOY.md)).
+
+AgentSwarm is a separate repository (`~/Projects/AgentSwarm`), pushed on its own with `git push`. The homepage only writes about it and links to its GitHub page; the deploy says so when AgentSwarm has commits that aren't pushed yet.
+
 ## AgenticRoadmap
 
 This repository contains an experimental, **state-machine–driven agentic framework** built around a strict Planner–Worker–Critic (PWC) loop. The system is designed to explore how structured supervision, typed state, and explicit control flow can be used to build reliable multi-step LLM-driven programs.

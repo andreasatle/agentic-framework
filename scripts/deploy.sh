@@ -11,6 +11,17 @@ if [ "$branch" != "main" ]; then
   exit 1
 fi
 
+# The homepage links to AgentSwarm on GitHub: say so if it has commits that aren't there yet. Only reads it;
+# pushing AgentSwarm stays a separate step (`git push` in that repo).
+agentswarm="${AGENTSWARM_DIR:-$HOME/Projects/AgentSwarm}"
+if [ -d "$agentswarm/.git" ]; then
+  unpushed=$(git -C "$agentswarm" rev-list --count '@{upstream}..HEAD' 2>/dev/null || echo "?")
+  if [ "$unpushed" != "0" ]; then
+    echo "[deploy] note: AgentSwarm has $unpushed commit(s) not on GitHub; the homepage's links show the older code"
+    echo "[deploy]       to push them: git -C $agentswarm push"
+  fi
+fi
+
 echo "[deploy] pushing main"
 git push origin main
 
