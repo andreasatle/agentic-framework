@@ -21,8 +21,9 @@
   The split is written down as a short protocol that both of us follow. Claude pushes back by asking, never by
   overriding: when a goal is unclear, or when I start prescribing implementation details, it asks what goal is
   behind them. Every decision has a recorded reason, ideas I throw out are triaged rather than built on
-  reflex, and every paid run states its expected cost before I approve it. The next step moves those
-  decisions into the framework itself, so that running it needs only a few approvals from me along the way.
+  reflex, and every paid run states its expected cost before I approve it. For documents, those decisions
+  now live in the framework itself: I run it on my own, with a few approvals along the way and nobody else
+  deciding what runs.
 </p>
 
 <h2>The design</h2>
@@ -332,10 +333,37 @@
   <a href="/static/agentswarm/test-time-compute-tutorial.html">Read the tutorial: <em>Why Thinking Longer Helps an LLM Reason, and Where It Stops</em></a>.
 </p>
 
+<h3>From a topic to a page, without anyone in between</h3>
+<p>
+  Writing a document used to take several commands, and judgement about which one to run next. Now it is one
+  run with a hard budget: <code>agentswarm write "how sleep affects memory" --reader "a curious adult, no
+  biology" --budget 1.50</code>. The run finds the sources, writes the sections with the same teams as above,
+  audits the citations, adds a round of fact reviewers when too few are supported, and turns the result into a
+  page. It pauses three times for a person: to approve the sources (and add any paper it couldn't download), to
+  raise the budget when the next step won't fit, and to approve the finished document. Each pause says what it
+  needs and what every answer does. The rules it follows (how many papers, the review threshold, how many
+  statements to audit) sit in one settings file, not in anyone's head.
+</p>
+<p>
+  The same runs can be started, followed and answered from <strong>a small web app</strong> on my own machine:
+  the expected cost of each step as I type, a card with the choices when a run waits, a drop zone for papers
+  fetched by hand, the document to read, and the live board of the teams writing it. Under the hood, a LangGraph
+  graph orders the steps and keeps every run in SQLite, so a run survives a restart and picks up where it
+  stopped.
+</p>
+<p>
+  The first real run, on how sleep affects memory, gave a document of about 5,900 words in 8 sections from four
+  papers, for $1.57 of a $1.60 budget. Its audit found 12 of 20 cited statements fully supported, 7 partly and
+  1 not: the facts review is where the next work goes. The run also did its job as a first real run, turning up
+  several problems the tests had missed, each fixed with a test that fails without the fix.
+</p>
+
 <h2>What's next</h2>
 <ul>
   <li><strong>Hardening that generalizes:</strong> the combination focus on jq, and red teams that learn from
     the reports already ruled on, so each round looks somewhere new.</li>
+  <li><strong>Research from the open web:</strong> documents built from heterogeneous web sources, not only
+    papers and Wikipedia.</li>
   <li><strong>Citations a reader can trust:</strong> every cited statement checked against its page, not a
     sample, and the overstated ones rewritten.</li>
   <li><strong>Goals without a specification:</strong> the swarm drafts the specification itself, and a person
@@ -349,6 +377,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-11-01</span><span class="cl__title">From a topic to a page, run without help</span></summary>
+    <p><strong>Problem:</strong> Writing a document took several commands and judgement about what to run next, so it needed someone who knew the internals. <strong>Solution:</strong> One run from a topic to a page (<code>agentswarm write</code>), with a hard budget, a settings file for the decisions, and three pauses for a person: the sources, a budget that won't cover the next step, and publishing. A LangGraph graph orders the steps and keeps each run in SQLite; a small web app on localhost starts, follows and answers the runs and shows the teams' board.
+      <strong>Result:</strong> A first real run, on sleep and memory: about 5,900 words for $1.57, with 60% of audited citations fully supported, and several problems found and fixed with tests.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-10-19</span><span class="cl__title">The tests that judge the work, hardened</span></summary>
     <p><strong>Problem:</strong> Before the swarm runs unattended, "passed" must mean passed. <strong>Solution:</strong> An outside review found two ways a test run could look like success: a broken test runner counted as "nothing left to do", and a test setup the builder could change around the protected tests. Both are closed: a run that measures nothing is an error, and tests are counted in a copy where the builder's own pytest hooks and settings are gone.
       <strong>Result:</strong> Both attacks fail, with tests that prove it; the remaining gap (product code running in the test process) is recorded for the unattended runs.</p>

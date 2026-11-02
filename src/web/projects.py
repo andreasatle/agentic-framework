@@ -35,7 +35,7 @@ PROJECTS: tuple[Project, ...] = (
         ),
         period="Oct 2026 – now",
         status="active",
-        tags=("agents", "blackboard", "calibration", "LangChain", "Pydantic"),
+        tags=("agents", "blackboard", "calibration", "LangChain", "LangGraph", "Pydantic"),
         stat="5",
         stat_label="parsers and interpreters built from empty stubs, each passing its official test suite",
         media="html:swarm",
