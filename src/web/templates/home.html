@@ -4,17 +4,17 @@
 
 {% block content %}
 <section class="hero">
-  <canvas class="hero__canvas" data-viz="poincare" aria-hidden="true"></canvas>
+  <canvas class="hero__canvas" data-viz="sigreg" aria-hidden="true"></canvas>
   <div class="hero__fade"></div>
   <div class="wrap">
     <div class="hero__content">
-      <div class="eyebrow">Scientific computing → agents → world models</div>
-      <h1>Agents you can <span class="accent">audit</span>.<br>World models that <span class="accent-2">plan</span>.</h1>
+      <div class="eyebrow">Scientific computing → agent swarms → self-supervised learning</div>
+      <h1>Agent swarms that <span class="accent">finish</span> real problems.<br>Models that learn <span class="accent-2">without labels</span>.</h1>
       <p class="lede">
         I'm Andreas Atle. Forty years of programming, most of it numerical and scientific
-        computing: seismic imaging, HPC, eikonal solvers. Now I point that discipline at AI,
-        building LLM agents with explicit, verifiable behaviour, and self-supervised world
-        models that learn to predict and plan.
+        computing: seismic imaging, HPC, eikonal solvers. Now I point that discipline at AI:
+        teams of small LLM agents that finish real problems against objective checks, and
+        self-supervised models that learn from images before they ever see a label.
       </p>
       <div class="hero__cta">
         <a class="btn btn--primary" href="/work">See the work →</a>
@@ -22,7 +22,7 @@
       </div>
     </div>
   </div>
-  <div class="hero__caption">A 3-ary tree in the Poincaré disk, panned by a Möbius transform. Hyperbolic space has room for exponentially many branches. That idea drives my current research.</div>
+  <div class="hero__caption">LeJEPA's regularizer at work: a collapsed batch of embeddings is pulled toward an isotropic Gaussian, checked one random direction at a time (project, histogram, compare with the bell curve).</div>
 </section>
 
 <section class="section--tight">
@@ -31,18 +31,18 @@
     <div class="now">
       <div class="now__item reveal">
         <div class="pulse">in progress</div>
-        <h3>Hyperbolic JEPA on mazes</h3>
-        <p>Found a clean dimension crossover. Now working on why the planner fails on the final approach to the goal.</p>
+        <h3>AgentSwarm</h3>
+        <p>Teams of small agents built five parsers and interpreters from scratch (CommonMark, TOML, jq, YAML and HTML5), each passing its official test suite. Then from the specification alone, with every test hidden: TOML 100%, YAML 97%, JSONPath 99%. Red teams harden what the builders made, and a document now goes from a topic to a finished page with only a few approvals along the way.</p>
+      </div>
+      <div class="now__item reveal">
+        <div class="pulse">in progress</div>
+        <h3>LeJEPA on pathology images</h3>
+        <p>Self-supervised pretraining on 90,000 tissue images, no labels and no teacher network. With labels for only 1% of them, a linear classifier on the learned features reaches 91.6%, against 78.6% for a ResNet-18 trained from scratch on the same labels.</p>
       </div>
       <div class="now__item reveal">
         <div class="pulse">in progress</div>
         <h3>Title-document OCR</h3>
         <p>Reconciling four OCR/vision engines per page, checked by domain verifiers, so the numbers come out exactly as printed.</p>
-      </div>
-      <div class="now__item reveal">
-        <div class="pulse">in progress</div>
-        <h3>AgentSwarm</h3>
-        <p>Teams of small agents built five parsers and interpreters from scratch (CommonMark, TOML, jq, YAML and HTML5), each passing its official test suite. Then from the specification alone, with every test hidden: TOML 100%, YAML 97%, JSONPath 99%. Red teams harden what the builders made, and a document now goes from a topic to a finished page with only a few approvals along the way.</p>
       </div>
     </div>
   </div>
@@ -121,7 +121,7 @@
       </div>
       <div class="tl tl--now reveal">
         <div class="tl__when">2026 →</div>
-        <div class="tl__what"><h3>World models and planning</h3><p>JEPA from scratch: pixels to latent dynamics to MPC, then hyperbolic latents for branching futures.</p></div>
+        <div class="tl__what"><h3>Agent swarms and self-supervised learning</h3><p>AgentSwarm: loosely coupled teams of small agents that finish real problems. JEPA from scratch: a world model that plans, then LeJEPA, learning tissue images without labels.</p></div>
       </div>
     </div>
   </div>
@@ -130,7 +130,7 @@
 <section class="section section--raise">
   <div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap">
     <div>
-      <h2 style="margin-bottom:6px">Want to talk agents or world models?</h2>
+      <h2 style="margin-bottom:6px">Want to talk agents or self-supervised learning?</h2>
       <p class="muted" style="margin:0">I'm looking for work in the agent space. The best way to reach me is email.</p>
     </div>
     <div class="hero__cta" style="margin:0">

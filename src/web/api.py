@@ -112,7 +112,7 @@ def read_home(request: Request):
 
 
 # Shown in the "Right now" strip on the home page. Update when that strip changes.
-NOW_LABEL = "October 2026"
+NOW_LABEL = "November 2026"
 
 
 @app.get("/work", response_class=HTMLResponse)

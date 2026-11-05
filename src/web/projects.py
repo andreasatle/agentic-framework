@@ -41,6 +41,22 @@ PROJECTS: tuple[Project, ...] = (
         media="html:swarm",
     ),
     Project(
+        slug="i-jepa-pathology",
+        title="LeJEPA on histology: strong features from 1% of the labels",
+        summary=(
+            "A ViT pretrained without labels on 90,000 PathMNIST tissue images with LeJEPA: "
+            "views of the same image must agree, and the embeddings must look like an "
+            "isotropic Gaussian. No teacher network, no tricks against collapse. Then a "
+            "linear classifier on the frozen features, trained on 1% of the labels."
+        ),
+        period="Sep – Nov 2026",
+        status="active",
+        tags=("LeJEPA", "SIGReg", "ViT", "self-supervised", "medical imaging"),
+        stat="91.6%",
+        stat_label="with 1% of the labels (ResNet-18 from scratch on the same labels: 78.6%)",
+        media="img:/static/img/work/lejepa-views.jpg",
+    ),
+    Project(
         slug="jepa-ball-in-cup",
         title="Planning through a learned world model",
         summary=(
@@ -86,21 +102,6 @@ PROJECTS: tuple[Project, ...] = (
         stat="4 engines",
         stat_label="reconciled per page",
         media="html:ocr",
-    ),
-    Project(
-        slug="i-jepa-pathology",
-        title="I-JEPA on histology images",
-        summary=(
-            "Image JEPA (ViT, block masking) pretrained on PathMNIST at 224px on a "
-            "24 GB Mac, then frozen-feature probes against a random-init encoder "
-            "to measure what self-supervision actually buys."
-        ),
-        period="Sep 2026",
-        status="paused",
-        tags=("I-JEPA", "ViT", "self-supervised", "medical imaging"),
-        stat="78.6%",
-        stat_label="best linear probe (random-init encoder: 74.3%)",
-        media="img:/static/img/work/ijepa-masks.jpg",
     ),
     Project(
         slug="governed-agents",

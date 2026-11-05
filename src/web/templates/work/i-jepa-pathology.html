@@ -2,58 +2,95 @@
 
 {% block body %}
 <figure class="figure">
-  <div class="figure__frame"><img src="/static/img/work/ijepa-masks.jpg" alt="PathMNIST tiles with I-JEPA context and target block masks" loading="lazy"></div>
-  <figcaption>I-JEPA masking on PathMNIST tiles. Left: image. Middle: the context the encoder sees (132 patches). Right: four target blocks the predictor must predict in latent space.</figcaption>
+  <div class="figure__frame"><img src="/static/img/work/lejepa-views.jpg" alt="A PathMNIST tissue tile with six local windows marked, and the six windows after colour augmentation" loading="lazy"></div>
+  <figcaption>LeJEPA's views of one tissue tile. Left: the whole image (a global view) with six local windows. Right: the windows as the encoder sees them, each with its own flip, colour jitter, blur or grayscale. Every view must embed close to the others: same tissue, whatever the colour.</figcaption>
 </figure>
 
 <h2>Why</h2>
 <p>
-  Ball-in-cup taught the action-conditioned side of JEPA. The other big use case is a self-supervised
-  <em>visual backbone</em> for domains with many images and few labels, like pathology. I wanted to see it work at a
-  realistic resolution on my own hardware: PathMNIST at 224 px, ViT encoder, block masking, no EMA target.
+  Pathology has a lot of images and few expert labels. Self-supervised learning reads the images alone and builds
+  features; the labels are only needed at the end, and then only a few. I wanted to see how far that goes at a
+  realistic resolution on my own hardware: PathMNIST at 224 px, nine tissue classes, a small ViT on a 24 GB Mac.
 </p>
 
-<h2>Engineering on a 24 GB Mac</h2>
+<h2>The method: LeJEPA</h2>
 <p>
-  The 224 px split ships as a compressed <code>.npz</code>, and loading it pulls ~13.5 GB into RAM, which put training
-  straight into swap. Decompressing each split once to an uncompressed <code>.npy</code> and memory-mapping it brought
-  data RAM to roughly zero. It also let multiple data-loader workers share pages instead of copying.
+  I started with I-JEPA, which predicts hidden patches in latent space and needs a slowly moving teacher network
+  (an EMA copy) to keep the features from collapsing. It worked, but the teacher is a moving target, and I wanted a
+  method with a fixed objective. LeJEPA has one, with two terms:
+</p>
+<ul>
+  <li><strong>Agreement:</strong> eight views of each image (two whole, six local windows) are pulled toward their common centre in embedding space.</li>
+  <li><strong>SIGReg:</strong> the batch of embeddings must look like an isotropic Gaussian. It is checked along 1,024 random directions per step with a classic normality test (Epps–Pulley), which compares each projection's characteristic function with the bell curve's. A collapsed embedding fails it badly, so collapse is ruled out by the objective itself.</li>
+</ul>
+<p>
+  No teacher, no stop-gradient, no predictor; one weight balances the two terms. The views are cut at native
+  resolution, never resized, so a cell is always the same number of pixels: at one fixed magnification, size is
+  information. (The animation on the <a href="/">front page</a> is SIGReg at work.)
 </p>
 
-<h2>Probing the frozen encoder</h2>
-<p>Frozen features, 9 tissue classes, 7,180 test images. The same probes run on a randomly initialised encoder as a baseline:</p>
+<h2>All labels: features that travel</h2>
+<p>
+  Frozen encoder, mean-pooled features, a linear classifier trained on the 90,000 labelled training images. The test
+  images come from a different clinical centre than the training images, so they also measure how well the features
+  travel:
+</p>
 <div class="bars js-chart">
-  <div class="bar"><div class="bar__label">Random-init encoder<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="74.3"></div></div><div class="bar__val">74.3%</div></div>
-  <div class="bar bar--mid"><div class="bar__label">I-JEPA, epoch 1<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="77.2"></div></div><div class="bar__val">77.2%</div></div>
-  <div class="bar bar--hi"><div class="bar__label">I-JEPA, epoch 4<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="78.6"></div></div><div class="bar__val">78.6%</div></div>
-  <div class="bar"><div class="bar__label">Random-init encoder<small>5-NN</small></div><div class="bar__track"><div class="bar__fill" data-fill="63.1"></div></div><div class="bar__val">63.1%</div></div>
-  <div class="bar bar--hi"><div class="bar__label">I-JEPA, epoch 4<small>5-NN</small></div><div class="bar__track"><div class="bar__fill" data-fill="78.1"></div></div><div class="bar__val">78.1%</div></div>
+  <div class="bar"><div class="bar__label">Random-init encoder<small>floor, test</small></div><div class="bar__track"><div class="bar__fill" data-fill="68.1"></div></div><div class="bar__val">68.1%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">I-JEPA with EMA teacher, 30 epochs<small>test</small></div><div class="bar__track"><div class="bar__fill" data-fill="82.4"></div></div><div class="bar__val">82.4%</div></div>
+  <div class="bar bar--hi"><div class="bar__label">LeJEPA, 10 epochs<small>test</small></div><div class="bar__track"><div class="bar__fill" data-fill="92.8"></div></div><div class="bar__val">92.8%</div></div>
 </div>
 <p>
-  The linear-probe gain over random init is real but modest. The nearest-neighbour gain (+15 points) is the clearer
-  sign that the representation organises tissue types. The features' effective rank also roughly doubled between epochs 1 and 4.
+  On the validation split (same centre as training) the two methods are close, 95.2% and 95.9%. On the other centre's
+  images LeJEPA keeps 92.8% and I-JEPA drops to 82.4%, with a third of the training epochs for LeJEPA.
+</p>
+
+<h2>One percent of the labels</h2>
+<p>
+  The real question for pathology: with labels for only 1% of the images (901, stratified by class), do the
+  self-supervised features beat a network trained from scratch on those same labels? Three different label subsets,
+  the same subset for every method, fixed recipes, no checkpoint picking (validation split):
+</p>
+<div class="bars js-chart">
+  <div class="bar"><div class="bar__label">Random-init encoder<small>linear probe, floor</small></div><div class="bar__track"><div class="bar__fill" data-fill="56.4"></div></div><div class="bar__val">56.4%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">ViT-Tiny from scratch<small>the same network, end to end</small></div><div class="bar__track"><div class="bar__fill" data-fill="76.7"></div></div><div class="bar__val">76.7%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">ResNet-18 from scratch<small>the standard baseline</small></div><div class="bar__track"><div class="bar__fill" data-fill="78.6"></div></div><div class="bar__val">78.6%</div></div>
+  <div class="bar bar--hi"><div class="bar__label">LeJEPA features<small>k-NN</small></div><div class="bar__track"><div class="bar__fill" data-fill="88.2"></div></div><div class="bar__val">88.2%</div></div>
+  <div class="bar bar--hi"><div class="bar__label">LeJEPA features<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="91.6"></div></div><div class="bar__val">91.6%</div></div>
+</div>
+<p>
+  The frozen features win by 13 points over the best from-scratch network, far more than the 1–3 points the three
+  label subsets differ by. With all labels the same probe reaches 95.9%, so 99% fewer labels cost about 4 points.
+  The baselines use one fixed recipe, not tuned; tuning might add a few points to them, not thirteen.
 </p>
 
 <div class="callout">
   <strong>Lesson</strong>
-  A random-init baseline is essential. A linear probe on random ViT features already reaches 74%, so an absolute
-  number on its own says little about what pretraining did. Longer runs weren't automatically better either: probe
-  accuracy has to be tracked across checkpoints, not just read at the end.
+  A random-init baseline is essential: a linear probe on random ViT features already reaches 68% with all labels,
+  so an absolute number on its own says little about what pretraining did. And the clinical-centre shift on the test
+  split showed a difference between the methods that the validation split hid.
 </div>
 
+<h2>Where it started: I-JEPA</h2>
 <figure class="figure">
-  <div class="figure__frame" style="background:#fff"><img src="/static/img/work/ijepa-cluster.jpg" alt="2-D embedding of mean-pooled encoder features coloured by tissue class" loading="lazy"></div>
-  <figcaption>Mean-pooled features from a later checkpoint, projected to 2-D. Background, adipose and debris separate cleanly. The epithelial and stromal classes stay entangled.</figcaption>
+  <div class="figure__frame"><img src="/static/img/work/ijepa-masks.jpg" alt="PathMNIST tiles with I-JEPA context and target block masks" loading="lazy"></div>
+  <figcaption>I-JEPA masking on PathMNIST tiles, the first approach. Left: image. Middle: the context the encoder sees. Right: four target blocks the predictor must predict in latent space.</figcaption>
 </figure>
+<p>
+  The first runs also settled the engineering on a 24 GB Mac: the 224 px split ships as a compressed
+  <code>.npz</code> that pulls ~13.5 GB into RAM, so each split is decompressed once to an <code>.npy</code> and
+  memory-mapped, which brings data RAM to roughly zero and lets the data-loader workers share pages.
+</p>
 {% endblock %}
 
 {% block aside %}
 <div class="aside__box">
   <h4>Stack</h4>
   <ul>
-    <li>PyTorch · ViT, 384-d</li>
+    <li>PyTorch · ViT-Tiny, 192-d</li>
     <li>MedMNIST PathMNIST-224</li>
-    <li>Block masking, EMA-free</li>
+    <li>LeJEPA: 2 + 6 views, SIGReg</li>
+    <li>No EMA teacher, no predictor</li>
     <li>Linear, k-NN probes</li>
   </ul>
 </div>

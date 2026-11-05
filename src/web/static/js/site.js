@@ -270,6 +270,120 @@
     raf = requestAnimationFrame(frame);
   }
 
+
+  // =====================================================================
+  // Hero: LeJEPA's SIGReg. A batch of embeddings starts collapsed (a thin,
+  // off-centre streak) and is pulled toward an isotropic Gaussian. The check
+  // runs one random direction at a time: project every point onto the
+  // direction, histogram the projections, compare with the bell curve. The
+  // score is the Epps-Pulley statistic of that projection (closed form).
+  // =====================================================================
+  function sigreg(canvas) {
+    const N = 320, BINS = 25, CYCLE = 16, PULL = 9; // seconds: full cycle, pull phase
+    let start = [], goal = [];
+    const randn = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    const newCycle = () => {
+      const a = Math.random() * Math.PI, ca = Math.cos(a), sa = Math.sin(a);
+      const ox = 0.9 * randn(), oy = 0.9 * randn();
+      start = []; goal = [];
+      for (let i = 0; i < N; i++) {
+        const l = 0.9 * randn(), wdt = 0.06 * randn(); // a collapsed streak
+        start.push([ox + ca * l - sa * wdt, oy + sa * l + ca * wdt]);
+        goal.push([randn(), randn()]);
+      }
+    };
+    newCycle();
+    const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+    // Epps-Pulley score of a 1-D sample against N(0,1), weight e^(-t^2)
+    const epps = (x) => {
+      const n = x.length; let A = 0, B = 0;
+      for (let j = 0; j < n; j++) { B += Math.exp(-x[j] * x[j] / 6); for (let k = 0; k < n; k++) { const d = x[j] - x[k]; A += Math.exp(-d * d / 4); } }
+      return n * (Math.sqrt(Math.PI) * A / (n * n) - 2 * Math.sqrt(2 * Math.PI / 3) * B / n + Math.sqrt(Math.PI / 2));
+    };
+
+    let ctx, w, h, cx, cy, S;
+    const resize = () => {
+      ({ ctx, w, h } = fitCanvas(canvas));
+      const wide = w > 820;
+      const R = wide ? Math.min(h * 0.42, w * 0.28) : Math.min(w * 0.46, h * 0.38);
+      S = R / 3.2; // pixels per standard deviation
+      cx = wide ? w * 0.7 : w * 0.5;
+      cy = wide ? h * 0.5 : h * 0.36;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    let t0 = performance.now(), running = true, raf = 0, cycleNo = 0, score = 0, scoreAt = -1;
+    function frame(now) {
+      const t = (now - t0) / 1000;
+      const c = Math.floor(t / CYCLE);
+      if (c !== cycleNo) { cycleNo = c; newCycle(); }
+      const tc = t - c * CYCLE;
+      const e = reduceMotion ? 1 : ease(tc / PULL);
+      const fade = reduceMotion ? 1 : Math.min(1, tc / 0.8, (CYCLE - tc) / 0.8);
+      const P = start.map((s, i) => [s[0] + e * (goal[i][0] - s[0]), s[1] + e * (goal[i][1] - s[1])]);
+      const th = reduceMotion ? 0.6 : 0.6 + t * 0.12; // the random direction, slowly turning
+      const u = [Math.cos(th), Math.sin(th)], nrm = [-u[1], u[0]];
+      ctx.clearRect(0, 0, w, h);
+
+      // 1, 2 and 3 sigma rings of the target
+      ctx.lineWidth = 1;
+      for (let k = 1; k <= 3; k++) {
+        ctx.strokeStyle = `rgba(79,209,197,${0.22 - 0.05 * k})`;
+        ctx.beginPath(); ctx.arc(cx, cy, k * S, 0, Math.PI * 2); ctx.stroke();
+      }
+      // the direction: a line through the origin
+      const L = 3.6 * S;
+      ctx.strokeStyle = "rgba(160,195,215,0.35)";
+      ctx.beginPath(); ctx.moveTo(cx - u[0] * L, cy - u[1] * L); ctx.lineTo(cx + u[0] * L, cy + u[1] * L); ctx.stroke();
+
+      // histogram of the projections, drawn on the line, and the bell curve
+      const proj = P.map((p) => p[0] * u[0] + p[1] * u[1]);
+      const lo = -3.5, bw = 7 / BINS, hist = new Array(BINS).fill(0);
+      proj.forEach((x) => { const b = Math.floor((x - lo) / bw); if (b >= 0 && b < BINS) hist[b]++; });
+      const H = 2.2 * S; // pixels for a density of 1/sqrt(2 pi) ~ 0.4 -> about 0.9 S
+      ctx.fillStyle = `rgba(79,209,197,${0.16 * fade})`;
+      ctx.strokeStyle = `rgba(79,209,197,${0.45 * fade})`;
+      for (let b = 0; b < BINS; b++) {
+        const dens = hist[b] / (N * bw), x0 = (lo + b * bw) * S, x1 = x0 + bw * S, hh = Math.min(dens, 1.2) * H;
+        const q = (x, y) => [cx + u[0] * x + nrm[0] * y, cy + u[1] * x + nrm[1] * y];
+        const p1 = q(x0, 0), p2 = q(x1, 0), p3 = q(x1, -hh), p4 = q(x0, -hh);
+        ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]); ctx.lineTo(p4[0], p4[1]); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(245,180,84,0.9)"; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      for (let k = 0; k <= 80; k++) {
+        const x = -3.5 + (7 * k) / 80, y = -(Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI)) * H;
+        const px = cx + u[0] * x * S + nrm[0] * y, py = cy + u[1] * x * S + nrm[1] * y;
+        k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.stroke();
+
+      // the points
+      ctx.fillStyle = `rgba(160,195,215,${0.75 * fade})`;
+      P.forEach((p) => { ctx.beginPath(); ctx.arc(cx + p[0] * S, cy + p[1] * S, 1.7, 0, Math.PI * 2); ctx.fill(); });
+
+      // the score of this direction, a few times a second (wide screens only: on a phone it sits under the text)
+      if (w > 820) {
+      if (t - scoreAt > 0.25) { score = epps(proj); scoreAt = t; }
+      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.fillStyle = "rgba(245,180,84,0.9)";
+      ctx.fillText(`SIGReg, this direction: ${score.toFixed(1)}`, cx + 0.9 * S, cy - 3.0 * S);
+      ctx.fillStyle = "rgba(160,195,215,0.6)";
+      ctx.fillText("Gaussian: ~0.5", cx + 0.9 * S, cy - 3.0 * S + 16);
+      }
+
+      if (running && !reduceMotion) raf = requestAnimationFrame(frame);
+    }
+    whenVisible(canvas, (vis) => {
+      if (vis && !running) { running = true; raf = requestAnimationFrame(frame); }
+      if (!vis) { running = false; cancelAnimationFrame(raf); }
+    });
+    raf = requestAnimationFrame(frame);
+  }
+
   document.querySelectorAll("canvas[data-viz='poincare']").forEach(poincare);
+  document.querySelectorAll("canvas[data-viz='sigreg']").forEach(sigreg);
   document.querySelectorAll("canvas[data-viz='maze']").forEach(maze);
 })();
