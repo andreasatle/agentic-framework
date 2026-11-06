@@ -47,21 +47,27 @@
 
 <h2>One percent of the labels</h2>
 <p>
-  The real question for pathology: with labels for only 1% of the images (901, stratified by class), do the
-  self-supervised features beat a network trained from scratch on those same labels? Three different label subsets,
-  the same subset for every method, fixed recipes, no checkpoint picking (validation split):
+  The real question for pathology: with labels for only 1% of the images (901, stratified by class), how good are
+  the self-supervised features? Against networks trained from scratch on those same labels, and against the usual
+  shortcut in practice, a network pretrained on ImageNet's 1.3 million labelled photos. Three different label subsets,
+  the same subset for every method, fixed recipes, no checkpoint picking; scored once on the test split, the other
+  clinical centre:
 </p>
 <div class="bars js-chart">
-  <div class="bar"><div class="bar__label">Random-init encoder<small>linear probe, floor</small></div><div class="bar__track"><div class="bar__fill" data-fill="56.4"></div></div><div class="bar__val">56.4%</div></div>
-  <div class="bar bar--mid"><div class="bar__label">ViT-Tiny from scratch<small>the same network, end to end</small></div><div class="bar__track"><div class="bar__fill" data-fill="76.7"></div></div><div class="bar__val">76.7%</div></div>
-  <div class="bar bar--mid"><div class="bar__label">ResNet-18 from scratch<small>the standard baseline</small></div><div class="bar__track"><div class="bar__fill" data-fill="78.6"></div></div><div class="bar__val">78.6%</div></div>
-  <div class="bar bar--hi"><div class="bar__label">LeJEPA features<small>k-NN</small></div><div class="bar__track"><div class="bar__fill" data-fill="88.2"></div></div><div class="bar__val">88.2%</div></div>
-  <div class="bar bar--hi"><div class="bar__label">LeJEPA features<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="91.6"></div></div><div class="bar__val">91.6%</div></div>
+  <div class="bar"><div class="bar__label">Random-init encoder<small>linear probe, floor</small></div><div class="bar__track"><div class="bar__fill" data-fill="56.7"></div></div><div class="bar__val">56.7%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">ViT-Tiny from scratch<small>the same network, end to end</small></div><div class="bar__track"><div class="bar__fill" data-fill="78.9"></div></div><div class="bar__val">78.9%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">ResNet-18 from scratch<small>the standard baseline</small></div><div class="bar__track"><div class="bar__fill" data-fill="81.6"></div></div><div class="bar__val">81.6%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">ImageNet ResNet-18, frozen<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="86.1"></div></div><div class="bar__val">86.1%</div></div>
+  <div class="bar bar--hi"><div class="bar__label">LeJEPA, frozen<small>linear probe</small></div><div class="bar__track"><div class="bar__fill" data-fill="89.0"></div></div><div class="bar__val">89.0%</div></div>
+  <div class="bar bar--hi"><div class="bar__label">LeJEPA, fine-tuned<small>end to end on the 901 labels</small></div><div class="bar__track"><div class="bar__fill" data-fill="89.5"></div></div><div class="bar__val">89.5%</div></div>
+  <div class="bar bar--mid"><div class="bar__label">ImageNet ResNet-18, fine-tuned<small>end to end on the 901 labels</small></div><div class="bar__track"><div class="bar__fill" data-fill="89.6"></div></div><div class="bar__val">89.6%</div></div>
 </div>
 <p>
-  The frozen features win by 13 points over the best from-scratch network, far more than the 1–3 points the three
-  label subsets differ by. With all labels the same probe reaches 95.9%, so 99% fewer labels cost about 4 points.
-  The baselines use one fixed recipe, not tuned; tuning might add a few points to them, not thirteen.
+  LeJEPA's features beat training from scratch by 7–10 points and frozen ImageNet features by 3, and they match a
+  fine-tuned ImageNet network, from ten epochs on 90,000 unlabelled tissue images with a small ViT. On images from
+  the training centre itself, fine-tuned ImageNet is still about two points ahead (94.2% against 92.1%); on another
+  clinic's images, where it counts, the two are level. With all labels the same linear probe reaches 92.8% on test,
+  so 99% fewer labels cost about four points.
 </p>
 
 <div class="callout">

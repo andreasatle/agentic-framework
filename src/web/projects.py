@@ -42,18 +42,19 @@ PROJECTS: tuple[Project, ...] = (
     ),
     Project(
         slug="i-jepa-pathology",
-        title="LeJEPA on histology: strong features from 1% of the labels",
+        title="LeJEPA on histology: ImageNet-level features without a single label",
         summary=(
             "A ViT pretrained without labels on 90,000 PathMNIST tissue images with LeJEPA: "
             "views of the same image must agree, and the embeddings must look like an "
             "isotropic Gaussian. No teacher network, no tricks against collapse. Then a "
-            "linear classifier on the frozen features, trained on 1% of the labels."
+            "linear classifier on the frozen features, trained on 1% of the labels and "
+            "tested on images from another clinic."
         ),
         period="Sep – Nov 2026",
         status="active",
         tags=("LeJEPA", "SIGReg", "ViT", "self-supervised", "medical imaging"),
-        stat="91.6%",
-        stat_label="with 1% of the labels (ResNet-18 from scratch on the same labels: 78.6%)",
+        stat="89.0%",
+        stat_label="with 1% of the labels, on another clinic's images (from scratch: 81.6%; ImageNet, fine-tuned: 89.6%)",
         media="img:/static/img/work/lejepa-views.jpg",
     ),
     Project(
