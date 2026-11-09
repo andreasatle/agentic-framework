@@ -93,6 +93,53 @@
   self-supervision recovers on its own.
 </div>
 
+<h2>SIGReg instead of VICReg</h2>
+<p>
+  The anti-collapse term above is hand-built: a VICReg-style penalty with a square root on the variance term,
+  weighted by hand. LeWorldModel (2026) replaces it with SIGReg, from LeJEPA: the batch of embeddings must look
+  like an isotropic Gaussian, checked along 1,024 random directions with the Epps–Pulley test. Its authors argue
+  that this target is the right one when the downstream use is unknown. I swapped it in, keeping everything else.
+</p>
+<p>
+  On ball-in-cup the two tie: 96 against 96 of 100 paired starts, with the same embedding quality. Both are near
+  the ceiling, so I repeated the comparison on a harder task.
+</p>
+
+<figure class="figure">
+  <div class="figure__frame"><img src="/static/img/work/pusht-puzzle.jpg" alt="A Push-T puzzle: a grey T, a blue round pusher and the green goal T, at full resolution and at 64 by 64 pixels" loading="lazy"></div>
+  <figcaption>Push-T, one of the test puzzles. The blue pusher must push the grey T onto the green goal, within 20 px and 20 degrees. Left: the simulator's view. Right: the 64×64 frame the encoder gets, in which the tolerance is about two pixels.</figcaption>
+</figure>
+
+<p>
+  <strong>Push-T</strong> uses LeWorldModel's own data (18,685 expert demonstrations) and planner, scaled down to
+  run on the Mac: 64 px frames, a small CNN encoder and a small transformer predictor, the same for both
+  regularisers. The test is 50 puzzles from held-out demonstrations: reach the state the expert reached in 25
+  steps, within 50. Random actions solve 1, the expert's own actions 50. Since the regulariser's weight decides
+  how much training goes to prediction, I tried each at three weights spanning a factor of ten:
+</p>
+<div class="bars js-chart">
+  <div class="bar bar--hi"><div class="bar__label">SIGReg, weight 0.03<small>a third of the paper's</small></div><div class="bar__track"><div class="bar__fill" data-fill="78"></div></div><div class="bar__val">39/50</div></div>
+  <div class="bar bar--hi"><div class="bar__label">SIGReg, weight 0.09<small>the paper's value, untuned</small></div><div class="bar__track"><div class="bar__fill" data-fill="70"></div></div><div class="bar__val">35/50</div></div>
+  <div class="bar bar--mid"><div class="bar__label">SIGReg, weight 0.3</div><div class="bar__track"><div class="bar__fill" data-fill="42"></div></div><div class="bar__val">21/50</div></div>
+  <div class="bar bar--hi"><div class="bar__label">VICReg-style, weight 0.0016</div><div class="bar__track"><div class="bar__fill" data-fill="70"></div></div><div class="bar__val">35/50</div></div>
+  <div class="bar bar--mid"><div class="bar__label">VICReg-style, weight 0.005</div><div class="bar__track"><div class="bar__fill" data-fill="42"></div></div><div class="bar__val">21/50</div></div>
+  <div class="bar"><div class="bar__label">VICReg-style, weight 0.016<small>ball-in-cup's weight</small></div><div class="bar__track"><div class="bar__fill" data-fill="10"></div></div><div class="bar__val">5/50</div></div>
+</div>
+<p>
+  At their best weights the two plan equally well (39 and 35 differ by about the noise of one training run). The
+  difference is in how they get there. SIGReg worked at the published weight with no tuning, kept the embeddings at
+  their intended scale at every weight, and lost less when the weight was off. The VICReg-style penalty needed
+  tuning: at ball-in-cup's weight it solved only 5. That was not collapse; its covariance term cannot reach zero
+  when the batch is no larger than the embedding (sampling noise alone keeps it high), so it kept pulling the
+  embeddings smaller and took most of the training away from prediction.
+</p>
+
+<div class="callout">
+  <strong>Lesson</strong>
+  A regulariser's best score is only half the comparison; how forgiving it is about its weight matters as much.
+  SIGReg was the forgiving one: good enough out of the box, which is what I want from a default.
+</div>
+
 <h2>What came next</h2>
 <p>
   A Gromov δ-hyperbolicity test on the trained latent space came out low (relative δ ≈ 0.15–0.27), even
@@ -107,6 +154,8 @@
   <ul>
     <li>PyTorch · dm_control / MuJoCo</li>
     <li>VICReg-style loss, no EMA</li>
+    <li>SIGReg (LeWorldModel)</li>
+    <li>Push-T: CEM planning, 64 px</li>
     <li>CEM + MPC, closed loop</li>
     <li>Trained locally on a Mac</li>
   </ul>
