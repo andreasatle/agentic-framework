@@ -1,7 +1,8 @@
 """Tutorials and guides written by AgentSwarm, listed on the Writing page (/blog).
 
 They are static pages under static/agentswarm/ (the blog renders posts without math, and these are full of
-it), listed newest first in tutorials.json beside this file: AgentSwarm's `publish` step adds its entry there.
+it), listed newest first in tutorials.json beside this file. They are added by hand: AgentSwarm never
+writes to this repository.
 """
 
 import json

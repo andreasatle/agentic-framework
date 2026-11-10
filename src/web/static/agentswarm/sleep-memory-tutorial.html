@@ -1,0 +1,333 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>How Sleep Shapes Memory: A Tutorial on Replay, Chemistry, Emotion and Synapses</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})"></script>
+<style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
+:root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
+body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style",serif;max-width:46rem;margin:0 auto;padding:2.5rem 16px 4rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
+p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}
+.note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}</style></head><body><h1>How Sleep Shapes Memory: A Tutorial on Replay, Chemistry, Emotion and Synapses</h1>
+<p class="note">Written by AgentSwarm on 10 November 2026 for an educated adult, no biology, from sources it found and the user approved (listed under References). Every cited statement was then checked against its source, statement by statement, in two rounds of review; a sampled audit afterwards found 90% of cited statements fully supported by their source. Three broken lines that revisions left behind were removed by hand. Not reviewed by an expert: read it as a guide to its sources, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
+<h2>The puzzle: what is memory consolidation, and why would sleep matter?</h2>
+<p>Learning something new does not automatically make it last.
+A new memory, such as a list of word pairs you have just studied, is fragile at first, so the brain has to stabilise it over time.
+Memory relies on a consolidation process that is thought to benefit from sleep (Gais and Born, 2004, p. 1).</p>
+<p>A two-store picture is a conceptual model used in this tutorial, not an established fact.
+Under it, the hippocampus, a region deep in the brain, takes in new experiences quickly and may hold them temporarily.
+The neocortex, the wrinkled outer layer of the brain, may integrate them over a longer period.
+The authors of the acetylcholine study present this hippocampal-to-neocortical transfer as an integrative model that is conceptual in nature and needs further testing (Gais and Born, 2004, p. 4).</p>
+<p>Memory is commonly split into two kinds.
+Declarative memory, which depends on the hippocampus, is the memory system tested with word pairs and spatial locations (Gais and Born, 2004, p. 1).
+Nondeclarative memory covers skills and habits, such as tracing a figure in a mirror, and does not depend on the hippocampus in the same way (Gais and Born, 2004, p. 2).</p>
+<p>Sleep is not one state.
+Slow-wave sleep (SWS) is defined by slow, large brain waves on the electroencephalogram (EEG) (Gais and Born, 2004, p. 4).
+Rapid eye movement (REM) sleep is the stage with rapid eye movements, a high level of acetylcholine, and characteristic oscillations in the theta frequency band, which is a rhythm of roughly 4 to 7 cycles per second (Nishida et al., 2008, p. 1) (Nishida et al., 2008, p. 3).</p>
+<p>Several studies suggest that declarative memory improves more across periods rich in SWS than across periods rich in REM sleep, while nondeclarative memory benefits mainly from REM-rich periods (Gais and Born, 2004, p. 1).</p>
+<p>This tutorial answers four questions.
+What happens in the sleeping brain: does it replay what was learned?
+What chemical conditions allow this?
+Does emotion change which memories sleep helps?
+Is sleep also a general reset of the connections between brain cells?</p>
+<p>The sources span three kinds of animal.
+The replay study used rats, the acetylcholine and emotion studies used humans, and the synapse study used fruit flies (Nádasdy et al., 1999) (Gais and Born, 2004) (Nishida et al., 2008) (Bushey et al., 2011).</p>
+<h2>Question 1: Does the sleeping brain replay what it learned?</h2>
+<p>Memory consolidation is the process by which a newly formed memory becomes stable over time, and one proposal is that the brain reactivates recent experience during rest to achieve this.
+Nádasdy et al. (1999) tested this idea in rats, using a question that can be asked without any words: do the same patterns of nerve-cell firing recur during sleep that appeared during waking experience? (Nádasdy et al., 1999)</p>
+<p>First, some terms.
+A neuron is a nerve cell, and a spike is the brief electrical pulse it fires.
+Information may be carried not only by which cells are active but by the order and timing of their spikes, and a cell assembly is a group of cells that tend to fire together.
+The cells were recorded in the rat hippocampus, in the CA1 pyramidal layer (Nádasdy et al., 1999).
+The authors' own framing is that replayed hippocampal representations are hypothesized to be transferred to neocortical networks (Nádasdy et al., 1999).</p>
+<p>The experiment used six rats trained to run in a small wheel for a water reward.
+While they ran, a selected group of hippocampal cells (CA1 pyramidal cells) became active, and spikes from several cells were recorded at the same time with tetrodes, small bundles of wires.
+Recordings were made during sleep before and after wheel running. (Nádasdy et al., 1999)</p>
+<p>During slow-wave sleep (SWS), the hippocampus shows an irregularly occurring population burst of pyramidal cells, associated with a sharp-wave (SPW) event and a fast field oscillation, and firing rates of pyramidal cells increased sevenfold during SPW events. (Nádasdy et al., 1999)
+Between these bursts, population activity is relatively quiet. (Nádasdy et al., 1999)</p>
+<p>Finding a repeating sequence is hard because the brain has many cells firing at random.
+The authors used two search methods.
+The template-matching method takes a pattern of spikes within a time window (about 200 msec) as a template, slides it along the recording, and counts how often a matching pattern recurs, allowing a small timing tolerance of 10 or 20 msec. (Nádasdy et al., 1999)
+The joint probability map method looks only at groups of three spikes and asks which timings occur more often than expected from the pairs of spikes they contain. (Nádasdy et al., 1999)</p>
+<p>Repeats alone are not enough, because random firing also produces some repeats.
+The solution is a chance baseline built by Monte Carlo shuffling: the spikes are rearranged at random many times to make surrogate spike trains, and the number of repeats in the real data is compared with the number in the surrogates. (Nádasdy et al., 1999)
+The shuffling destroys the temporal order that would reflect real interaction between cells.
+The authors reasoned that if the real data contain more repeats than all 100 surrogates, the null hypothesis of chance can be rejected at p &lt; 0.01. (Nádasdy et al., 1999)</p>
+<p>No single shuffle is perfect, so the authors used four.
+Within-spike-train shuffling keeps each cell's firing rate but can break synchrony between cells.
+Temporal displacement moves each spike by a random 0 to 50 msec, which keeps synchrony during sharp waves.
+Across-spike-train shuffling reassigns each spike to a random cell, which keeps the population's activity pattern but can flatten differences between cells' firing rates.
+Phase-invariant shuffling rearranges spikes within each cycle of the slower theta-like rhythm, keeping their place in that cycle. (Nádasdy et al., 1999)
+The authors used four protocols because none of the known shuffling methods is universally applicable in all situations. (Nádasdy et al., 1999)
+Regardless of the shuffling method used, excessively repeating spike sequences were found. (Nádasdy et al., 1999)
+The authors also checked whether poor separation of spikes into cells (clustering) could create false repeats, and found that halving the firing rate did not remove the sequences as the artifact would predict. (Nádasdy et al., 1999)</p>
+<p>The main findings were these.
+Repetition of spike sequences was observed in every animal investigated, and repeating sequences were present during sleep as well as during running. (Nádasdy et al., 1999)
+For the wheel-running recording from one rat, the number of repeating sequences exceeded that in every surrogate train for all four shuffling methods. (Nádasdy et al., 1999)
+Sequences from wheel running also appeared in the following sleep more often than sequences from sleep before running. (Nádasdy et al., 1999)
+Sequences from wheel running were replayed faster during single sharp-wave bursts, a process the authors call time compression.
+Short sequences were linked to fast ripple oscillations (about 140 to 200 Hz) in the sharp-wave bursts, while long sequences were linked to the slower theta-like rhythm during waking behaviour. (Nádasdy et al., 1999)</p>
+<p>Time compression is like playing a song back at high speed.
+The same notes come in the same order, but a few seconds of melody are squeezed into a fraction of a second.
+Here, a pattern that unfolded over about 100 msec or more during running reappeared in a shorter burst during sleep. (Nádasdy et al., 1999)</p>
+<p>The authors used four shuffling approaches in total, and all four were compared on wheel-running data from one rat (Nádasdy et al., 1999).
+For the broader template-matching comparisons across rats, they used across-spike-train shuffling, because the spike trains contained both u and non-u epochs (Nádasdy et al., 1999).
+What the experiment shows: repeating sequences in sleep and wake exceed chance under shuffling controls, and wheel-running sequences recur in later sleep in compressed form (Nádasdy et al., 1999).
+What the authors propose as a hypothesis: these sleep sequences are reactivation of circuitry shaped by experience, and this reactivation may serve to consolidate information. (Nádasdy et al., 1999)
+The authors suggest that replay could strengthen connections between cells that did not fire together during learning, but direct proof remains a future challenge. (Nádasdy et al., 1999)</p>
+<p>Limits.
+This study does not test whether replay causes better memory; it shows that sleep patterns resemble waking patterns, not that they improve performance. (Nádasdy et al., 1999)
+The work was done in rats, so it does not directly show what happens in human sleep.
+The analysis relies on statistical comparisons with surrogate data, and the number of recorded cells per dataset was small (4 to 13 pyramidal cells). (Nádasdy et al., 1999)</p>
+<h2>Question 2: What chemical state lets replay and transfer happen? Acetylcholine in slow-wave sleep</h2>
+<p>A neurotransmitter is a chemical messenger that one nerve cell releases to signal the next one across a synapse, the small gap between cells.
+Acetylcholine (ACh) is one such messenger, and it is central to learning while you are awake (Gais and Born, 2004).
+ACh matters clinically because a major treatment target for memory deficits, such as those in Alzheimer's disease, is the cholinergic system (Gais and Born, 2004).
+Drugs that raise ACh by slowing its breakdown have been reported to improve memory, while drugs that block it, such as scopolamine, impair memory function (Gais and Born, 2004).
+Declarative memory depends on the hippocampus (Gais and Born, 2004).</p>
+<p>The puzzle is a paradox.
+Slow-wave sleep (SWS) is marked by slow, large brain waves, and declarative consolidation is particularly strong during it (Gais and Born, 2004).
+Yet during SWS, ACh activity is suppressed to an absolute minimum, far below its level in wakefulness and REM sleep (Gais and Born, 2004).
+Because ACh seems necessary for memory function, this low level during the best consolidation sleep looks paradoxical (Gais and Born, 2004).</p>
+<p>The authors describe a model, proposed by Buzsáki and Hasselmo, that addresses the paradox as a tension, offered as a hypothesis (Gais and Born, 2004).
+In this model, during the sharp-wave activity of SWS, newly acquired declarative memories stored in the hippocampus are reactivated and transferred to neocortical networks (Gais and Born, 2004).
+Transfer requires that cholinergic suppression be switched on, which releases suppression of excitatory feedback synapses in hippocampal region CA3 and of outputs spreading from CA3 to CA1, the entorhinal cortex and the neocortex (Gais and Born, 2004).
+During wakefulness, strong cholinergic activity suppresses hippocampal–neocortical feedback, but not neocortical–hippocampal flow (Gais and Born, 2004).
+During SWS, cholinergic suppression is released, so the hippocampal feedback synapses are disinhibited and activity can spread toward the entorhinal cortex and neocortex (Gais and Born, 2004).</p>
+<p>The model makes a clear prediction: raising cholinergic activity during SWS should disrupt declarative memory processing (Gais and Born, 2004).
+The prediction also specifies a contrast.
+Nondeclarative memory is said to depend on structures outside the hippocampus, so the low ACh tone should not affect it (Gais and Born, 2004).
+This gives the test a built-in control.
+If one drug disrupts the declarative task but leaves the nondeclarative task intact, the effect is specific to the hippocampal memory system rather than a general impairment of learning or alertness (Gais and Born, 2004).
+A everyday analogy: if a drug makes a person forget where they put their keys but not how to ride a bicycle, the drug is not simply making the person less alert.</p>
+<p>The experiment, shown in humans, tested this prediction.
+Healthy young men learned two tasks in the evening: a declarative paired-associate word list (40 pairs of related German words, to be recalled from the first word) and a nondeclarative mirror tracing task, in which they traced figures they could see only in a mirror (Gais and Born, 2004).
+At sleep onset, subjects in the sleep experiment (n = 18) received physostigmine, a cholinesterase inhibitor that raises ACh by reducing its breakdown, or a placebo, over the first part of the night, when SWS is high (Gais and Born, 2004).
+A separate wake control group (n = 11) received the same treatment but stayed awake between learning and recall (Gais and Born, 2004).
+Recall was tested about 4.45 hours after learning, with the comparison measured as the change in performance from learning to recall (Gais and Born, 2004).</p>
+<p>What was found is as follows.
+The main analyses were restricted to the 11 participants whose sleep parameters did not change, and in this subsample word-list recall improved by 5.2 words over sleep after placebo but by only 2.1 words after physostigmine, a loss the authors describe as a total loss of the sleep benefit (Gais and Born, 2004).
+The full sample of 18 gave a similar result, so the selection did not change the conclusion (Gais and Born, 2004).
+The authors also excluded several possible mediating factors, including sleep depth, by using subjects with comparable sleep architecture on both nights (Gais and Born, 2004).
+The mirror tracing task showed no detrimental effect of physostigmine during sleep or wakefulness (Gais and Born, 2004).
+During wakefulness, physostigmine had no negative effect on word-list recall (Gais and Born, 2004).
+A separate butylscopolamine control, which does not cross the blood-brain barrier, did not change recall after sleep, so the effect was not due to the drug used to counter side effects (Gais and Born, 2004).</p>
+<p>Several limits apply.
+The subjects were healthy men, so the results are from humans but not from women or patients (Gais and Born, 2004).
+The authors state directly that they cannot show the site of action in humans: "although we cannot show directly the site of action in humans" (Gais and Born, 2004).
+Raising ACh also changed sleep stages in some subjects, and the authors note that a dissociation between direct cholinergic effects on memory and effects mediated by a change in sleep stage is difficult to achieve (Gais and Born, 2004).
+The decline in SWS after physostigmine was not correlated with the memory loss (r = 0.00), which the authors use to argue for a direct effect, but this is an argument within the model, not a direct measurement (Gais and Born, 2004).
+The authors describe their integrative model as conceptual in nature and in need of further testing (Gais and Born, 2004).</p>
+<p>To summarise the status of the claims: the finding that raising ACh during SWS-rich sleep impairs word-list recall, while leaving the mirror task and waking recall alone, is shown by the experiment in humans (Gais and Born, 2004).
+The claim that low ACh is needed for hippocampal reactivation and transfer to neocortex is the authors' model, based on earlier animal work, and is not directly measured here (Gais and Born, 2004).</p>
+<h2>Question 3: Does emotion change which memories sleep keeps, and is REM sleep the key? Evidence from a nap study</h2>
+<p>Emotional memories are often remembered better and for longer than neutral ones, and the gap can grow as time passes (Nishida et al., 2008, p. 6).
+This suggests that emotion keeps shaping memory in the hours and days after an event, not only at the moment it happens.
+Sleep also helps memory across a delay, so a natural question is whether it helps emotional memories in particular (Nishida et al., 2008, p. 1).
+The stage singled out as a candidate is rapid eye movement (REM) sleep (Nishida et al., 2008, p. 1).</p>
+<p>Why REM?
+Three features make it a plausible candidate, and the authors give them as reasons for suspicion, not as proof.
+First, acetylcholine (ACh), the chemical from Question 2, is markedly raised during REM, reportedly about four times the non-REM level and about twice the level in quiet waking (Nishida et al., 2008, p. 7).
+Second, REM shows prominent theta-band activity (Nishida et al., 2008, p. 1).
+Third, hippocampus and amygdala activity becomes coupled during REM (Nishida et al., 2008, p. 1).
+The amygdala is a limbic structure whose cooperation with the hippocampus plays a role in modulating affective experiences (Nishida et al., 2008, p. 7).</p>
+<p>The study used a nap paradigm.
+Thirty-one adults aged 18 to 30 were assigned to a Nap group (n = 15) or a No-Nap group (n = 16) (Nishida et al., 2008, p. 2).
+Each person viewed pictures from a standardised set, half negative and arousing and half neutral (Nishida et al., 2008, p. 2).
+Study session one took place 4 hours before a recognition test, and study session two 15 minutes before it (Nishida et al., 2008, p. 2).
+Between the sessions, the Nap group had a 90-minute sleep opportunity, while the No-Nap group stayed awake (Nishida et al., 2008, p. 2).</p>
+<p>Think of two lists learned at 1 pm and 5 pm and tested at 5:15 pm.
+The two lists are deliberately different ages at test: the 1 pm list is about 4 hours old and the 5 pm list about 15 minutes old (Nishida et al., 2008, p. 2).
+Testing both sets together holds test time constant; comparing their score difference between the Nap and No-Nap groups helps distinguish a sleep-related benefit from the passage of time alone (Nishida et al., 2008, p. 2).
+Both groups followed the same study and test schedule; the Nap group slept between the two study sessions, and the No-Nap group stayed awake (Nishida et al., 2008, p. 2).
+The "offline benefit" is the 4-hour score minus the 15-minute score; a positive value means the older items were remembered relatively better (Nishida et al., 2008, p. 2).</p>
+<p>The main result was selective.
+In the Nap group, emotional pictures studied 4 hours earlier were remembered better than those studied 15 minutes earlier (t(14) = 2.49, P = 0.02) (Nishida et al., 2008, p. 3).
+In the No-Nap group the two sets were almost identical (t(15) = 0.57, P = 0.58) (Nishida et al., 2008, p. 3).
+For neutral pictures there was no difference in either group (Nishida et al., 2008, p. 3).</p>
+<p>A correlation coefficient, written r or R, runs from -1 to +1 and describes how closely two measures move together across people.
+Values near +1 mean more of one goes with more of the other, values near -1 mean the reverse, and values near 0 mean little linear association.
+The source reports P values against the conventional threshold of P &lt; 0.05 for significance (Nishida et al., 2008, p. 3).
+With only 15 people in the Nap group, these numbers are fragile.
+The offline benefit correlated positively with REM percentage (R = 0.63, P &lt; 0.03) and REM minutes (R = 0.52, P &lt; 0.05), and negatively with REM latency, the time taken to enter REM (R = -0.64, P &lt; 0.03) (Nishida et al., 2008, p. 4).
+The authors note these narrowly missed significance after the most conservative correction for multiple comparisons (Nishida et al., 2008, p. 4).
+Other sleep stages, including SWS, showed no relationship with the emotional benefit (Nishida et al., 2008, p. 4).</p>
+<p>The EEG (a recording of brain electrical activity from scalp electrodes) was analysed by spectral power, which measures how much activity lies in each frequency band; theta was 4.0 to 7.0 Hz (Nishida et al., 2008, p. 3).
+The authors compared right and left frontal electrodes, F4 minus F3, as a measure of right-sided prefrontal theta (Nishida et al., 2008, p. 5).
+This difference correlated positively with the emotional benefit (R = 0.61, P &lt; 0.03), but it did not meet the Bonferroni-adjusted significance threshold of 0.013 for multiple comparisons (Nishida et al., 2008, p. 5).
+Finer analysis showed that only theta bins correlated with the benefit, strongest at 5.75 Hz (Nishida et al., 2008, p. 6).
+Central electrodes did not show this association (Nishida et al., 2008, p. 5).</p>
+<p>Correlation is not causation.
+These numbers show that people with more REM, or more right-sided prefrontal theta during REM, tended to show a larger emotional benefit.
+They do not show that theta causes consolidation, or that REM is necessary for it.
+The No-Nap group had no EEG recorded, so theta during waking could not be compared directly (Nishida et al., 2008, p. 7).</p>
+<p>This contrasts with Questions 1 and 2, which concerned slow-wave sleep (SWS), and in rats, spike sequences and acetylcholine.
+This study concerns REM, emotional pictures, scalp EEG and humans, and it found no link between SWS and the emotional benefit (Nishida et al., 2008, p. 4).
+Neutral memory was not enhanced after the nap, and the authors suggest the short nap may not have been long enough (Nishida et al., 2008, p. 8).</p>
+<p>Reported result: the nap benefit was selective to emotional pictures, and the authors report correlations with REM amount and REM latency (Nishida et al., 2008, p. 4).
+Authors' interpretation: theta activity in combination with REM sleep preferentially facilitates emotional memory consolidation (Nishida et al., 2008, p. 7).
+This interpretation is a hypothesis built on correlations, in a small human sample, using one nap and a limited set of pictures (Nishida et al., 2008, p. 2) (Nishida et al., 2008, p. 7).</p>
+<h2>Question 4: Is sleep also a reset? Synaptic homeostasis in fruit flies</h2>
+<p>A synapse is the junction where one nerve cell passes signals to another, and synaptic strength is how effectively a signal crosses it.
+Learning is thought to work largely by strengthening synapses, a process the authors call synaptic potentiation (Bushey et al., 2011, p. 1).
+The synaptic homeostasis hypothesis proposes that staying awake brings a steady net rise in synaptic strength, and that this cannot last: stronger synapses use more energy, take up more space, need more supplies, and eventually saturate the brain's ability to learn (Bushey et al., 2011, p. 1).
+On this view sleep is needed to bring synaptic strength back down to sustainable levels, a process called renormalisation (Bushey et al., 2011, p. 1).
+The hypothesis also predicts that the more intense the waking experience, the more sleep a brain needs (Bushey et al., 2011, p. 1).
+Evidence from rodents and zebrafish was consistent with this, but it was mainly correlational: markers of synaptic strength were higher after wake and lower after sleep (Bushey et al., 2011, p. 1).
+Correlation means two things change together; it does not show that one causes the other, so the authors sought direct proof at the level of individual synapses (Bushey et al., 2011, p. 1).</p>
+<p>Why fruit flies? <em>Drosophila melanogaster</em>, the fruit fly, sleeps, and its brain circuits can be studied with genetic tools that label specific cells (Bushey et al., 2011).
+The authors studied three cell groups: small ventral lateral neurons, gamma neurons of the mushroom bodies, and a single large neuron called VS1 (Bushey et al., 2011, p. 2).
+Synapse size and number were measured by fluorescent labelling of synaptic markers combined with confocal microscopy, which produced three-dimensional image stacks (Bushey et al., 2011).
+For VS1, individual dendritic spines (small protrusions that receive signals) were counted and classified, and the authors compared flies that were awake, asleep, or sleep deprived (Bushey et al., 2011, p. 3).
+Sleep deprivation was done by vibratory stimuli, which kept flies awake but often made them fall from the top to the bottom of the tubes (Bushey et al., 2011, p. 3).
+The authors suggest that "it is possible that these cells were activated by the fall," because visually driven responses in VS neurons are stronger during flight than during non-flight (Bushey et al., 2011, p. 3).</p>
+<p>The main findings, in the authors' words, were that synapse size or number increases after a few hours of wake and decreases only if flies are allowed to sleep (Bushey et al., 2011, p. 1).
+In the small ventral lateral neurons, presynaptic staining was higher in sleep-deprived and spontaneously awake flies than in sleeping flies, while the axon shafts showed no such difference, which the authors read as a change specific to the synaptic terminal (Bushey et al., 2011, p. 2).
+In VS1, the total number of spines was similar in awake and sleeping flies but rose after sleep deprivation, mainly through stubby spines (Bushey et al., 2011, p. 3).
+When flies were given a richer experience in a large chamber, a "fly mall" where they could fly and interact for 12 hours, VS1 branches grew and spine number rose; flies then allowed to sleep returned to baseline, while sleep-deprived flies stayed high (Bushey et al., 2011).
+Richer experience also produced more sleep: flies slept more over the following 24 hours (Bushey et al., 2011, p. 4).
+The gene Fmr1 (fragile X mental retardation 1) was tested because its protein is present in dendritic spines and affects pruning (Bushey et al., 2011, p. 4).
+Flies that overexpressed Fmr1 in VS neurons showed no rise in spine number after sleep deprivation, which the authors take as evidence that Fmr1 is involved in sleep-dependent renormalisation (Bushey et al., 2011, p. 4).
+The authors note that this Fmr1 result was small for sleep itself, since sleep need probably reflects plasticity across many brain areas (Bushey et al., 2011, p. 4).</p>
+<p>How does this differ from the replay view?
+Replay, discussed in Question 1, is about which sequences of cells fire, and the authors of that work proposed that such reactivation serves consolidation (Nádasdy et al., 1999).
+The synaptic homeostasis view is about the overall balance of synaptic strength, and the authors' results support the view that sleep is required for a net decrease in synaptic strength across many circuits (Bushey et al., 2011, p. 4).
+A possible hypothesis, not tested by these sources, is that the two fit together: replay could strengthen selected connections while a global downscaling during sleep keeps the total within sustainable limits.
+The authors themselves say the mechanism by which sleep reduces synaptic strength remains unknown, and they suggest possible mechanisms in mammals such as slow oscillations and low noradrenaline (Bushey et al., 2011, p. 5).</p>
+<p>Limits to keep in mind.
+The study is in flies, which are not humans, and the work was done in a few cells rather than the whole brain (Bushey et al., 2011).
+The structural changes (synapse size and number) are correlated with synaptic strength, and the link between structural and functional plasticity is complex (Bushey et al., 2011, p. 2).
+The link between this renormalisation and memory consolidation is the authors' proposal, not a result shown by their experiments (Bushey et al., 2011, p. 1).</p>
+<h2>Side by side: comparing the four approaches</h2>
+<p>The four lines of work ask different questions, at different levels, in different species.
+Read the table first, then the notes on where the ideas fit together and where they pull apart.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Replay (Nádasdy et al., 1999)</th>
+<th>Acetylcholine (Gais &amp; Born, 2004)</th>
+<th>Emotion and REM (Nishida et al., 2009)</th>
+<th>Synaptic homeostasis (Bushey et al., 2011)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sleep stage</td>
+<td>Slow-wave sleep, with sharp-wave bursts (Nádasdy et al., 1999)</td>
+<td>Slow-wave sleep, SWS-rich first half of the night (Gais and Born, 2004)</td>
+<td>REM sleep, in a 90-minute nap (Nishida et al., 2008)</td>
+<td>Waking versus sleep, and sleep deprivation (Bushey et al., 2011)</td>
+</tr>
+<tr>
+<td>Species</td>
+<td>Rat (Nádasdy et al., 1999)</td>
+<td>Human (Gais and Born, 2004)</td>
+<td>Human (Nishida et al., 2008)</td>
+<td>Fruit fly, Drosophila (Bushey et al., 2011)</td>
+</tr>
+<tr>
+<td>Level</td>
+<td>Spike sequences in hippocampal cells (Nádasdy et al., 1999)</td>
+<td>Chemistry (acetylcholine, manipulated with physostigmine) (Gais and Born, 2004)</td>
+<td>Brain rhythm (theta power) and behaviour (Nishida et al., 2008)</td>
+<td>Synapse structure (Bushey et al., 2011)</td>
+</tr>
+<tr>
+<td>Question</td>
+<td>Do recorded spike sequences recur beyond chance, and are they replayed during sleep? (Nádasdy et al., 1999)</td>
+<td>Does raising cholinergic tone during SWS disturb declarative memory? (Gais and Born, 2004)</td>
+<td>Does REM sleep, and its theta activity, relate to emotional memory benefit? (Nishida et al., 2008)</td>
+<td>Does sleep reduce the synaptic strengthening caused by waking? (Bushey et al., 2011)</td>
+</tr>
+<tr>
+<td>Main method</td>
+<td>Template matching, joint probability map, Monte Carlo shuffling (Nádasdy et al., 1999)</td>
+<td>Placebo-controlled drug infusion, with a declarative and a nondeclarative task (Gais and Born, 2004)</td>
+<td>Nap versus no-nap groups, EEG spectral power, correlation (Nishida et al., 2008)</td>
+<td>Confocal imaging of synapses after sleep, wake or sleep deprivation (Bushey et al., 2011)</td>
+</tr>
+<tr>
+<td>Main finding</td>
+<td>Repeating sequences exceed chance, and wheel sequences recur compressed in SWS (Nádasdy et al., 1999)</td>
+<td>Physostigmine during sleep removed the sleep benefit for word pairs, not for mirror tracing (Gais and Born, 2004)</td>
+<td>Nap benefit for emotional but not neutral pictures; REM amount and right prefrontal theta correlated with it (Nishida et al., 2008)</td>
+<td>Synapses grew after wake and shrank only in flies that slept (Bushey et al., 2011)</td>
+</tr>
+<tr>
+<td>Limit it addresses</td>
+<td>Replay is correlational and lacks a test of mechanism (Nádasdy et al., 1999)</td>
+<td>Adds a drug manipulation, with a built-in control task (Gais and Born, 2004)</td>
+<td>Ties in emotion, REM and humans (Nishida et al., 2008)</td>
+<td>Shifts to a global "reset" idea of sleep (Bushey et al., 2011)</td>
+</tr>
+<tr>
+<td>Strength of evidence</td>
+<td>Direct recordings, but correlational for memory (Nádasdy et al., 1999)</td>
+<td>Experimental manipulation in humans; model is conceptual (Gais and Born, 2004)</td>
+<td>Correlational within a small nap group (Nishida et al., 2008)</td>
+<td>Direct structural measures, but indirect for memory (Bushey et al., 2011)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Where the ideas complement each other</strong></p>
+<ul>
+<li>Replay and acetylcholine fit together: the replay study records sharp-wave activity in SWS (Nádasdy et al., 1999), and the acetylcholine model proposes that low cholinergic tone during SWS lets that activity reach neocortex (Gais and Born, 2004).</li>
+<li>Synaptic homeostasis proposes that sleep lowers synaptic strength after a net wake-related increase, whereas replay concerns the reactivation of recorded spike sequences (Bushey et al., 2011) (Nádasdy et al., 1999).</li>
+</ul>
+<p><strong>Where they seem to pull in different directions</strong></p>
+<ul>
+<li>Strengthening versus down-scaling: replay is proposed to reactivate and consolidate information (Nádasdy et al., 1999), while the fly work proposes that sleep lowers synaptic strength to sustainable levels (Bushey et al., 2011).</li>
+<li>SWS versus REM: the replay and acetylcholine work centres on SWS (Nádasdy et al., 1999) (Gais and Born, 2004), while the nap study links the memory benefit to REM (Nishida et al., 2008).</li>
+<li>Low versus high acetylcholine: the model needs low acetylcholine during SWS, while the nap study notes REM sleep is associated with high acetylcholine (Nishida et al., 2008) (Gais and Born, 2004).</li>
+</ul>
+<p><strong>Caveat:</strong> none of these four studies tests the others' claims, and the species differ, so the table compares designs rather than settling which mechanism is right.</p>
+<h2>What is proven, what is shown, and what is hypothesis</h2>
+<p>Sleep-and-memory headlines often blur three kinds of claim: what an experiment directly shows, what the authors infer from it, and what is extrapolated across species.
+(a) What the data directly show:
+- In rats, hippocampal spike sequences recur more often than chance, tested against shuffled surrogate spike trains (Nádasdy et al., 1999).
+- Sequences from wheel running reappeared compressed in time within sharp-wave bursts of slow-wave sleep (Nádasdy et al., 1999).
+- In humans, physostigmine, which raises central cholinergic activity, during a sleep period blocked the sleep benefit for a word-pair (declarative) task but not for a mirror-tracing (nondeclarative) task (Gais and Born, 2004).
+- In the same human study, the drug did not impair declarative recall when subjects stayed awake, so the effect was tied to the sleep period (Gais and Born, 2004).
+- In humans, right-minus-left prefrontal theta was positively correlated with the offline emotional memory benefit (R = 0.61) (Nishida et al., 2008).
+- In flies, synapse size or number increased after wake and decreased only when flies were allowed to sleep (Bushey et al., 2011).
+- In flies, the Fmr1 gene plays an important role in sleep-dependent synaptic renormalisation; overexpressing Fmr1 abolished the wake-dependent increase in VS1 spine number, though its effects on sleep were small (Bushey et al., 2011).
+(b) What is only inferred:
+- That replay causes consolidation: the rat study shows replay-like sequences but does not test whether replay improves memory (Nádasdy et al., 1999).
+- That the proposed hippocampal replay-and-transfer mechanism explains the effect: raising cholinergic activity experimentally impaired declarative consolidation, but the authors call their integrative model conceptual and in need of further testing, and the human site of action was not directly shown (Gais and Born, 2004).
+- That REM theta causes emotional processing: a correlation does not show that theta drives the benefit, and theta also occurs outside REM (Nishida et al., 2008).
+- That synaptic downscaling underlies a memory benefit: the fly study measures synapse structure and proposes that sleep-dependent synaptic homeostasis may explain why sleep is required to maintain cognitive performance (Bushey et al., 2011).
+- The fly study does not measure memory or test memory consolidation; it only links its synaptic results to cognitive performance through the homeostasis proposal (Bushey et al., 2011).
+(c) The cross-species gap:
+- Replay evidence comes from rats; the acetylcholine and emotional-memory evidence comes from humans (Nádasdy et al., 1999) (Gais and Born, 2004) (Nishida et al., 2008).
+- The synaptic evidence comes from fruit flies (Bushey et al., 2011).
+- A result in one species is a reason to test a claim in another, not proof that it holds there.
+Questions to ask of any sleep-and-memory headline: Which species and sleep stage?
+Is the finding a correlation or a manipulation?
+Is there a control?
+Does the measure test memory directly, or only a step toward it?</p>
+<h2>Summary and questions to check your understanding</h2>
+<p>Memory relies on a consolidation process that is thought to benefit from sleep (Gais and Born, 2004, p. 1).
+In rats, spike sequences recorded during wheel running reappear during slow-wave sleep, compressed in time within sharp-wave bursts; the authors propose this replay serves consolidation, but no test here shows that replay causes better memory (Nádasdy et al., 1999).
+In humans, low acetylcholine during slow-wave sleep appears necessary for declarative memory, while a drug that raised it blocked the sleep benefit for word pairs but not for mirror tracing (Gais and Born, 2004).
+In a human nap study, the benefit for negative pictures tracked REM sleep and right-lateralised prefrontal theta, but these are correlations, not proof of cause (Nishida et al., 2008).
+In fruit flies, synapses grew after wake and shrank only when the flies slept, supporting the authors' synaptic-reset hypothesis, without directly testing a memory benefit (Bushey et al., 2011).</p>
+<p>Self-check questions:</p>
+<ol>
+<li>What is memory consolidation, and what is replay?</li>
+<li>Why does shuffling the spikes matter when testing whether a sequence recurs?</li>
+<li>Why would low acetylcholine during slow-wave sleep help declarative memory, and what does the model predict for nondeclarative memory?</li>
+<li>What does a correlation between prefrontal theta and the emotional memory benefit show, and what does it not show?</li>
+<li>How does synaptic homeostasis differ from replay as an account of sleep and memory?</li>
+<li>Which of the claims in this tutorial are hypotheses rather than shown results?</li>
+</ol>
+<h2>References</h2>
+<ul>
+<li>Bushey, D., Tononi, G., Cirelli, C. (2011). <a href="https://doi.org/10.1126/science.1202839"><em>Sleep and Synaptic Homeostasis: Structural Evidence in Drosophila</em></a>. Science.</li>
+<li>Gais, S., Born, J. (2004). <a href="https://doi.org/10.1073/pnas.0305404101"><em>Low acetylcholine during slow-wave sleep is critical for declarative memory consolidation</em></a>. Proceedings of the National Academy of Sciences.</li>
+<li>Nishida, M., Pearsall, J., Buckner, R. L., Walker, M. P. (2008). <a href="https://doi.org/10.1093/cercor/bhn155"><em>REM Sleep, Prefrontal Theta, and the Consolidation of Human Emotional Memory</em></a>. Cerebral Cortex.</li>
+<li>Nádasdy, Z., Hirase, H., Czurkó, A., Csicsvari, J. L., Buzsáki, G. (1999). <a href="https://doi.org/10.1523/jneurosci.19-21-09497.1999"><em>Replay and Time Compression of Recurring Spike Sequences in the Hippocampus</em></a>. Journal of Neuroscience.</li>
+</ul>
+</body></html>
