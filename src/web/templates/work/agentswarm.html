@@ -338,8 +338,8 @@
   Writing a document used to take several commands, and judgement about which one to run next. Now it is one
   run with a hard budget: <code>agentswarm write "how sleep affects memory" --reader "a curious adult, no
   biology" --budget 1.50</code>. The run finds the sources, writes the sections with the same teams as above,
-  audits the citations, adds a round of fact reviewers when too few are supported, and turns the result into a
-  page. It pauses three times for a person: to approve the sources (and add any paper it couldn't download), to
+  audits the citations, reviews them statement by statement when too few are supported, and turns the result
+  into a page. It pauses three times for a person: to approve the sources (and add any paper it couldn't download), to
   raise the budget when the next step won't fit, and to approve the finished document. Each pause says what it
   needs and what every answer does. The rules it follows (how many papers, the review threshold, how many
   statements to audit) sit in one settings file, not in anyone's head.
@@ -377,14 +377,44 @@
   <figcaption>Starting a run: the expected cost of each step, and a warning when the budget may not cover them all.</figcaption>
 </figure>
 
+<h3>Checking every citation, one statement at a time</h3>
+<p>
+  The first real run showed where the work had to go: too many cited statements said a little more than their
+  source. The fact reviewer read a whole section with all its sources on an expensive model and reported a
+  handful of findings. The established cheaper structure checks a text claim by claim: each cited statement
+  on its own, against the part of the source it cites, judged by a small model. So now a document's review
+  does exactly that:
+</p>
+<ul>
+  <li><strong>A checker</strong> on Claude Haiku reads every cited statement against its source and says
+    whether the source supports it fully, partly or not at all, quoting the words that settle it.</li>
+  <li><strong>A referee</strong> on another model family reads each flagged statement against the same source
+    and confirms or rejects it; a rejected statement isn't raised again.</li>
+  <li><strong>The writer</strong> revises each section once for all its confirmed statements, cutting what the
+    source doesn't say rather than hedging, and the next round checks again.</li>
+</ul>
+<p>
+  On the sleep tutorial, measured against an independent audit of every cited statement, the checker caught 19
+  of 23 problems where the fact reviewer had caught 5, for less money. One round of the whole loop took the
+  first four sections from 76% to 86% of cited statements fully supported, at about $0.11 a section, and 19 of
+  the 20 rewritten lines now hold up. Documents now get two rounds. Caching the source text that many
+  statements share cut the checker's cost to a third.
+</p>
+<p>
+  The checker can also take its evidence from search instead of the whole source: a hybrid of keyword and
+  vector search in one SQLite file, with local embeddings, merged by reciprocal rank fusion. On papers this
+  size reading the whole cited part is just as cheap and more precise, so search waits for the larger source
+  collections it is built for, such as research from the open web.
+</p>
+
 <h2>What's next</h2>
 <ul>
   <li><strong>Hardening that generalizes:</strong> the combination focus on jq, and red teams that learn from
     the reports already ruled on, so each round looks somewhere new.</li>
   <li><strong>Research from the open web:</strong> documents built from heterogeneous web sources, not only
     papers and Wikipedia.</li>
-  <li><strong>Citations a reader can trust:</strong> every cited statement checked against its page, not a
-    sample, and the overstated ones rewritten.</li>
+  <li><strong>Citations a reader can trust:</strong> the claim-by-claim review in every document run, measured
+    on the next one from topic to page.</li>
   <li><strong>Goals without a specification:</strong> the swarm drafts the specification itself, and a person
     approves it or adds a few examples; the same loops then build and harden the product.</li>
   <li><strong>When is a swarm competitive?</strong> Once the framework behaves well, the same problems at growing
@@ -396,6 +426,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-11-10</span><span class="cl__title">Every citation checked, one statement at a time</span></summary>
+    <p><strong>Problem:</strong> In the first real run, too many cited statements said more than their source, and the fact reviewer, one expensive call per section, found only a few of them. <strong>Solution:</strong> A claim-by-claim review: a small model checks every cited statement against the part of the source it cites, a referee of another model family confirms each flagged one against the same text, and the writer revises each section once for all of them, in two rounds. The source text many statements share is cached, and hybrid keyword and vector search is ready for larger source collections.
+      <strong>Result:</strong> 19 of 23 problems caught where the fact reviewer caught 5, for less; one round took the sleep tutorial's first sections from 76% to 86% fully supported citations, at about $0.11 a section.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-11-01</span><span class="cl__title">From a topic to a page, run without help</span></summary>
     <p><strong>Problem:</strong> Writing a document took several commands and judgement about what to run next, so it needed someone who knew the internals. <strong>Solution:</strong> One run from a topic to a page (<code>agentswarm write</code>), with a hard budget, a settings file for the decisions, and three pauses for a person: the sources, a budget that won't cover the next step, and publishing. A LangGraph graph orders the steps and keeps each run in SQLite; the studio, a web app on my own machine, starts, follows and answers the runs and shows the teams' board.
       <strong>Result:</strong> A first real run, on sleep and memory: about 5,900 words for $1.57, with 60% of audited citations fully supported, and several problems found and fixed with tests.</p>
