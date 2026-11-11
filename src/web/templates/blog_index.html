@@ -28,6 +28,19 @@
     {% else %}
       <p class="muted">No posts yet.</p>
     {% endif %}
+    {% if essays %}
+      <h2 style="margin-top:48px">Essays</h2>
+      <p class="muted">Written by Claude (Anthropic) for the AgentSwarm project, from papers and reports read on the web; not written by the swarm, and not reviewed by an expert.</p>
+      <div class="post-list">
+        {% for t in essays %}
+          <a class="post-row reveal" href="{{ t.href }}">
+            <time>{{ t.date }}</time>
+            <h3>{{ t.title }}</h3>
+            <span class="arrow">→</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
     {% if tutorials %}
       <h2 style="margin-top:48px">Tutorials and guides written by AgentSwarm</h2>
       <p class="muted">Written by the agent swarm from research papers and encyclopedia articles, citing them; not reviewed by an expert. Each page says how it was made and checked.</p>

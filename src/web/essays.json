@@ -1,0 +1,8 @@
+[
+ {
+  "href": "/static/agentswarm/many-small-models-vs-one-large.html",
+  "title": "Can Many Small Models Compete with One Large Model? Agents as a Multiscale Problem",
+  "date": "2026-11-11",
+  "summary": "A literature study: when swarms of small models beat a single large one and when they lose, and how to build one on the heterogeneous multiscale method."
+ }
+]
