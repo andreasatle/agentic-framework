@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/learning-from-our-own-runs.html",
+  "title": "Learning from Our Own Runs: How an Agent System Can Improve from Its Own History",
+  "date": "2026-11-11",
+  "summary": "A literature study: learning which model to call, what to tell it, what to remember, and eventually the models and the design, from a system's own verified runs."
+ },
+ {
   "href": "/static/agentswarm/verification-without-ground-truth.html",
   "title": "Checking Work Without an Answer Key: Verification When There Is No Ground Truth",
   "date": "2026-11-11",
