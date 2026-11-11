@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mechanistic Interpretability of Transformer Language Models: A Tutorial from Superposition to Attribution Graphs</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false})"></script>
 <style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
 :root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
@@ -9,10 +9,8 @@ body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style
 h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
 p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}
 .note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
-
-table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
-h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}
-</style></head><body><h1>Mechanistic Interpretability of Transformer Language Models: A Tutorial from Superposition to Attribution Graphs</h1>
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto;position:relative}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}</style></head><body><h1>Mechanistic Interpretability of Transformer Language Models: A Tutorial from Superposition to Attribution Graphs</h1>
 <p class="note">A tutorial written by AgentSwarm on 19 October 2026 for a reader who knows machine learning, linear algebra and transformers. Its paper finder chose six arXiv papers from the topic, and two Anthropic papers published on the web were added (all listed under References); a briefer planned the tutorial, one writer per section wrote it from its assigned parts of the sources, and fact reviewers checked each section, correcting ten errors. A sampled audit afterwards found about 62% of cited statements fully supported by their source, 28% partly (usually stated a little more strongly than the source) and 10% not. Not reviewed by an expert: read it as a guide to the papers, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
 <h2>Orientation: what mechanistic interpretability is trying to do</h2>
 <p>Mechanistic interpretability tries to reverse-engineer a neural network into components that a person can understand, and into the computations that connect them (Bricken et al., 2023).
@@ -44,59 +42,59 @@ This section explains why reading one neuron at a time can fail, using the toy-m
 Each claim below is tagged as derived in the toy setting, shown by experiment in toy models, or hypothesised for real language models.</p>
 <h3>Features, directions and the linear representation hypothesis</h3>
 <p>A feature is a property of the input that a model represents; the paper gives three working definitions and does not commit to one (Elhage et al., 2022, p. 4).
-In a linear representation, each feature $f_i$ has a direction $W_i$ in activation space, and several active features with values $x_{f_i}$ are represented by $\sum_i x_{f_i} W_i$ (Elhage et al., 2022, p. 5).
+In a linear representation, each feature \(f_i\) has a direction \(W_i\) in activation space, and several active features with values \(x_{f_i}\) are represented by \(\sum_i x_{f_i} W_i\) (Elhage et al., 2022, p. 5).
 The authors call this the linear representation hypothesis and state it as two properties: decomposability (representations can be described in terms of independently understandable features) and linearity (features are represented by direction) (Elhage et al., 2022, p. 3).
 The first is the more important one, and the authors hypothesise that both are widespread (Elhage et al., 2022, p. 8).</p>
 <p>A basis is privileged when some architectural feature, such as an activation function, makes the basis directions special; the basis directions are then called neurons (Elhage et al., 2022, p. 6).
 Without a privileged basis, asking whether a single neuron is interpretable is meaningless, because a random rotation of the basis gives an identical model (Elhage et al., 2022).
 A polysemantic neuron responds to several unrelated features; a monosemantic neuron responds to one (Elhage et al., 2022, p. 7) (Elhage et al., 2022, p. 38).</p>
 <p>Superposition means that a linear representation holds more features than dimensions (Elhage et al., 2022, p. 7).
-The paper's formal test is that a linear representation with weight matrix $W$ exhibits superposition if $W^\top W$ is not invertible (Elhage et al., 2022, p. 8).</p>
+The paper's formal test is that a linear representation with weight matrix \(W\) exhibits superposition if \(W^\top W\) is not invertible (Elhage et al., 2022, p. 8).</p>
 <h3>The toy model</h3>
-<p>The authors represent an idealised, disentangled model by a vector $x \in \mathbb{R}^n$ of $n$ features.
-Each feature $x_i$ has a sparsity $S_i$ and an importance $I_i$; $x_i$ is zero with probability $S_i$ and otherwise uniform on $[0,1]$ (Elhage et al., 2022, p. 9).
+<p>The authors represent an idealised, disentangled model by a vector \(x \in \mathbb{R}^n\) of \(n\) features.
+Each feature \(x_i\) has a sparsity \(S_i\) and an importance \(I_i\); \(x_i\) is zero with probability \(S_i\) and otherwise uniform on \([0,1]\) (Elhage et al., 2022, p. 9).
 The importance is a scalar multiplier on the squared error for that feature (Elhage et al., 2022, p. 56).</p>
-<p>The input is projected to a smaller hidden vector $h = Wx$ with $h \in \mathbb{R}^m$ and $m &lt; n$, and reconstructed by a transposed projection with bias and a ReLU:
+<p>The input is projected to a smaller hidden vector \(h = Wx\) with \(h \in \mathbb{R}^m\) and \(m &lt; n\), and reconstructed by a transposed projection with bias and a ReLU:
 $$x' = \mathrm{ReLU}(W^\top W x + b)$$
-Here $W \in \mathbb{R}^{m \times n}$, each column $W_i$ is the direction for feature $i$, and $b$ is a bias (Elhage et al., 2022, p. 10).
+Here \(W \in \mathbb{R}^{m \times n}\), each column \(W_i\) is the direction for feature \(i\), and \(b\) is a bias (Elhage et al., 2022, p. 10).
 The loss is the importance-weighted squared reconstruction error:
 $$L = \sum_x \sum_i I_i \left(x_i - x'_i\right)^2$$
-averaged over sampled inputs $x$ (Elhage et al., 2022, p. 10).
-The authors say the ReLU is critical: the linear version of the model, $x' = W^\top W x + b$, does not exhibit superposition (Elhage et al., 2022, p. 10) (Elhage et al., 2022, p. 12).</p>
+averaged over sampled inputs \(x\) (Elhage et al., 2022, p. 10).
+The authors say the ReLU is critical: the linear version of the model, \(x' = W^\top W x + b\), does not exhibit superposition (Elhage et al., 2022, p. 10) (Elhage et al., 2022, p. 12).</p>
 <p>Weighting by importance matters because features differ in how much they reduce the loss, so the model must decide which features to preserve when capacity is short (Elhage et al., 2022, p. 9).</p>
 <h3>Why sparsity makes interference tolerable</h3>
 <p>Superposition puts features in non-orthogonal directions, so one active feature partly activates others; this is interference (Elhage et al., 2022, p. 7).
 Two facts make this cost acceptable.
 Sparse features are rarely active together, and a non-linearity can filter out small amounts of noise (Elhage et al., 2022, p. 7).
-The authors also argue that the lower bound from compressed sensing allows the number of features to be linear in $m$, modulated by sparsity (Elhage et al., 2022, p. 48).</p>
+The authors also argue that the lower bound from compressed sensing allows the number of features to be linear in \(m\), modulated by sparsity (Elhage et al., 2022, p. 48).</p>
 <p>To see why, the authors split the loss by how many features are active.
-With $n$ features and sparsity $S$, the loss is $L = (1-S)^n L_n + \dots + (1-S)S^{n-1} L_1 + S^n L_0$, where $L_k$ is the loss on inputs with $k$ active features (Elhage et al., 2022, p. 13).
-For $S$ near 1, the terms $L_1$ and $L_0$ dominate. $L_0$ is a penalty on positive biases, and $L_1$ is the loss on 1-sparse inputs (Elhage et al., 2022, p. 13).
+With \(n\) features and sparsity \(S\), the loss is \(L = (1-S)^n L_n + \dots + (1-S)S^{n-1} L_1 + S^n L_0\), where \(L_k\) is the loss on inputs with \(k\) active features (Elhage et al., 2022, p. 13).
+For \(S\) near 1, the terms \(L_1\) and \(L_0\) dominate. \(L_0\) is a penalty on positive biases, and \(L_1\) is the loss on 1-sparse inputs (Elhage et al., 2022, p. 13).
 For 1-sparse inputs, ReLU makes negative interference free, which is why solutions prefer negative interference (Elhage et al., 2022, p. 13).
-This is derived from the paper's own expansion, and the authors say that the $L_1$ analysis is a simplification that ignores compounding interference from denser inputs (Elhage et al., 2022, p. 14).</p>
+This is derived from the paper's own expansion, and the authors say that the \(L_1\) analysis is a simplification that ignores compounding interference from denser inputs (Elhage et al., 2022, p. 14).</p>
 <h3>A worked example: five features in two dimensions</h3>
-<p>Take $n = 5$ features of varying importance embedded in $m = 2$ dimensions, followed by a ReLU (Elhage et al., 2022, p. 1).
+<p>Take \(n = 5\) features of varying importance embedded in \(m = 2\) dimensions, followed by a ReLU (Elhage et al., 2022, p. 1).
 With dense features, the model represents an orthogonal basis for the two most important features, and the other three are not represented (Elhage et al., 2022, p. 1).
 When the features are sparse, the model stores all five in superposition (Elhage et al., 2022, p. 1).
-With uniform importance and activation density $1-S = 0.05$, the five directions form a regular pentagon (Elhage et al., 2022, p. 22).</p>
+With uniform importance and activation density \(1-S = 0.05\), the five directions form a regular pentagon (Elhage et al., 2022, p. 22).</p>
 <p>The pentagon is a concrete case of the general geometry: uniform superposition corresponds to uniform polytopes, and features packed this way are tied to specific dimensionalities (Elhage et al., 2022, p. 16).</p>
 <h3>Phase change: dropped, superposed or dedicated</h3>
-<p>For a model with two features in one dimension, the authors identify three solutions: drop the extra feature, give it a dedicated dimension, or store both in an antipodal pair $W = [1, -1]$ (Elhage et al., 2022, p. 14).
+<p>For a model with two features in one dimension, the authors identify three solutions: drop the extra feature, give it a dedicated dimension, or store both in an antipodal pair \(W = [1, -1]\) (Elhage et al., 2022, p. 14).
 The transitions between these outcomes are sharp; the authors find a first-order phase change in the loss, with a discontinuous derivative at the crossover (Elhage et al., 2022).
 This phase change is shown by experiment and, for the two-feature case, derived from closed-form losses (Elhage et al., 2022, p. 15).</p>
-<p>The feature dimensionality of feature $i$ is defined as
+<p>The feature dimensionality of feature \(i\) is defined as
 $$D_i = \frac{\|W_i\|^2}{\sum_j (\hat{W}_i \cdot W_j)^2}$$
-where $\hat{W}_i$ is the unit vector of $W_i$ (Elhage et al., 2022, p. 18).
-Here $D_i$ is the fraction of a dimension dedicated to feature $i$: $1$ for a dedicated dimension, $1/2$ for an antipodal pair, and $0$ for a feature that is not learned (Elhage et al., 2022, p. 18).
-Between 0 and 1 is superposition, and the observed clustering at fractions such as $\tfrac{3}{4}$ (tetrahedron), $\tfrac{2}{3}$ (triangle) and $\tfrac{2}{5}$ (pentagon) corresponds to specific geometries (Elhage et al., 2022).
+where \(\hat{W}_i\) is the unit vector of \(W_i\) (Elhage et al., 2022, p. 18).
+Here \(D_i\) is the fraction of a dimension dedicated to feature \(i\): \(1\) for a dedicated dimension, \(1/2\) for an antipodal pair, and \(0\) for a feature that is not learned (Elhage et al., 2022, p. 18).
+Between 0 and 1 is superposition, and the observed clustering at fractions such as \(\tfrac{3}{4}\) (tetrahedron), \(\tfrac{2}{3}\) (triangle) and \(\tfrac{2}{5}\) (pentagon) corresponds to specific geometries (Elhage et al., 2022).
 The authors link these to uniform polytopes and to the Thomson problem of packing points on a sphere (Elhage et al., 2022).
 Hence the picture is that features are placed as points on a sphere, and the model prefers uniform polytope arrangements (Elhage et al., 2022, p. 19).
 This geometry is observed in the toy model; the authors say it may be partly idiosyncratic to it (Elhage et al., 2022, p. 16).</p>
 <h3>Superposition in computation: absolute value</h3>
 <p>The paper also tests whether a network can compute in superposition.
-The target is $y = \mathrm{abs}(x)$, which a ReLU network can compute as $\mathrm{ReLU}(x) + \mathrm{ReLU}(-x)$ (Elhage et al., 2022, p. 35).
+The target is \(y = \mathrm{abs}(x)\), which a ReLU network can compute as \(\mathrm{ReLU}(x) + \mathrm{ReLU}(-x)\) (Elhage et al., 2022, p. 35).
 Without superposition, the model uses two hidden neurons per input feature, one for each side (Elhage et al., 2022, p. 36).
-With $n = 100$ features and $m = 40$ neurons, the model uses superposition once features are sparse enough, and still approximates the absolute value (Elhage et al., 2022, p. 37).
+With \(n = 100\) features and \(m = 40\) neurons, the model uses superposition once features are sparse enough, and still approximates the absolute value (Elhage et al., 2022, p. 37).
 This is shown by experiment in a toy model, not proven for real networks.</p>
 <h3>What follows: privileged bases and neuron-level readings</h3>
 <p>Superposition means that a neuron mixes several features, so a neuron-level reading does not identify the features: polysemanticity is the expected outcome, not an anomaly (Elhage et al., 2022, p. 7).
@@ -120,25 +118,25 @@ Bricken et al. study MLP activations of a one-layer transformer with a 512-neuro
 Cunningham et al. study residual stream activations, call the learned vectors dictionary features, and call the parameter matrix the dictionary (Cunningham et al., 2023).
 Both papers use "feature" for a sparsely active direction and "dictionary" for the set of such directions (Bricken et al., 2023) (Cunningham et al., 2023).</p>
 <p>Setup and symbols.
-Let $\mathbf{x} \in \mathbb{R}^{d}$ be an activation vector, with $d$ the activation dimension.
-Let $n$ be the number of dictionary features, and let $\mathbf{d}_i$ be the unit vector giving the direction of feature $i$.
+Let \(\mathbf{x} \in \mathbb{R}^{d}\) be an activation vector, with \(d\) the activation dimension.
+Let \(n\) be the number of dictionary features, and let \(\mathbf{d}_i\) be the unit vector giving the direction of feature \(i\).
 The sparse autoencoder computes feature activations with an encoder and a ReLU, then reconstructs with a linear decoder:</p>
 <p>$$f(\mathbf{x}) = \text{ReLU}\left(W_e (\mathbf{x} - \mathbf{b}_d) + \mathbf{b}_e\right)$$</p>
 <p>$$\hat{\mathbf{x}} = \mathbf{b}_d + \sum_{i=1}^{n} f_i(\mathbf{x})\, \mathbf{d}_i = \mathbf{b}_d + W_d f(\mathbf{x})$$</p>
-<p>Here $W_e$ is the encoder matrix, $\mathbf{b}_e$ and $\mathbf{b}_d$ are encoder and decoder biases, $f_i(\mathbf{x})$ is the activation of feature $i$, and $W_d$ is the decoder matrix whose columns are the $\mathbf{d}_i$ (Bricken et al., 2023).
-Cunningham et al. use tied weights, with hidden layer $c = \text{ReLU}(Mx + b)$ and reconstruction $\hat{x} = M^T c$, so the rows of $M$ are the dictionary features (Cunningham et al., 2023).</p>
+<p>Here \(W_e\) is the encoder matrix, \(\mathbf{b}_e\) and \(\mathbf{b}_d\) are encoder and decoder biases, \(f_i(\mathbf{x})\) is the activation of feature \(i\), and \(W_d\) is the decoder matrix whose columns are the \(\mathbf{d}_i\) (Bricken et al., 2023).
+Cunningham et al. use tied weights, with hidden layer \(c = \text{ReLU}(Mx + b)\) and reconstruction \(\hat{x} = M^T c\), so the rows of \(M\) are the dictionary features (Cunningham et al., 2023).</p>
 <p>The loss.
 Training minimises reconstruction error plus a sparsity penalty:</p>
 <p>$$\mathcal{L}(\mathbf{x}) = \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2 + \lambda \|f(\mathbf{x})\|_1$$</p>
-<p>Here $\lambda$ sets the strength of the sparsity penalty and $\|f(\mathbf{x})\|_1$ is the sum of feature activations (Cunningham et al., 2023) (Bricken et al., 2023).
-Cunningham et al. write the same loss with $\alpha$ as the sparsity coefficient (Cunningham et al., 2023).</p>
+<p>Here \(\lambda\) sets the strength of the sparsity penalty and \(\|f(\mathbf{x})\|_1\) is the sum of feature activations (Cunningham et al., 2023) (Bricken et al., 2023).
+Cunningham et al. write the same loss with \(\alpha\) as the sparsity coefficient (Cunningham et al., 2023).</p>
 <p>Why each term is needed.
 Reconstruction alone does not force a sparse decomposition, so the learned basis is not constrained to be sparse (Bricken et al., 2023).
 The sparsity term alone is not sensible, since shrinking all activations toward zero lowers it without reconstructing anything (Cunningham et al., 2023).
 Cunningham et al. normalise the dictionary rows so the model cannot reduce the sparsity loss by enlarging the feature vectors (Cunningham et al., 2023).
 Cunningham et al. state that reconstruction with an L1 penalty can recover ground-truth features, citing prior empirical and theoretical work; this is a cited claim, not a result of their paper (Cunningham et al., 2023).</p>
 <p>Why overcomplete dictionaries help.
-A dictionary is overcomplete when it has more directions than dimensions, $n &gt; d$ (Bricken et al., 2023).
+A dictionary is overcomplete when it has more directions than dimensions, \(n &gt; d\) (Bricken et al., 2023).
 The superposition hypothesis predicts such an overcomplete set of feature directions with sparse activations (Bricken et al., 2023).
 Sparsity disambiguates: a sparse combination is the plausible explanation of an activation among many possible ones (Elhage et al., 2022).
 Cunningham et al. report that residual-stream dictionaries are at least four times overcomplete before some features drop out, with suitable hyperparameters (Cunningham et al., 2023).</p>
@@ -179,20 +177,20 @@ Authors' hypothesis: that the approach generalises beyond these models and tasks
 <p>A circuit is a subgraph of a model's computational graph: a set of nodes (components such as attention heads, MLPs, embeddings) and the edges (interactions such as residual connections, attention, projections) between them, responsible for some behaviour (Wang et al., 2022, p. 3).
 Wang et al. define the circuit's function by knocking out every node outside it, so that the circuit computes a logit output of its own (Wang et al., 2022, p. 3).
 Knockouts can be done by zero ablation, but Wang et al. found zero ablation noisy and preferred mean ablation, replacing a node with its average activation over a reference distribution (Wang et al., 2022, p. 3).
-Each attention head $h_{i,j}$ is parametrised by $W_Q$, $W_K$, $W_O$ and $W_V$, and these are rewritten as two low-rank matrices in $\mathbb{R}^{d\times d}$ (Wang et al., 2022, p. 3).</p>
+Each attention head \(h_{i,j}\) is parametrised by \(W_Q\), \(W_K\), \(W_O\) and \(W_V\), and these are rewritten as two low-rank matrices in \(\mathbb{R}^{d\times d}\) (Wang et al., 2022, p. 3).</p>
 <p>The QK and OV decomposition is:</p>
 <p>$$W_{QK}^{i,j} = W_Q^{i,j} (W_K^{i,j})^T, \qquad W_{OV}^{i,j} = W_O^{i,j} W_V^{i,j}$$</p>
-<p>Here $d$ is the model dimension, $W_{QK}$ determines the attention pattern and $W_{OV}$ determines what is written into the residual stream (Wang et al., 2022, p. 3).
+<p>Here \(d\) is the model dimension, \(W_{QK}\) determines the attention pattern and \(W_{OV}\) determines what is written into the residual stream (Wang et al., 2022, p. 3).
 Olsson et al. use the same split: copying is done by the OV circuit, and prefix matching is done in the QK circuit (Olsson et al., 2022, p. 26).
 Composition means that one head reads from the output of an earlier head.
-In K-composition an induction head's $W_K$ reads from a subspace written by an earlier head, giving a QK term of the form $\mathrm{Id} \otimes h_{\mathrm{prev}} \otimes W$ with $W$ having positive eigenvalues (Olsson et al., 2022, p. 26).
+In K-composition an induction head's \(W_K\) reads from a subspace written by an earlier head, giving a QK term of the form \(\mathrm{Id} \otimes h_{\mathrm{prev}} \otimes W\) with \(W\) having positive eigenvalues (Olsson et al., 2022, p. 26).
 Q-composition and V-composition are the analogous reads through the query and value inputs (Olsson et al., 2022, p. 27) (Wang et al., 2022, p. 8).</p>
 <p>An induction head is defined empirically, on a repeated random sequence, by two properties: prefix matching (the head attends to the token that induction would predict next) and copying (its output increases the logit of that token) (Olsson et al., 2022, p. 6).
-The pattern is $[A][B] \dots [A] \rightarrow [B]$ (Olsson et al., 2022, p. 2).
-Mechanistically, the induction circuit uses two heads: a previous-token head copies information about $[A]$ into the residual stream at $[B]$, and the induction head then matches the present token against these stored previous tokens and attends to the token that follows (Olsson et al., 2022, p. 2) (Olsson et al., 2022, p. 5).
+The pattern is \([A][B] \dots [A] \rightarrow [B]\) (Olsson et al., 2022, p. 2).
+Mechanistically, the induction circuit uses two heads: a previous-token head copies information about \([A]\) into the residual stream at \([B]\), and the induction head then matches the present token against these stored previous tokens and attends to the token that follows (Olsson et al., 2022, p. 2) (Olsson et al., 2022, p. 5).
 For example, in "The cat sat on the mat.
 The cat", the induction head promotes the continuation "sat on the mat" (Olsson et al., 2022, p. 6).
-Olsson et al. note that this is a simple algorithm, not a stored table of n-gram statistics, so the rule applies whatever $A$ and $B$ are (Olsson et al., 2022, p. 5).</p>
+Olsson et al. note that this is a simple algorithm, not a stored table of n-gram statistics, so the rule applies whatever \(A\) and \(B\) are (Olsson et al., 2022, p. 5).</p>
 <p>Olsson et al. give six arguments with different strength of evidence (Olsson et al., 2022, p. 15).
 The first is a phase change: in-context learning, measured as the loss at token 500 minus the loss at token 50, rises abruptly in a window of roughly 2.5 to 5 billion tokens, and induction heads form in the same window (Olsson et al., 2022).
 This is correlational evidence, and the authors say that a shared latent cause is possible (Olsson et al., 2022, p. 15).
@@ -233,16 +231,16 @@ The published work studied here overrides corrupted activations with clean ones,
 Zero ablation sets the output to 0, but 0 is arbitrary and later nodes may use the average activation as an implicit bias, so it gave noisy results in the IOI work (Wang et al., 2022).
 Mean ablation replaces the activation with its average over a reference distribution, removing information that varies across that distribution (Wang et al., 2022).</p>
 <p><strong>Metrics.</strong>
-Let $\mathrm{cl}$, $*$ and $\mathrm{pt}$ denote the clean, corrupted and patched runs, $r$ the correct answer and $r'$ a contrast answer (Zhang and Nanda, 2023).
+Let \(\mathrm{cl}\), \(*\) and \(\mathrm{pt}\) denote the clean, corrupted and patched runs, \(r\) the correct answer and \(r'\) a contrast answer (Zhang and Nanda, 2023).
 The patching effect is the gap between the patched run and the corrupted run under a chosen metric (Zhang and Nanda, 2023).</p>
 <ul>
-<li>Probability: $P(r)$, with patching effect $P_{\mathrm{pt}}(r) - P_*(r)$ (Zhang and Nanda, 2023).</li>
-<li>Logit difference: $\mathrm{LD}(r, r') = \mathrm{Logit}(r) - \mathrm{Logit}(r')$, with patching effect $\mathrm{LD}_{\mathrm{pt}}(r, r') - \mathrm{LD}_*(r, r')$ (Zhang and Nanda, 2023).</li>
-<li>KL divergence: $D_{\mathrm{KL}}(P_{\mathrm{cl}} \,\|\, P)$, with patching effect $D_{\mathrm{KL}}(P_{\mathrm{cl}} \,\|\, P_*) - D_{\mathrm{KL}}(P_{\mathrm{cl}} \,\|\, P_{\mathrm{pt}})$ (Zhang and Nanda, 2023).</li>
+<li>Probability: \(P(r)\), with patching effect \(P_{\mathrm{pt}}(r) - P_*(r)\) (Zhang and Nanda, 2023).</li>
+<li>Logit difference: \(\mathrm{LD}(r, r') = \mathrm{Logit}(r) - \mathrm{Logit}(r')\), with patching effect \(\mathrm{LD}_{\mathrm{pt}}(r, r') - \mathrm{LD}_*(r, r')\) (Zhang and Nanda, 2023).</li>
+<li>KL divergence: \(D_{\mathrm{KL}}(P_{\mathrm{cl}} \,\|\, P)\), with patching effect \(D_{\mathrm{KL}}(P_{\mathrm{cl}} \,\|\, P_*) - D_{\mathrm{KL}}(P_{\mathrm{cl}} \,\|\, P_{\mathrm{pt}})\) (Zhang and Nanda, 2023).</li>
 </ul>
 <p>To make scores comparable, the logit difference effect is normalised by the clean-minus-corrupted gap:</p>
 <p>$$\text{recovery} = \frac{\mathrm{LD}_{\mathrm{pt}}(r, r') - \mathrm{LD}_*(r, r')}{\mathrm{LD}_{\mathrm{cl}}(r, r') - \mathrm{LD}_*(r, r')}$$</p>
-<p>A value of 1 means full restoration and 0 means corrupted-run performance, so values typically lie in $[0, 1]$ (Zhang and Nanda, 2023).</p>
+<p>A value of 1 means full restoration and 0 means corrupted-run performance, so values typically lie in \([0, 1]\) (Zhang and Nanda, 2023).</p>
 <p>Metric choice matters.
 Probability is non-negative, so when corruption drives the correct-token probability near zero, a component that pushes the answer down cannot be seen; in one IOI corruption the original IO probability was 5e-4, and probability detected neither negative name mover (Zhang and Nanda, 2023).
 Logit difference compares the correct answer with a contrast answer, so a head that boosts all names equally is not detected (Zhang and Nanda, 2023).
@@ -275,16 +273,16 @@ Finally, the study covers decoder-only models up to 6B parameters (Zhang and Nan
 <p>Manual circuit finding is effective but slow, and it is a major obstacle to scaling mechanistic interpretability to larger models and more complex behaviours (Conmy et al., 2023).
 The workflow has three steps: choose a behaviour, dataset and metric; define a computational graph of model units at a chosen granularity; and run iterative patching to remove unnecessary components and connections (Conmy et al., 2023, p. 3).
 ACDC automates only the third step (Conmy et al., 2023, p. 3).</p>
-<p>The inputs are prompts $(x_i)_{i=1}^n$ that elicit the behaviour, corrupted prompts $(x'_i)_{i=1}^n$ that do not, a graph $G$, and a metric (Conmy et al., 2023, p. 5).
-A candidate subgraph $H \subseteq G$ is evaluated by overwriting every edge of $G$ not in $H$ with its activation on the corrupted input, giving an output distribution $H(x_i, x'_i)$ (Conmy et al., 2023, p. 5).
+<p>The inputs are prompts \((x_i)_{i=1}^n\) that elicit the behaviour, corrupted prompts \((x'_i)_{i=1}^n\) that do not, a graph \(G\), and a metric (Conmy et al., 2023, p. 5).
+A candidate subgraph \(H \subseteq G\) is evaluated by overwriting every edge of \(G\) not in \(H\) with its activation on the corrupted input, giving an output distribution \(H(x_i, x'_i)\) (Conmy et al., 2023, p. 5).
 The default metric is the average KL divergence,</p>
 <p>$$D_{KL}(G \| H) = \frac{1}{n}\sum_{i=1}^{n} D_{KL}\big(G(x_i) \,\|\, H(x_i, x'_i)\big),$$</p>
-<p>where $G(x_i)$ is the full model's output distribution (Conmy et al., 2023, p. 5).</p>
-<p>ACDC starts with $H \leftarrow G$, sorts nodes from output to input, and for each parent $w$ of each node $v$ tests the edge $w \to v$ (Conmy et al., 2023, p. 6).
-The edge is removed permanently when $D_{KL}(G \| H_{new}) - D_{KL}(G \| H) &lt; \tau$, where $H_{new}$ is $H$ without that edge; otherwise it is kept (Conmy et al., 2023, p. 6).
+<p>where \(G(x_i)\) is the full model's output distribution (Conmy et al., 2023, p. 5).</p>
+<p>ACDC starts with \(H \leftarrow G\), sorts nodes from output to input, and for each parent \(w\) of each node \(v\) tests the edge \(w \to v\) (Conmy et al., 2023, p. 6).
+The edge is removed permanently when \(D_{KL}(G \| H_{new}) - D_{KL}(G \| H) &lt; \tau\), where \(H_{new}\) is \(H\) without that edge; otherwise it is kept (Conmy et al., 2023, p. 6).
 The order in which parents are visited is a hyperparameter, and in one case it changed the results (Conmy et al., 2023, p. 25).</p>
-<p>The threshold $\tau$ sets the trade-off: a larger $\tau$ gives a smaller subgraph that may miss components, while a smaller $\tau$ keeps more edges and risks including components that do not take part in the behaviour (Conmy et al., 2023).
-To evaluate recovery, the authors sweep $\tau$, plot true-positive against false-positive edge rates against circuits from earlier manual work, and compare areas under the ROC curve (Conmy et al., 2023).
+<p>The threshold \(\tau\) sets the trade-off: a larger \(\tau\) gives a smaller subgraph that may miss components, while a smaller \(\tau\) keeps more edges and risks including components that do not take part in the behaviour (Conmy et al., 2023).
+To evaluate recovery, the authors sweep \(\tau\), plot true-positive against false-positive edge rates against circuits from earlier manual work, and compare areas under the ROC curve (Conmy et al., 2023).
 Subnetwork probing and head-importance pruning were adapted to use corrupted activations and the same metric for a fair comparison (Conmy et al., 2023, p. 19).
 ACDC is competitive with these gradient-based methods on area under the curve, but the authors report that it is not robust and fails at some settings (Conmy et al., 2023, p. 7).</p>
 <p>The authors prefer KL divergence: it needs no task labels, applies to any next-token prediction, and was the least flawed metric they tried (Conmy et al., 2023).
@@ -307,9 +305,9 @@ Attribution paths are therefore long and hard to read, and this is the problem t
 A transcoder is a sparse dictionary that reads the input to an MLP and predicts the MLP's output, so features bridge over the nonlinearity instead of sitting on the residual stream. (Ameisen et al., 2025)
 The authors argue that this is why transcoders allow direct analysis of feature-feature interactions. (Ameisen et al., 2025)
 A cross-layer transcoder (CLT) extends this across depth: a feature reads the residual stream at one layer and writes to the MLP outputs of that layer and all later layers, using a separate decoder for each output layer. (Ameisen et al., 2025)
-Writing the CLT encoder at layer $\ell$ as $W_{enc}^{\ell}$, the feature activations are $\mathbf{a^{\ell}} = \text{JumpReLU}(W_{enc}^{\ell} \mathbf{x^{\ell}})$, where $\mathbf{x^{\ell}}$ is the residual stream at layer $\ell$. (Ameisen et al., 2025)
-The reconstruction of the MLP output at layer $\ell$ is $\mathbf{\hat{y}^{\ell}} = \sum_{\ell'=1}^{\ell} W_{dec}^{\ell' \to \ell} \mathbf{a^{\ell'}}$, where $\mathbf{y^{\ell}}$ is the true MLP output and $W_{dec}^{\ell' \to \ell}$ is the decoder from layer $\ell'$ to layer $\ell$. (Ameisen et al., 2025)
-Training minimises a reconstruction loss $L_{MSE} = \sum_{\ell} \|\mathbf{\hat{y}^{\ell}} - \mathbf{y^{\ell}}\|^2$ plus a sparsity penalty $\lambda \sum_{\ell}\sum_{i} \tanh(c \, \|W^{\ell}_{dec,i}\| \, a^{\ell}_i)$, where $\lambda$ and $c$ are hyperparameters and $W^{\ell}_{dec,i}$ collects all decoder vectors of feature $i$. (Ameisen et al., 2025)
+Writing the CLT encoder at layer \(\ell\) as \(W_{enc}^{\ell}\), the feature activations are \(\mathbf{a^{\ell}} = \text{JumpReLU}(W_{enc}^{\ell} \mathbf{x^{\ell}})\), where \(\mathbf{x^{\ell}}\) is the residual stream at layer \(\ell\). (Ameisen et al., 2025)
+The reconstruction of the MLP output at layer \(\ell\) is \(\mathbf{\hat{y}^{\ell}} = \sum_{\ell'=1}^{\ell} W_{dec}^{\ell' \to \ell} \mathbf{a^{\ell'}}\), where \(\mathbf{y^{\ell}}\) is the true MLP output and \(W_{dec}^{\ell' \to \ell}\) is the decoder from layer \(\ell'\) to layer \(\ell\). (Ameisen et al., 2025)
+Training minimises a reconstruction loss \(L_{MSE} = \sum_{\ell} \|\mathbf{\hat{y}^{\ell}} - \mathbf{y^{\ell}}\|^2\) plus a sparsity penalty \(\lambda \sum_{\ell}\sum_{i} \tanh(c \, \|W^{\ell}_{dec,i}\| \, a^{\ell}_i)\), where \(\lambda\) and \(c\) are hyperparameters and \(W^{\ell}_{dec,i}\) collects all decoder vectors of feature \(i\). (Ameisen et al., 2025)
 Because a feature's effect is spread over every later layer, the path from an early feature to a late output can be a single step rather than a chain through many per-layer features. (Ameisen et al., 2025)
 The authors report that cross-layer transcoders collapse amplification chains: a chain of seven per-layer Copenhagen features became layer-1 features in the CLT, and average path length fell from 3.7 to 2.3 in their example. (Ameisen et al., 2025)
 The replacement model substitutes CLT reconstructions for each MLP output, and attention is run as usual. (Ameisen et al., 2025)
@@ -318,9 +316,9 @@ For a fixed prompt, the local replacement model adds three changes: it uses the 
 With these changes the local replacement model's activations and logits match the underlying model exactly on that prompt, which is true by construction. (Ameisen et al., 2025)
 The authors stress that this exact match does not show that the two models use the same mechanisms. (Ameisen et al., 2025)
 In the local replacement model, each feature's pre-activation is linear in the activations of earlier features, so its only nonlinearities are the feature activation functions. (Ameisen et al., 2025)
-The edge weight from a source feature $s$ to a target feature $t$ is $A_{s \to t} = a_s w_{s \to t}$, where $a_s$ is the source activation. (Ameisen et al., 2025)
-Using stop-gradients on all nonlinearities, the path-summed weight is $w_{s \to t} = \sum_{\ell_s \le \ell &lt; \ell_t} (W^{\ell_s \to \ell}_{dec,s})^T J^{\blacktriangledown}_{c_s,\ell \to c_t,\ell_t} W^{\ell_t}_{enc,t}$, where $W^{\ell_s \to \ell}_{dec,s}$ is the source decoder vector writing to layer $\ell$, $W^{\ell_t}_{enc,t}$ is the target encoder vector, and $J^{\blacktriangledown}$ is the frozen Jacobian of the underlying model. (Ameisen et al., 2025)
-Here $c_s$ and $c_t$ are the source and target token positions and $\ell_s$ and $\ell_t$ are their layers. (Ameisen et al., 2025)
+The edge weight from a source feature \(s\) to a target feature \(t\) is \(A_{s \to t} = a_s w_{s \to t}\), where \(a_s\) is the source activation. (Ameisen et al., 2025)
+Using stop-gradients on all nonlinearities, the path-summed weight is \(w_{s \to t} = \sum_{\ell_s \le \ell &lt; \ell_t} (W^{\ell_s \to \ell}_{dec,s})^T J^{\blacktriangledown}_{c_s,\ell \to c_t,\ell_t} W^{\ell_t}_{enc,t}\), where \(W^{\ell_s \to \ell}_{dec,s}\) is the source decoder vector writing to layer \(\ell\), \(W^{\ell_t}_{enc,t}\) is the target encoder vector, and \(J^{\blacktriangledown}\) is the frozen Jacobian of the underlying model. (Ameisen et al., 2025)
+Here \(c_s\) and \(c_t\) are the source and target token positions and \(\ell_s\) and \(\ell_t\) are their layers. (Ameisen et al., 2025)
 Because nonlinearities are stop-gradded, the pre-activation of a feature is the sum of its incoming edges, so the edges give a linear decomposition of each feature's activity. (Ameisen et al., 2025)
 The Jacobian expands into a sum over paths through residual connections and attention OV maps, which is why the edges account for information movement between positions but not for the attention patterns themselves. (Ameisen et al., 2025)
 To build a graph for a prompt, the authors compute these edges backwards from the output logits, and the nodes are output tokens, active CLT features, input embeddings and error nodes. (Ameisen et al., 2025)
@@ -393,16 +391,16 @@ The notes after the table explain how to read the last column and where terminol
 <tbody>
 <tr>
 <td>Toy model of superposition</td>
-<td>Sparse features $x$ through $h=Wx$, recovered as $x'=\mathrm{ReLU}(W^TWx+b)$ (Elhage et al., 2022)</td>
-<td>Importance-weighted squared error, $L=\sum_x\sum_i I_i(x_i-x'_i)^2$ (Elhage et al., 2022, p. 10)</td>
+<td>Sparse features \(x\) through \(h=Wx\), recovered as \(x'=\mathrm{ReLU}(W^TWx+b)\) (Elhage et al., 2022)</td>
+<td>Importance-weighted squared error, \(L=\sum_x\sum_i I_i(x_i-x'_i)^2\) (Elhage et al., 2022, p. 10)</td>
 <td>Sparsity makes interference tolerable; importance decides which features get dimensions (Elhage et al., 2022)</td>
 <td>Shown in the toy setting; extension to language models is hypothesised (Elhage et al., 2022)</td>
 <td>Explains why neurons are polysemantic (Elhage et al., 2022)</td>
 </tr>
 <tr>
 <td>Sparse autoencoder (SAE)</td>
-<td>Model activations $x$, reconstructed as $\hat{x}=M^Tc$ with $c=\mathrm{ReLU}(Mx+b)$ (Cunningham et al., 2023)</td>
-<td>Reconstruction loss plus $\alpha\lVert c\rVert_1$ (Cunningham et al., 2023)</td>
+<td>Model activations \(x\), reconstructed as \(\hat{x}=M^Tc\) with \(c=\mathrm{ReLU}(Mx+b)\) (Cunningham et al., 2023)</td>
+<td>Reconstruction loss plus \(\alpha\lVert c\rVert_1\) (Cunningham et al., 2023)</td>
 <td>L1 keeps codes sparse; resampling revives dead neurons (Bricken et al., 2023)</td>
 <td>Interpretability scores and causal effects are experimental; reconstruction is imperfect (Cunningham et al., 2023)</td>
 <td>Recovers features from superposition rather than neurons (Cunningham et al., 2023)</td>
@@ -410,7 +408,7 @@ The notes after the table explain how to read the last column and where terminol
 <tr>
 <td>Transcoder and cross-layer transcoder (CLT)</td>
 <td>MLP input to MLP output; a CLT feature writes to all later MLP outputs (Ameisen et al., 2025)</td>
-<td>MSE summed over layers plus a sparsity penalty weighted by $\lambda$ (Ameisen et al., 2025)</td>
+<td>MSE summed over layers plus a sparsity penalty weighted by \(\lambda\) (Ameisen et al., 2025)</td>
 <td>Error nodes account for reconstruction residuals; frozen attention and normalization make direct feature-to-preactivation effects linear (Ameisen et al., 2025)</td>
 <td>Local replacement matches outputs by construction; mechanistic faithfulness is tested experimentally (Ameisen et al., 2025)</td>
 <td>Shortens attribution paths across layers (Ameisen et al., 2025)</td>
@@ -425,15 +423,15 @@ The notes after the table explain how to read the last column and where terminol
 </tr>
 <tr>
 <td>ACDC</td>
-<td>A subgraph $H$ of a computational graph $G$ (Conmy et al., 2023)</td>
-<td>Keep an edge only if removing it changes $D_{KL}$ by at least $\tau$ (Conmy et al., 2023)</td>
-<td>Threshold $\tau$ sets sparsity; results depend on corruption and metric (Conmy et al., 2023)</td>
+<td>A subgraph \(H\) of a computational graph \(G\) (Conmy et al., 2023)</td>
+<td>Keep an edge only if removing it changes \(D_{KL}\) by at least \(\tau\) (Conmy et al., 2023)</td>
+<td>Threshold \(\tau\) sets sparsity; results depend on corruption and metric (Conmy et al., 2023)</td>
 <td>ROC comparison with known circuits, with limits on ground truth (Conmy et al., 2023)</td>
 <td>Automates manual edge search (Conmy et al., 2023)</td>
 </tr>
 <tr>
 <td>Attribution graph</td>
-<td>Active features, embeddings, error nodes and logits for one prompt, with linear edges $A_{s\rightarrow t}$ (Ameisen et al., 2025)</td>
+<td>Active features, embeddings, error nodes and logits for one prompt, with linear edges \(A_{s\rightarrow t}\) (Ameisen et al., 2025)</td>
 <td>Pruning keeps nodes and edges that most affect the output (Ameisen et al., 2025)</td>
 <td>Pruning reduces nodes about tenfold while keeping most of the explained behaviour (Ameisen et al., 2025)</td>
 <td>Perturbation experiments are generally consistent, with deviations (Ameisen et al., 2025)</td>

@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>From Energy-Based Learning to V-JEPA 2.1: How Joint-Embedding Predictive Architectures Developed</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false})"></script>
 <style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
 :root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
@@ -9,10 +9,8 @@ body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style
 h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
 p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}
 .note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
-
-table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
-h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}
-</style></head><body><h1>From Energy-Based Learning to V-JEPA 2.1: How Joint-Embedding Predictive Architectures Developed</h1>
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto;position:relative}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}</style></head><body><h1>From Energy-Based Learning to V-JEPA 2.1: How Joint-Embedding Predictive Architectures Developed</h1>
 <p class="note">A tutorial written by AgentSwarm on 18 October 2026 from five papers (listed under References), for a reader who knows graduate-level machine learning. A briefer planned it, one writer per section wrote it from its assigned parts of the papers, and fact reviewers checked each section against its sources. A sampled audit found about 75% of cited statements fully supported by the page they cite; most of the rest state something a little more strongly than the paper does. Not reviewed by an expert: read it as a guide to the papers, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
 <h2>Orientation: what problem do JEPAs solve, and how will we build up to V-JEPA 2.1?</h2>
 <p>The learning problem is to learn useful representations from unlabeled data without relying on hand-crafted data augmentations or on reconstructing pixels (Assran et al., 2023).
@@ -29,24 +27,24 @@ Throughout, claims carry one of three labels. <strong>Proven</strong> means a re
 <h2>Energy-based learning: the framework underneath</h2>
 <p>An energy-based model (EBM) attaches a single scalar to every configuration of its variables, and that scalar measures how compatible the configuration is (LeCun et al., 2006, p. 1).
 Throughout this tutorial we follow the convention that small energy means high compatibility and large energy means low compatibility (LeCun et al., 2006, p. 3).
-The model is a parameterized energy function $E(W,Y,X)$, where $X$ is the observed input, $Y$ is the variable to be predicted, and $W$ is the learned parameter (LeCun et al., 2006, p. 7).
-The family of candidate energies is written $\mathcal{E}=\{E(W,Y,X): W\in\mathcal{W}\}$, and its architecture is the internal structure of $E$ (LeCun et al., 2006, p. 7).</p>
-<p><strong>Inference.</strong> Inference sets the observed variable $X$ and searches for the $Y$ with the lowest energy:
+The model is a parameterized energy function \(E(W,Y,X)\), where \(X\) is the observed input, \(Y\) is the variable to be predicted, and \(W\) is the learned parameter (LeCun et al., 2006, p. 7).
+The family of candidate energies is written \(\mathcal{E}=\{E(W,Y,X): W\in\mathcal{W}\}\), and its architecture is the internal structure of \(E\) (LeCun et al., 2006, p. 7).</p>
+<p><strong>Inference.</strong> Inference sets the observed variable \(X\) and searches for the \(Y\) with the lowest energy:
 $$Y^* = \arg\min_{Y\in\mathcal{Y}} E(Y,X)$$
-where $\mathcal{Y}$ is the set of allowed answers (LeCun et al., 2006, p. 3).
-When $\mathcal{Y}$ is small, one can evaluate $E(Y,X)$ for every $Y$ and pick the smallest; when it is large, a specific inference procedure is needed, such as gradient descent for smooth continuous $Y$ or dynamic programming for factor graphs (LeCun et al., 2006, p. 5).</p>
-<p><strong>Learning.</strong> Learning finds a $W$ that gives correct answers low energy and incorrect answers high energy (LeCun et al., 2006, p. 2).
-It is driven by a loss functional $\mathcal{L}(E,S)$, averaged over a training set $S=\{(X^i,Y^i): i=1\ldots P\}$ with a regularizer $R(W)$:
+where \(\mathcal{Y}\) is the set of allowed answers (LeCun et al., 2006, p. 3).
+When \(\mathcal{Y}\) is small, one can evaluate \(E(Y,X)\) for every \(Y\) and pick the smallest; when it is large, a specific inference procedure is needed, such as gradient descent for smooth continuous \(Y\) or dynamic programming for factor graphs (LeCun et al., 2006, p. 5).</p>
+<p><strong>Learning.</strong> Learning finds a \(W\) that gives correct answers low energy and incorrect answers high energy (LeCun et al., 2006, p. 2).
+It is driven by a loss functional \(\mathcal{L}(E,S)\), averaged over a training set \(S=\{(X^i,Y^i): i=1\ldots P\}\) with a regularizer \(R(W)\):
 $$\mathcal{L}(E,S) = \frac{1}{P}\sum_{i=1}^{P} L(Y^i, E(W,Y,X^i)) + R(W)$$
-Here $L(Y^i,E(W,Y,X^i))$ is the per-sample loss, $Y^i$ is the desired answer, and $R(W)$ encodes prior preferences among energy functions (LeCun et al., 2006, p. 8).
-Each per-sample term evaluates one slice of the energy surface, the energies of all answers $Y$ for the fixed input $X^i$ (LeCun et al., 2006, p. 8).
-The desired shape is that the correct $Y^i$ has lower energy than all other answers (LeCun et al., 2006, p. 8).</p>
-<p><strong>What a loss must do.</strong> A sufficient condition for correct inference is that the correct energy $E(W,Y^i,X^i)$ is below the energy of every other answer (LeCun et al., 2006, p. 27).
-With a margin $m&gt;0$, the requirement is $E(W,Y^i,X^i) &lt; E(W,\bar Y^i,X^i) - m$, where $\bar Y^i$ is the most offending incorrect answer, the incorrect answer with the lowest energy (LeCun et al., 2006, p. 28)(LeCun et al., 2006, p. 12).
-The authors state a sufficient (not necessary) condition on the loss: its minimization must favor some point with $e_1+m&lt;e_2$ over every point with $e_1'+m\ge e_2'$, where $e_1$ is the correct energy and $e_2$ the incorrect energy (LeCun et al., 2006, p. 29).</p>
+Here \(L(Y^i,E(W,Y,X^i))\) is the per-sample loss, \(Y^i\) is the desired answer, and \(R(W)\) encodes prior preferences among energy functions (LeCun et al., 2006, p. 8).
+Each per-sample term evaluates one slice of the energy surface, the energies of all answers \(Y\) for the fixed input \(X^i\) (LeCun et al., 2006, p. 8).
+The desired shape is that the correct \(Y^i\) has lower energy than all other answers (LeCun et al., 2006, p. 8).</p>
+<p><strong>What a loss must do.</strong> A sufficient condition for correct inference is that the correct energy \(E(W,Y^i,X^i)\) is below the energy of every other answer (LeCun et al., 2006, p. 27).
+With a margin \(m&gt;0\), the requirement is \(E(W,Y^i,X^i) &lt; E(W,\bar Y^i,X^i) - m\), where \(\bar Y^i\) is the most offending incorrect answer, the incorrect answer with the lowest energy (LeCun et al., 2006, p. 28)(LeCun et al., 2006, p. 12).
+The authors state a sufficient (not necessary) condition on the loss: its minimization must favor some point with \(e_1+m&lt;e_2\) over every point with \(e_1'+m\ge e_2'\), where \(e_1\) is the correct energy and \(e_2\) the incorrect energy (LeCun et al., 2006, p. 29).</p>
 <p>Two simple losses show the difference.
-The energy loss $L_{\text{energy}}=E(W,Y^i,X^i)$ only pushes down the correct energy (LeCun et al., 2006, p. 10).
-The hinge loss $L_{\text{hinge}}=\max(0,\, m+E(W,Y^i,X^i)-E(W,\bar Y^i,X^i))$ penalizes only energy differences, and it is zero once the correct answer is ahead by margin $m$ (LeCun et al., 2006, p. 12).
+The energy loss \(L_{\text{energy}}=E(W,Y^i,X^i)\) only pushes down the correct energy (LeCun et al., 2006, p. 10).
+The hinge loss \(L_{\text{hinge}}=\max(0,\, m+E(W,Y^i,X^i)-E(W,\bar Y^i,X^i))\) penalizes only energy differences, and it is zero once the correct answer is ahead by margin \(m\) (LeCun et al., 2006, p. 12).
 The authors' Table 1 marks the energy loss as "none" for the margin condition, and marks the hinge and square-square losses as satisfying it with a strictly positive margin (LeCun et al., 2006, p. 30).</p>
 <p><strong>Proven in the tutorial.</strong> For a linear-parameter regression architecture, the energy loss is a convex least-squares problem and matches standard mean-squared error training (LeCun et al., 2006, p. 17).
 For a radial-basis architecture with fixed, distinct centers, the energy loss satisfies the margin condition, but if the centers are learned it may collapse (LeCun et al., 2006, p. 31)(LeCun et al., 2006, p. 32).
@@ -54,24 +52,24 @@ The authors show the NLL loss satisfies the sufficient condition with a proof ba
 <p><strong>Shown empirically.</strong> On a squaring task with a two-layer network, the energy loss collapsed to a flat surface in the two-network architecture, while the square-square and NLL losses did not (LeCun et al., 2006, p. 25)(LeCun et al., 2006, p. 26).</p>
 <p><strong>The Gibbs distribution.</strong> To turn energies into probabilities, the tutorial uses
 $$P(Y|X) = \frac{e^{-\beta E(Y,X)}}{\int_{y\in\mathcal{Y}} e^{-\beta E(y,X)}}$$
-where $\beta&gt;0$ is an inverse-temperature-like constant and the denominator is the partition function (LeCun et al., 2006, p. 7).
-The integral must converge, and it is often intractable when $\mathcal{Y}$ is large or high-dimensional (LeCun et al., 2006, p. 7).
+where \(\beta&gt;0\) is an inverse-temperature-like constant and the denominator is the partition function (LeCun et al., 2006, p. 7).
+The integral must converge, and it is often intractable when \(\mathcal{Y}\) is large or high-dimensional (LeCun et al., 2006, p. 7).
 This is why EBMs are attractive: they manipulate energies, and normalization is only the last step if probabilities are needed (LeCun et al., 2006, p. 37)(LeCun et al., 2006, p. 38).
-The NLL loss is $\mathcal{L}_{\text{nll}}=E(W,Y^i,X^i)+\frac{1}{\beta}\log\int_{y} e^{-\beta E(W,y,X^i)}$, obtained from maximum likelihood with the Gibbs distribution (LeCun et al., 2006, p. 14).
+The NLL loss is \(\mathcal{L}_{\text{nll}}=E(W,Y^i,X^i)+\frac{1}{\beta}\log\int_{y} e^{-\beta E(W,y,X^i)}\), obtained from maximum likelihood with the Gibbs distribution (LeCun et al., 2006, p. 14).
 The contrastive term pulls up each energy in proportion to its model probability; the data term pushes the correct energy down, giving it a net downward force (LeCun et al., 2006, p. 15).</p>
 <p><strong>Collapse.</strong> A collapsed solution is one where the energy is constant, usually zero, everywhere (LeCun et al., 2006, p. 25).
 Minimizing the energy of the training data alone is trivially achieved by a flat surface: nothing requires other answers to have higher energy (LeCun et al., 2006, p. 11).
-The tutorial's experiment shows that with two networks $G_1$ and $G_2$ and the energy loss, the energy becomes flat because $G_1$ and $G_2$ can ignore their inputs and output identical values (LeCun et al., 2006, p. 25).</p>
+The tutorial's experiment shows that with two networks \(G_1\) and \(G_2\) and the energy loss, the energy becomes flat because \(G_1\) and \(G_2\) can ignore their inputs and output identical values (LeCun et al., 2006, p. 25).</p>
 <p><strong>Remedy 1: contrastive terms.</strong> Contrastive methods pull up the energy of incorrect answers.
-The margin losses and the NLL loss do this, and the square-square loss adds $\max(0,m-E(W,\bar Y^i,X^i))^2$ to push up incorrect answers that threaten to fall below the correct one (LeCun et al., 2006, p. 25)(LeCun et al., 2006, p. 13).</p>
+The margin losses and the NLL loss do this, and the square-square loss adds \(\max(0,m-E(W,\bar Y^i,X^i))^2\) to push up incorrect answers that threaten to fall below the correct one (LeCun et al., 2006, p. 25)(LeCun et al., 2006, p. 13).</p>
 <p><strong>Remedy 2: architecture and regularization.</strong> Instead of pushing up wrong answers, one can limit the volume of low-energy space.
 The tutorial's example is a fixed-centre RBF energy, in which the distance between centers bounds the total energy and prevents collapse (LeCun et al., 2006, p. 31)(LeCun et al., 2006, p. 32).
-Its regression case also shows this: with $E=\tfrac12\|G_W(X)-Y\|^2$ the energy loss is standard regression and is safe (LeCun et al., 2006, p. 17).
+Its regression case also shows this: with \(E=\tfrac12\|G_W(X)-Y\|^2\) the energy loss is standard regression and is safe (LeCun et al., 2006, p. 17).
 The tutorial calls the first a loss-side remedy and the second an architecture-side one, and it discusses both as choices of which energies to pull up (LeCun et al., 2006, p. 51).</p>
-<p><strong>Two-point example.</strong> Take one input $X^i$ with correct answer $Y^i$ and most offending incorrect answer $\bar Y^i$, with energies $E_C=E(W,Y^i,X^i)$ and $E_I=E(W,\bar Y^i,X^i)$, and margin $m=1$.
-If $E_C=0.2$ and $E_I=0.5$, the hinge loss is $\max(0,\,1+0.2-0.5)=0.7$, so the loss is still active and pushes $E_C$ down and $E_I$ up.
-If $E_C=0$ and $E_I=1.5$, the hinge loss is $\max(0,\,1+0-1.5)=0$, so the loss is inactive.
-The energy loss, by contrast, gives $0$ in both cases only if $E_C=0$, and it never looks at $E_I$, so it cannot tell a flat surface from a good one (LeCun et al., 2006, p. 12)(LeCun et al., 2006, p. 11).</p>
+<p><strong>Two-point example.</strong> Take one input \(X^i\) with correct answer \(Y^i\) and most offending incorrect answer \(\bar Y^i\), with energies \(E_C=E(W,Y^i,X^i)\) and \(E_I=E(W,\bar Y^i,X^i)\), and margin \(m=1\).
+If \(E_C=0.2\) and \(E_I=0.5\), the hinge loss is \(\max(0,\,1+0.2-0.5)=0.7\), so the loss is still active and pushes \(E_C\) down and \(E_I\) up.
+If \(E_C=0\) and \(E_I=1.5\), the hinge loss is \(\max(0,\,1+0-1.5)=0\), so the loss is inactive.
+The energy loss, by contrast, gives \(0\) in both cases only if \(E_C=0\), and it never looks at \(E_I\), so it cannot tell a flat surface from a good one (LeCun et al., 2006, p. 12)(LeCun et al., 2006, p. 11).</p>
 <p><strong>Established versus advice.</strong> The sufficient conditions on the loss, the NLL-satisfies-condition-3 argument, and the Gibbs normalization are mathematical results in the tutorial (LeCun et al., 2006, p. 33).
 The advice to minimize the number of explicit normalizations, and the claim that EBMs are more flexible, are design guidance rather than theorems (LeCun et al., 2006, p. 38)(LeCun et al., 2006, p. 2).
 The authors also say that a theory for learning with approximate inference "does not yet exist" (LeCun et al., 2006, p. 52).</p>
@@ -84,8 +82,8 @@ Three ways of attaching a learning signal to such architectures are worth separa
 The first is invariance-based pretraining, which makes embeddings of two views of the same image similar, with views built from hand-crafted augmentations such as cropping and color jittering (Assran et al., 2023).
 The authors note that these methods can give high-level representations but introduce strong biases that may hurt some downstream tasks, and that it is unclear how to generalize these augmentations to other modalities such as audio (Assran et al., 2023).
 The second is generative reconstruction, which masks part of the input and predicts the missing content at the pixel or token level; it needs less prior knowledge and generalizes beyond images, but the authors argue its representations tend to be of lower semantic level (Assran et al., 2023).
-The third is the joint-embedding predictive architecture (JEPA): the loss is applied in embedding space rather than input space, and a predictor, conditioned on additional (possibly latent) variables $z$, predicts the embedding of a signal $y$ from a compatible signal $x$ (Assran et al., 2023, p. 2).
-In the energy view, the energy is the prediction error in representation space, $E = D(\hat{s}_y, s_y)$, where $\hat{s}_y$ is the predicted embedding of $y$ and $s_y$ its target embedding, with $D$ a distance (Assran et al., 2023, p. 2).
+The third is the joint-embedding predictive architecture (JEPA): the loss is applied in embedding space rather than input space, and a predictor, conditioned on additional (possibly latent) variables \(z\), predicts the embedding of a signal \(y\) from a compatible signal \(x\) (Assran et al., 2023, p. 2).
+In the energy view, the energy is the prediction error in representation space, \(E = D(\hat{s}_y, s_y)\), where \(\hat{s}_y\) is the predicted embedding of \(y\) and \(s_y\) its target embedding, with \(D\) a distance (Assran et al., 2023, p. 2).
 The intuition is that an abstract target can discard unpredictable pixel-level detail, so the model spends its capacity on features that are predictable from context (Assran et al., 2023).
 This is the authors' motivation, not a theorem: the paper states that predicting in an abstract representation space can eliminate unnecessary pixel-level detail, and tests this through its experiments (Assran et al., 2023).
 Collapse remains a concern for JEPAs, and the authors use an asymmetric design between the x- and y-encoders to avoid it, which the next sections describe (Assran et al., 2023, p. 2).</p>
@@ -98,28 +96,28 @@ The context encoder processes only the visible context patches, and the predicto
 The target encoder's weights are updated at each iteration as an exponential moving average (EMA) of the context-encoder weights (Assran et al., 2023).
 The predictor's embedding dimension is fixed at 384, and the predictor is lighter than the encoders (Assran et al., 2023).</p>
 <h3>Targets, context, and the loss</h3>
-<p>Given an image $y$, the image is split into $N$ non-overlapping patches and passed through the target encoder $f_{\bar\theta}$, giving patch representations $s_y=\{s_{y_1},\dots,s_{y_N}\}$ (Assran et al., 2023).
+<p>Given an image \(y\), the image is split into \(N\) non-overlapping patches and passed through the target encoder \(f_{\bar\theta}\), giving patch representations \(s_y=\{s_{y_1},\dots,s_{y_N}\}\) (Assran et al., 2023).
 The targets are obtained by masking this output of the target encoder, not the input image (Assran et al., 2023).
-Sampling $M$ possibly overlapping blocks gives target masks $B_i$, and $s_y(i)=\{s_{y_j}\}_{j\in B_i}$ denotes the target representation for block $i$ (Assran et al., 2023).
-The context block $x$ is passed through the context encoder $f_\theta$ to give $s_x=\{s_{x_j}\}_{j\in B_x}$, where $B_x$ is the context mask (Assran et al., 2023, p. 3).
-For each target mask $B_i$, the predictor $g_\phi$ takes $s_x$ and one mask token $m_j$ per patch to predict, and outputs $\hat s_y(i)=\{\hat s_{y_j}\}_{j\in B_i}=g_\phi(s_x,\{m_j\}_{j\in B_i})$ (Assran et al., 2023, p. 3).
+Sampling \(M\) possibly overlapping blocks gives target masks \(B_i\), and \(s_y(i)=\{s_{y_j}\}_{j\in B_i}\) denotes the target representation for block \(i\) (Assran et al., 2023).
+The context block \(x\) is passed through the context encoder \(f_\theta\) to give \(s_x=\{s_{x_j}\}_{j\in B_x}\), where \(B_x\) is the context mask (Assran et al., 2023, p. 3).
+For each target mask \(B_i\), the predictor \(g_\phi\) takes \(s_x\) and one mask token \(m_j\) per patch to predict, and outputs \(\hat s_y(i)=\{\hat s_{y_j}\}_{j\in B_i}=g_\phi(s_x,\{m_j\}_{j\in B_i})\) (Assran et al., 2023, p. 3).
 The loss is the average L2 distance between predicted and target patch representations:</p>
 <p>$$\frac{1}{M}\sum_{i=1}^{M} D\big(\hat s_y(i), s_y(i)\big)=\frac{1}{M}\sum_{i=1}^{M}\sum_{j\in B_i}\left\lVert \hat s_{y_j}-s_{y_j}\right\rVert_2^2$$</p>
-<p>Here $M$ is the number of target blocks (typically 4), $D$ is the distance, $\hat s_{y_j}$ is the predicted representation of patch $j$, and $s_{y_j}$ is its target representation (Assran et al., 2023).
-The predictor parameters $\phi$ and context-encoder parameters $\theta$ are learned by gradient-based optimization, while the target-encoder parameters $\bar\theta$ are not trained by gradients but updated by EMA of $\theta$ (Assran et al., 2023).
+<p>Here \(M\) is the number of target blocks (typically 4), \(D\) is the distance, \(\hat s_{y_j}\) is the predicted representation of patch \(j\), and \(s_{y_j}\) is its target representation (Assran et al., 2023).
+The predictor parameters \(\phi\) and context-encoder parameters \(\theta\) are learned by gradient-based optimization, while the target-encoder parameters \(\bar\theta\) are not trained by gradients but updated by EMA of \(\theta\) (Assran et al., 2023).
 Concretely, the paper uses a momentum of 0.996, increased linearly to 1.0 during pretraining (Assran et al., 2023).</p>
 <p>The EMA target is the paper's main collapse safeguard in practice.
 The paper states that the EMA target encoder "has proven essential for training JEAs with Vision Transformers," and reports that it finds the same to be true for I-JEPA (Assran et al., 2023).
 The paper does not prove that the EMA target, or the stop-gradient on it, prevents collapse; it reports this as an empirical finding (Assran et al., 2023).
 The paper also relies on the asymmetry between the x- and y-encoders, and on the predictor, to avoid collapse (Assran et al., 2023, p. 3).</p>
 <h3>Masking: a concrete example</h3>
-<p>The default masking samples 4 target blocks with scale in $(0.15, 0.2)$ and aspect ratio in $(0.75, 1.5)$, and one context block with scale in $(0.85, 1.0)$ and unit aspect ratio (Assran et al., 2023).
+<p>The default masking samples 4 target blocks with scale in \((0.15, 0.2)\) and aspect ratio in \((0.75, 1.5)\), and one context block with scale in \((0.85, 1.0)\) and unit aspect ratio (Assran et al., 2023).
 Overlapping regions are removed from the context block, so the context and targets do not overlap (Assran et al., 2023, p. 3).
 Figure 4 describes the result: the target blocks are relatively semantic, and the context block is informative yet sparse, which makes it efficient to process (Assran et al., 2023).
 For instance, an image of a bird might yield four target blocks, each covering about 15 to 20 percent of the image area, and one large context block covering 85 to 100 percent of the image, with the overlap cut out of it.
 The blocks are sampled independently, so the context block must be trimmed where it overlaps a target (Assran et al., 2023, p. 3).</p>
 <p>Ablations support the two choices as drivers of semantic features.
-Increasing target-block scale from $(0.075, 0.2)$ to $(0.15, 0.2)$ raised 1%-ImageNet linear accuracy from 19.2 to 54.2 in one setting, but shrinking the context scale from $(0.85,1.0)$ to $(0.40,1.0)$ dropped it to 31.2 (Assran et al., 2023).
+Increasing target-block scale from \((0.075, 0.2)\) to \((0.15, 0.2)\) raised 1%-ImageNet linear accuracy from 19.2 to 54.2 in one setting, but shrinking the context scale from \((0.85,1.0)\) to \((0.40,1.0)\) dropped it to 31.2 (Assran et al., 2023).
 Using 4 target blocks rather than 1 raised accuracy from 9.0 to 54.2 (Assran et al., 2023).
 These ablations are experiments on a ViT-B/16 for 300 epochs, and they show that the settings matter in this setup; the paper does not prove that large targets cause semantic features (Assran et al., 2023).
 Predicting in pixel space instead of representation space also degraded linear probing on 1%-ImageNet, from 66.9 to 40.7 in the reported setting (Assran et al., 2023).
@@ -143,12 +141,12 @@ Long, full-duration masks matter because masking a large block that covers the f
 The ablations agree: random tube masking at 90% gives features of low semantic quality, and causal multi-block masking, which restricts context to the first few frames, reduces downstream performance (Bardes et al., 2024, p. 6).
 The paper also reports that low spatial or temporal mask coverage produces a trivial prediction task that degrades downstream performance (Bardes et al., 2024, p. 22).</p>
 <p>The objective is feature prediction in representation space.
-An x-encoder $E_\theta$ processes the visible tokens, a predictor $P_\phi$ takes that output together with mask tokens carrying the positions of the masked region, and a y-encoder whose weights are an exponential moving average (EMA) of $E_\theta$ produces the targets (Bardes et al., 2024, p. 3) (Bardes et al., 2024, p. 4).
+An x-encoder \(E_\theta\) processes the visible tokens, a predictor \(P_\phi\) takes that output together with mask tokens carrying the positions of the masked region, and a y-encoder whose weights are an exponential moving average (EMA) of \(E_\theta\) produces the targets (Bardes et al., 2024, p. 3) (Bardes et al., 2024, p. 4).
 The loss as written in the paper is
 $$
 \mathcal{L} = \left\| P_\phi\big(E_\theta(x), \Delta_y\big) - \mathrm{sg}\big(\bar{E}_\theta(y)\big) \right\|_1
 $$
-Here $x$ is the visible context, $y$ is the masked region, $\Delta_y$ is the set of spatiotemporal positions of $y$ used as conditioning, $\mathrm{sg}(\cdot)$ is a stop-gradient that does not backpropagate, $\bar{E}_\theta$ is the EMA of $E_\theta$, and $\|\cdot\|_1$ is the L1 norm (Bardes et al., 2024, p. 3).
+Here \(x\) is the visible context, \(y\) is the masked region, \(\Delta_y\) is the set of spatiotemporal positions of \(y\) used as conditioning, \(\mathrm{sg}(\cdot)\) is a stop-gradient that does not backpropagate, \(\bar{E}_\theta\) is the EMA of \(E_\theta\), and \(\|\cdot\|_1\) is the L1 norm (Bardes et al., 2024, p. 3).
 The paper notes that this is similar to the image loss of Assran et al. (2023), but uses an L1 regression, which the authors found more stable (Bardes et al., 2024, p. 3).
 The EMA, stop-gradient and predictor are described as a collapse-prevention strategy; the paper states the hypothesis that the EMA keeps the predictor evolving faster than the encoder so it stays close to optimal (Bardes et al., 2024, p. 3).
 With no pretrained encoder, text, negatives or reconstruction, the paper asks how effective feature prediction is as a stand-alone objective for video with modern tools (Bardes et al., 2024, p. 1).
@@ -193,13 +191,13 @@ V-JEPA 2-AC is a frame-causal predictor of about 300M parameters on top of the f
 It predicts the next frame's representation from the current representation, the action, and the end-effector state (Assran et al., 2025, p. 9).
 The total training loss is a teacher-forcing term plus a two-step rollout term (Assran et al., 2025, p. 9).</p>
 <p>$$\mathcal{L}(\phi) = \mathcal{L}_{\text{teacher-forcing}}(\phi) + \mathcal{L}_{\text{rollout}}(\phi)$$</p>
-<p>Here $\phi$ denotes the predictor weights, $\hat z_{k+1}$ is the predicted next-frame representation, $z_{k+1}=E(x_{k+1})$ is the frozen encoder's representation of the true next frame, and $T=15$ (Assran et al., 2025, p. 9).
-The teacher-forcing term is the average L1 distance $\frac{1}{T}\sum_{k=1}^{T}\lVert \hat z_{k+1}-z_{k+1}\rVert_1$, with each prediction conditioned on true past frames and actions (Assran et al., 2025, p. 9).
+<p>Here \(\phi\) denotes the predictor weights, \(\hat z_{k+1}\) is the predicted next-frame representation, \(z_{k+1}=E(x_{k+1})\) is the frozen encoder's representation of the true next frame, and \(T=15\) (Assran et al., 2025, p. 9).
+The teacher-forcing term is the average L1 distance \(\frac{1}{T}\sum_{k=1}^{T}\lVert \hat z_{k+1}-z_{k+1}\rVert_1\), with each prediction conditioned on true past frames and actions (Assran et al., 2025, p. 9).
 The rollout term feeds the predictor's output back as input, which the authors say reduces error accumulation (Assran et al., 2025, p. 9) (Assran et al., 2025, p. 10).</p>
 <p>Planning works as follows (Assran et al., 2025, p. 10) (Assran et al., 2025, p. 11).
-Given a goal image encoded as $z_g$, the planner chooses an action sequence over horizon $T$ that minimizes the energy</p>
+Given a goal image encoded as \(z_g\), the planner chooses an action sequence over horizon \(T\) that minimizes the energy</p>
 <p>$$E(\hat a_{1:T}; z_k, s_k, z_g) = \lVert P(\hat a_{1:T}; s_k, z_k) - z_g\rVert_1$$</p>
-<p>where $z_k$ is the current frame representation, $s_k$ the current end-effector state, and $P$ the imagined representation $T$ steps ahead (Assran et al., 2025, p. 10).
+<p>where \(z_k\) is the current frame representation, \(s_k\) the current end-effector state, and \(P\) the imagined representation \(T\) steps ahead (Assran et al., 2025, p. 10).
 This is the energy-based view from the framework: inference minimizes an energy over the unknown variable, here the actions (LeCun et al., 2006).
 The optimizer is the cross-entropy method: action samples come from Gaussians, the top-k trajectories update the mean and variance, and the mean is returned (Assran et al., 2025, p. 11).
 Only the first action is executed before re-planning, as in receding-horizon model-predictive control (Assran et al., 2025, p. 10).</p>
@@ -225,16 +223,16 @@ Shown empirically: with a linear probe, V-JEPA 2 reaches 22.2 mIoU on ADE20K and
 This diagnosis is the authors' hypothesis, which they then test by adding a context loss (Mur-Labadia et al., 2026, p. 4).
 The model is trained with a predictor that outputs one token for each input, both context and masked tokens (Mur-Labadia et al., 2026, p. 4).</p>
 <h3>Ingredient 1: the Dense Predictive Loss</h3>
-<p>The masked-token loss is the V-JEPA objective: the predictor $P_\phi$ takes the encoder output on the masked video $x$ together with mask tokens $\Delta_y$, and is trained to match the target-encoder representation of the clean video $y$ (Mur-Labadia et al., 2026, p. 4).
-Written in the paper's notation, with $M$ the set of masked patch indices, $E_\theta$ the encoder, and $\mathrm{sg}$ the stop-gradient operator, it reads
+<p>The masked-token loss is the V-JEPA objective: the predictor \(P_\phi\) takes the encoder output on the masked video \(x\) together with mask tokens \(\Delta_y\), and is trained to match the target-encoder representation of the clean video \(y\) (Mur-Labadia et al., 2026, p. 4).
+Written in the paper's notation, with \(M\) the set of masked patch indices, \(E_\theta\) the encoder, and \(\mathrm{sg}\) the stop-gradient operator, it reads
 $$L_{\text{predict}} = \frac{1}{|M|}\sum_{i\in M}\left\lVert P_\phi\big(E_\theta(x), \Delta_y\big)_i - \mathrm{sg}\big(E_\theta(y)_i\big)\right\rVert_1$$
 (Mur-Labadia et al., 2026, p. 4).
-The paper adds a context loss over the set $C$ of visible (context) tokens, weighted per patch by $\lambda_i$:
+The paper adds a context loss over the set \(C\) of visible (context) tokens, weighted per patch by \(\lambda_i\):
 $$L_{\text{context}} = \frac{1}{|C|}\sum_{i\in C}\lambda_i\left\lVert P_\phi\big(E_\theta(x), \Delta_y\big)_i - \mathrm{sg}\big(E_\theta(y)_i\big)\right\rVert_1$$
 (Mur-Labadia et al., 2026, p. 5) (Mur-Labadia et al., 2026, p. 7).
-The total objective is $L_{\text{predict}} + L_{\text{context}}$ (Mur-Labadia et al., 2026, p. 5).
+The total objective is \(L_{\text{predict}} + L_{\text{context}}\) (Mur-Labadia et al., 2026, p. 5).
 Shown empirically: a fixed context weight improves ADE20K but lowers SSv2 action accuracy, and a warm-up on the weight recovers part of that loss (Mur-Labadia et al., 2026, p. 7).
-The adopted weighting uses $\lambda_i = \lambda / \sqrt{d_{\min}(i, M)}$, where $d_{\min}$ is the distance, in blocks, from a context token to its nearest mask token, so that patches near masked regions are emphasised (Mur-Labadia et al., 2026, p. 7).
+The adopted weighting uses \(\lambda_i = \lambda / \sqrt{d_{\min}(i, M)}\), where \(d_{\min}\) is the distance, in blocks, from a context token to its nearest mask token, so that patches near masked regions are emphasised (Mur-Labadia et al., 2026, p. 7).
 Shown empirically: the weighted scheme gives the best trade-off, reaching 33.9 mIoU on ADE20K and 0.473 RMSE on NYUv2 with the context loss alone (Mur-Labadia et al., 2026, p. 7).
 The authors state that naive context loss can lead to trivial solutions, such as copying the context features (Mur-Labadia et al., 2026, p. 7).
 The qualitative figure supports the local-structure claim: PCA maps with the context loss show coherent parts, such as dog heads and car wheels, mapped to the same components (Mur-Labadia et al., 2026, p. 4).</p>
@@ -246,7 +244,7 @@ Shown empirically: this recovers global performance (72.0 on SSv2, 80.8 on IN1K)
 The paper states that the improvement arises because local information flows towards the final layers (Mur-Labadia et al., 2026, p. 7); this explanation is the authors' hypothesis.</p>
 <h3>Ingredient 3: multi-modal tokenizers</h3>
 <p>V-JEPA 2 handled images by duplicating them temporally into a 16-frame static video, which increased cost and biased the model to read images as static videos (Mur-Labadia et al., 2026, p. 8).
-The multi-modal tokenizer instead uses a 3D convolution of $16\times16\times2$ for video and a 2D convolution of $16\times16$ for images, plus a learnable modality token (Mur-Labadia et al., 2026, p. 8).
+The multi-modal tokenizer instead uses a 3D convolution of \(16\times16\times2\) for video and a 2D convolution of \(16\times16\) for images, plus a learnable modality token (Mur-Labadia et al., 2026, p. 8).
 Shown empirically: it raises ADE20K mIoU from 40.8 to 41.4 while recognition results stay stable (Mur-Labadia et al., 2026, p. 9).</p>
 <h3>Ingredient 4: data and model scaling</h3>
 <p>The image data grows from 1M ImageNet images to 142M curated images (LVD-142M) in the VisionMix163M mixture, with a shift towards motion-rich video (Mur-Labadia et al., 2026, p. 8).

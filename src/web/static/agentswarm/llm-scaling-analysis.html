@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>The Scaling Problem for Large Language Models: What the Evidence Shows, What It Costs, and What to Watch</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false})"></script>
 <style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
 :root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
@@ -9,7 +9,7 @@ body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style
 h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
 p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}
 .note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
-table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto;position:relative}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
 h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}</style></head><body><h1>The Scaling Problem for Large Language Models: What the Evidence Shows, What It Costs, and What to Watch</h1>
 <p class="note">Written by AgentSwarm on 10 November 2026 for a technically literate reader who knows how neural networks are trained, but not an economist, from sources it found and the user approved (listed under References). Every cited statement was then checked against its source, statement by statement, in two rounds of review; a sampled audit afterwards found 80% of cited statements (16 of 20) fully supported by their source. Not reviewed by an expert: read it as a guide to its sources, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
 <h2>Scope, evidence standards and how to read this document</h2>
@@ -25,22 +25,22 @@ Weng's post is a blog post, dated 24 June 2026, that synthesises earlier papers 
 The finance and industry sources (CNBC, Goldman Sachs, J.P. Morgan, PwC, IEA) report forecasts, consensus figures or company guidance, not measured outturns (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?) (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
 The sources run to 2026, and some have no visible publication date.</p>
 <h2>What scaling laws say, and how well they have held in pretraining</h2>
-<p>A neural scaling law is an empirical rule that a model's loss falls as a power law in a scale factor: parameters $N$, dataset size $D$ (tokens) or training compute $C$ (FLOPs); on a log-log plot the relation is a straight line (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+<p>A neural scaling law is an empirical rule that a model's loss falls as a power law in a scale factor: parameters \(N\), dataset size \(D\) (tokens) or training compute \(C\) (FLOPs); on a log-log plot the relation is a straight line (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
 The usual workflow is to fit the line on a few small runs and extrapolate to larger models to estimate the tokens and compute they would need (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
-Kaplan et al. (2020, preprint) write $L(N) = (N_c/N)^{\alpha_N}$ with $\alpha_N \sim 0.076$, $L(D) = (D_c/D)^{\alpha_D}$ with $\alpha_D \sim 0.095$, and $L(C_{\min}) = (C_c^{\min}/C_{\min})^{\alpha_C^{\min}}$ with $\alpha_C^{\min} \sim 0.050$ (Kaplan et al., 2020, p. 4).
-Here $L$ is cross-entropy loss in nats per token, and $C \approx 6NBS$ estimates non-embedding compute, with $B$ the batch size and $S$ the number of steps (Kaplan et al., 2020, p. 6).</p>
+Kaplan et al. (2020, preprint) write \(L(N) = (N_c/N)^{\alpha_N}\) with \(\alpha_N \sim 0.076\), \(L(D) = (D_c/D)^{\alpha_D}\) with \(\alpha_D \sim 0.095\), and \(L(C_{\min}) = (C_c^{\min}/C_{\min})^{\alpha_C^{\min}}\) with \(\alpha_C^{\min} \sim 0.050\) (Kaplan et al., 2020, p. 4).
+Here \(L\) is cross-entropy loss in nats per token, and \(C \approx 6NBS\) estimates non-embedding compute, with \(B\) the batch size and \(S\) the number of steps (Kaplan et al., 2020, p. 6).</p>
 <p>What Kaplan et al. report, within the ranges they tested:</p>
 <ul>
 <li>Trends spanning more than seven orders of magnitude, per the abstract (Kaplan et al., 2020, p. 1).</li>
 <li>Architectural shape (depth versus width) has minimal effect within a wide range (Kaplan et al., 2020, p. 3).</li>
 <li>Larger models are more sample-efficient (Kaplan et al., 2020, p. 3).</li>
 <li>Compute-optimal training favours very large models on modest data, stopped well before convergence (Kaplan et al., 2020, p. 1).</li>
-<li>Kaplan et al. found $N_{\text{opt}} \propto C^{0.73}$, so model size should grow faster than data (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</li>
+<li>Kaplan et al. found \(N_{\text{opt}} \propto C^{0.73}\), so model size should grow faster than data (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</li>
 </ul>
 <p>Chinchilla (Hoffmann et al., 2022) revisited that allocation.
-Weng describes three fitting methods: varying the token budget at fixed model sizes; IsoFLOP profiles, where each compute budget gives a roughly parabolic loss curve in $N$ whose minimum is the optimum; and a parametric fit $\hat{L}(N,D) = A/N^\alpha + B/D^\beta + E$ fitted with a Huber loss and L-BFGS (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Weng describes three fitting methods: varying the token budget at fixed model sizes; IsoFLOP profiles, where each compute budget gives a roughly parabolic loss curve in \(N\) whose minimum is the optimum; and a parametric fit \(\hat{L}(N,D) = A/N^\alpha + B/D^\beta + E\) fitted with a Huber loss and L-BFGS (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
 Weng says the three methods agree (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
-The result is $N_{\text{opt}} \propto C^{0.5}$: double the model, double the tokens (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+The result is \(N_{\text{opt}} \propto C^{0.5}\): double the model, double the tokens (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
 A 70B-parameter Chinchilla trained on 1.4T tokens outperformed the 280B Gopher (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</p>
 <p>Why the two disagree is contested.
 Weng lists two causes: Kaplan et al. mostly used smaller models, and extrapolation in log-log space magnifies small fit differences; and embedding parameters matter at small sizes (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
@@ -68,9 +68,9 @@ In both, the effectiveness of a strategy depended on prompt difficulty: on easie
 Difficulty was defined from the base model's own pass rate, binned into five quantiles (Snell et al., 2024).
 The authors report that a compute-optimal allocation, chosen per prompt, improves test-time efficiency by more than 4x over a best-of-N baseline (Snell et al., 2024).
 They also report that, on problems where the smaller base model has somewhat non-trivial success, test-time compute can outperform a model about 14 times larger in a FLOPs-matched comparison (Snell et al., 2024).
-The comparison uses the approximations pretraining FLOPs $X = 6ND_{\text{pretrain}}$ and inference FLOPs $Y = 2ND_{\text{inference}}$, where $N$ is the parameter count (Snell et al., 2024).
-The deciding ratio is $R = D_{\text{inference}}/D_{\text{pretrain}}$, and the authors tested $R = 0.16$, $0.79$ and $22$ (Snell et al., 2024).
-At low $R$, test-time compute generally outperformed scaling parameters; at high $R$, or on the hardest questions, pretraining was more effective (Snell et al., 2024).
+The comparison uses the approximations pretraining FLOPs \(X = 6ND_{\text{pretrain}}\) and inference FLOPs \(Y = 2ND_{\text{inference}}\), where \(N\) is the parameter count (Snell et al., 2024).
+The deciding ratio is \(R = D_{\text{inference}}/D_{\text{pretrain}}\), and the authors tested \(R = 0.16\), \(0.79\) and \(22\) (Snell et al., 2024).
+At low \(R\), test-time compute generally outperformed scaling parameters; at high \(R\), or on the hardest questions, pretraining was more effective (Snell et al., 2024).
 The authors conclude that the two are not 1-to-1 exchangeable, and on the most challenging questions they saw very little benefit from more test-time compute (Snell et al., 2024)(Snell et al., 2024).
 Limits: the difficulty estimate itself costs inference compute, which the experiments did not count, and the revision models were fine-tuned for the task (Snell et al., 2024).
 The result covers one model family on one benchmark; the sources do not establish that it generalises to other models or tasks (Snell et al., 2024).
@@ -94,7 +94,7 @@ Hernandez et al. (2022) found, in a lab-style mix of 90% unique and 10% repeated
 Muennighoff et al. (2023), in about 400 experiments, model repeated tokens as losing value exponentially with each repetition (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
 Lovelace et al. (2026), a later fit to about 300 models, adds an overfitting penalty tied to the ratio of parameters to unique tokens and finds larger models are more sensitive to repetition (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
 Weng reports that strong weight decay reduces the repetition penalty in a case study, and cautions that these data-constrained fits are empirical curve fits whose forms are not yet explained (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
-Kaplan et al. (2020) state that the overfitting penalty depends on $N^{0.74}/D$, so each 8x increase in model size needs roughly a 5x increase in data to avoid a penalty (Kaplan et al., 2020).</p>
+Kaplan et al. (2020) state that the overfitting penalty depends on \(N^{0.74}/D\), so each 8x increase in model size needs roughly a 5x increase in data to avoid a penalty (Kaplan et al., 2020).</p>
 <p>Epoch says undertraining can add up to about two orders of magnitude of compute-optimal scaling, but this is expected to plateau, and new innovations will be needed beyond 2030 (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
 Epoch names synthetic data, other modalities and data-efficiency gains as relevant categories but cannot say which will succeed, and notes synthetic data has reliably helped mainly in narrow domains such as maths and coding (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
 The sources do not show that a measured data wall has been reached; the exhaustion dates are forecasts under stated trends.</p>
