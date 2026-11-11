@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/verification-without-ground-truth.html",
+  "title": "Checking Work Without an Answer Key: Verification When There Is No Ground Truth",
+  "date": "2026-11-11",
+  "summary": "A literature study: why checking is the lever, a ladder of checks, model judges and juries, combining weak checks without labels, calibrated guarantees, and a verification stack for agents."
+ },
+ {
   "href": "/static/agentswarm/many-small-models-vs-one-large.html",
   "title": "Can Many Small Models Compete with One Large Model? Agents as a Multiscale Problem",
   "date": "2026-11-11",
