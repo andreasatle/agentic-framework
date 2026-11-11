@@ -1,0 +1,349 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>The Scaling Problem for Large Language Models: What the Evidence Shows, What It Costs, and What to Watch</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})"></script>
+<style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
+:root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
+body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style",serif;max-width:46rem;margin:0 auto;padding:2.5rem 16px 4rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
+p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}
+.note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}</style></head><body><h1>The Scaling Problem for Large Language Models: What the Evidence Shows, What It Costs, and What to Watch</h1>
+<p class="note">Written by AgentSwarm on 10 November 2026 for a technically literate reader who knows how neural networks are trained, but not an economist, from sources it found and the user approved (listed under References). Every cited statement was then checked against its source, statement by statement, in two rounds of review; a sampled audit afterwards found 80% of cited statements (16 of 20) fully supported by their source. Not reviewed by an expert: read it as a guide to its sources, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
+<h2>Scope, evidence standards and how to read this document</h2>
+<p>This document asks four questions: whether scaling large language models (LLMs) is still paying off, what further scaling costs, who is paying for it and what revenue is shown, and whether a sharp market correction within a year is plausible.
+The sources do not answer all four with equal strength, and this document does not offer a probability of a correction.
+Every substantive statement carries one of three labels: FACT (measured or reported, with a date), FORECAST (a named forecaster and its stated assumptions), or OPINION (a named person or organisation holding the view).
+Where a figure is a range, it is given as a range; every figure is dated.
+Source quality differs and is flagged here.
+Kaplan et al. (Kaplan et al., 2020), Snell et al. (Snell et al., 2024), Assran et al. (Assran et al., 2025), Gu and Dao (Gu and Dao, 2023) and Nie et al. (Nie et al., 2025) are arXiv papers.
+Epoch AI, a research institute, supplies the data-stock estimate (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+LeCun's 2022 document is a position paper, so its claims are OPINION and proposal, not evidence (LeCun, 2022).
+Weng's post is a blog post, dated 24 June 2026, that synthesises earlier papers (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log), and Wikipedia is an encyclopedia article on neural scaling laws (en.wikipedia.org: Neural scaling law - Wikipedia).
+The finance and industry sources (CNBC, Goldman Sachs, J.P. Morgan, PwC, IEA) report forecasts, consensus figures or company guidance, not measured outturns (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?) (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+The sources run to 2026, and some have no visible publication date.</p>
+<h2>What scaling laws say, and how well they have held in pretraining</h2>
+<p>A neural scaling law is an empirical rule that a model's loss falls as a power law in a scale factor: parameters $N$, dataset size $D$ (tokens) or training compute $C$ (FLOPs); on a log-log plot the relation is a straight line (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+The usual workflow is to fit the line on a few small runs and extrapolate to larger models to estimate the tokens and compute they would need (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Kaplan et al. (2020, preprint) write $L(N) = (N_c/N)^{\alpha_N}$ with $\alpha_N \sim 0.076$, $L(D) = (D_c/D)^{\alpha_D}$ with $\alpha_D \sim 0.095$, and $L(C_{\min}) = (C_c^{\min}/C_{\min})^{\alpha_C^{\min}}$ with $\alpha_C^{\min} \sim 0.050$ (Kaplan et al., 2020, p. 4).
+Here $L$ is cross-entropy loss in nats per token, and $C \approx 6NBS$ estimates non-embedding compute, with $B$ the batch size and $S$ the number of steps (Kaplan et al., 2020, p. 6).</p>
+<p>What Kaplan et al. report, within the ranges they tested:</p>
+<ul>
+<li>Trends spanning more than seven orders of magnitude, per the abstract (Kaplan et al., 2020, p. 1).</li>
+<li>Architectural shape (depth versus width) has minimal effect within a wide range (Kaplan et al., 2020, p. 3).</li>
+<li>Larger models are more sample-efficient (Kaplan et al., 2020, p. 3).</li>
+<li>Compute-optimal training favours very large models on modest data, stopped well before convergence (Kaplan et al., 2020, p. 1).</li>
+<li>Kaplan et al. found $N_{\text{opt}} \propto C^{0.73}$, so model size should grow faster than data (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</li>
+</ul>
+<p>Chinchilla (Hoffmann et al., 2022) revisited that allocation.
+Weng describes three fitting methods: varying the token budget at fixed model sizes; IsoFLOP profiles, where each compute budget gives a roughly parabolic loss curve in $N$ whose minimum is the optimum; and a parametric fit $\hat{L}(N,D) = A/N^\alpha + B/D^\beta + E$ fitted with a Huber loss and L-BFGS (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Weng says the three methods agree (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+The result is $N_{\text{opt}} \propto C^{0.5}$: double the model, double the tokens (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+A 70B-parameter Chinchilla trained on 1.4T tokens outperformed the 280B Gopher (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</p>
+<p>Why the two disagree is contested.
+Weng lists two causes: Kaplan et al. mostly used smaller models, and extrapolation in log-log space magnifies small fit differences; and embedding parameters matter at small sizes (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Wikipedia adds that Kaplan et al. did not count embedding parameters (en.wikipedia.org: Neural scaling law - Wikipedia).
+Weng reports that Pearce and Song (2024) reconcile the two by counting embedding parameters (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Besiroglu et al. (2024) found fitting issues in Chinchilla's third method, including averaging rather than summing Huber losses and rounding exponents to two digits (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</p>
+<p>Beyond Chinchilla, Wikipedia reports deliberate overtraining past the compute-optimal point, with scaling laws found up to 32 times the Chinchilla-optimal dataset size (en.wikipedia.org: Neural scaling law - Wikipedia).
+Wikipedia also reports broken neural scaling laws (BNSL): a 2022 analysis found many scaling curves follow a smoothly broken power law with transitions called "breaks" (en.wikipedia.org: Neural scaling law - Wikipedia).
+Weng offers two hypotheses for why power laws arise: regression on a low-dimensional data manifold, and skills learned in discrete chunks whose frequencies follow a power law; neither is established (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</p>
+<p>What has been shown versus extrapolated:</p>
+<ul>
+<li>Shown: the L(N) fit holds over the models shown, with deviations for very small models and possible overfitting for the largest (Kaplan et al., 2020, p. 8).</li>
+<li>Shown: Kaplan et al. varied model size and dataset size, with models ranging from about 10^3 to 10^9 parameters (excluding embeddings) in their training runs (Kaplan et al., 2020, p. 2).</li>
+<li>Extrapolation: that the trends continue to larger scale. Kaplan et al. state they lack a solid theoretical understanding of the laws (Kaplan et al., 2020, p. 22).</li>
+<li>Speculation by the authors: the two trends intersect at a point the authors describe as sensitive to the fitted exponents, and they say their laws "must break down before this point" (Kaplan et al., 2020, p. 17).</li>
+<li>Speculation by the authors: they conjecture the intersection may mean "we have extracted all of the reliable information available in natural language data," with loss then levelling off (Kaplan et al., 2020, p. 18).</li>
+</ul>
+<p>Weng's caveat: fitted laws are sensitive to fit choices (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</p>
+<h2>Test-time compute and the practical fragility of fitted laws</h2>
+<p>Scaling is not only a matter of training.
+Snell et al. (2024) asked how much a model can improve on a hard prompt when given a fixed but non-trivial amount of inference compute, and how that compares with building a larger model (Snell et al., 2024).
+FACT (preprint, August 2024): the study used PaLM 2-S* models fine-tuned for revision and verification, evaluated on the MATH benchmark of high-school competition maths problems (Snell et al., 2024).
+The two mechanisms tested were (1) searching against a process-based reward model (PRM), which scores each intermediate step, and (2) adaptively revising the model's own answer distribution (Snell et al., 2024).
+In both, the effectiveness of a strategy depended on prompt difficulty: on easier prompts, sequential revision was more useful, while on harder prompts, parallel sampling or tree search against a PRM was more useful (Snell et al., 2024).
+Difficulty was defined from the base model's own pass rate, binned into five quantiles (Snell et al., 2024).
+The authors report that a compute-optimal allocation, chosen per prompt, improves test-time efficiency by more than 4x over a best-of-N baseline (Snell et al., 2024).
+They also report that, on problems where the smaller base model has somewhat non-trivial success, test-time compute can outperform a model about 14 times larger in a FLOPs-matched comparison (Snell et al., 2024).
+The comparison uses the approximations pretraining FLOPs $X = 6ND_{\text{pretrain}}$ and inference FLOPs $Y = 2ND_{\text{inference}}$, where $N$ is the parameter count (Snell et al., 2024).
+The deciding ratio is $R = D_{\text{inference}}/D_{\text{pretrain}}$, and the authors tested $R = 0.16$, $0.79$ and $22$ (Snell et al., 2024).
+At low $R$, test-time compute generally outperformed scaling parameters; at high $R$, or on the hardest questions, pretraining was more effective (Snell et al., 2024).
+The authors conclude that the two are not 1-to-1 exchangeable, and on the most challenging questions they saw very little benefit from more test-time compute (Snell et al., 2024)(Snell et al., 2024).
+Limits: the difficulty estimate itself costs inference compute, which the experiments did not count, and the revision models were fine-tuned for the task (Snell et al., 2024).
+The result covers one model family on one benchmark; the sources do not establish that it generalises to other models or tasks (Snell et al., 2024).
+Wikipedia (secondary source) notes that the OpenAI o1 report documented performance improving with both train-time and test-time compute (en.wikipedia.org: Neural scaling law - Wikipedia).</p>
+<h3>Fitting choices can move the answer</h3>
+<p>Weng (2026, a blog synthesis, not peer-reviewed) argues that a fitted scaling law is not thereby reliable (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+A law is fit only on the relatively small, relatively cheap models that can be afforded, and the prediction is "extrapolated" for a model "orders of magnitude larger", so choices that look like rounding error may lead to "wild differences in prediction" (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Weng cites Besiroglu et al. (2024), who re-ran the Chinchilla parametric fit and found an optimiser stopping early because Huber-loss values were averaged rather than summed, and parameters rounded to two digits (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Weng's toy simulation shows that rounding losses, adding noise of about 0.001 loss units, and fitting only small, only medium or all models each change the apparent scaling law (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+A practical reading: a fit describes the range it was tested on, and extrapolation beyond that range is sensitive to the fitting choices made (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</p>
+<h2>Data: the stock of human text and what happens when it binds</h2>
+<p>Epoch AI estimates the effective stock of quality- and repetition-adjusted public human text for AI training at around 300 trillion tokens, with a 90% confidence interval of 100 trillion to 1,000 trillion (FACT, Villalobos et al., 6 June 2024) (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+This is an estimate, not a measured limit that has been reached.
+Epoch forecasts that, if trends continue, language models will fully use this stock between 2026 and 2032, or earlier if they are intensely overtrained (FORECAST; 80% interval) (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+The forecast combines two models: one extrapolates historical dataset growth, the other derives dataset size from projected training-compute growth (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+The dates depend on overtraining: at 5x overtraining the stock is used by 2027, at 100x by 2025, and Llama 3-70B was overtrained by about 10x (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+Epoch's 2022 analysis had predicted exhaustion of high-quality text by 2024; the 2024 revision moves this to about 2028, mainly because filtered web data and multi-epoch training expand the usable stock (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+Epoch's context figure is that GPT-2 to GPT-4 spanned five years and four orders of magnitude of compute, and its separate trend report puts frontier training-compute growth at 4-5x per year (May 2024) (epoch.ai: Will we run out of data to train large language models? | Epoch AI).</p>
+<p>Weng describes a data-limited regime, where classic laws that assume unlimited unique data and no repetition no longer hold cleanly (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Hernandez et al. (2022) found, in a lab-style mix of 90% unique and 10% repeated data, a double-descent effect in which test loss can worsen and then improve as repeated data is emphasised; Weng notes real-world repetition is more nuanced (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Muennighoff et al. (2023), in about 400 experiments, model repeated tokens as losing value exponentially with each repetition (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Lovelace et al. (2026), a later fit to about 300 models, adds an overfitting penalty tied to the ratio of parameters to unique tokens and finds larger models are more sensitive to repetition (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Weng reports that strong weight decay reduces the repetition penalty in a case study, and cautions that these data-constrained fits are empirical curve fits whose forms are not yet explained (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).
+Kaplan et al. (2020) state that the overfitting penalty depends on $N^{0.74}/D$, so each 8x increase in model size needs roughly a 5x increase in data to avoid a penalty (Kaplan et al., 2020).</p>
+<p>Epoch says undertraining can add up to about two orders of magnitude of compute-optimal scaling, but this is expected to plateau, and new innovations will be needed beyond 2030 (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+Epoch names synthetic data, other modalities and data-efficiency gains as relevant categories but cannot say which will succeed, and notes synthetic data has reliably helped mainly in narrow domains such as maths and coding (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+The sources do not show that a measured data wall has been reached; the exhaustion dates are forecasts under stated trends.</p>
+<h2>Money: spending, revenue, and who pays</h2>
+<p>Capital expenditure (capex) is money spent on long-lived assets such as buildings, servers and chips; a hyperscaler is a very large cloud provider such as Amazon, Microsoft, Meta, Alphabet or Oracle (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).
+The figures below are forecasts, consensus estimates or company guidance, not measured totals, and they are not all on the same basis.
+Hyperscaler capex for 2026 is reported at up to about $700 billion, which CNBC dates to 13 February 2026 and describes as a 60% aggregate increase on the prior year, a figure attributed to Morningstar's Michael Field (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).
+Goldman Sachs, dated 24 September 2026, puts 2026 hyperscaler capex at about $800 billion and consensus 2027 capex at $1.1 trillion, with consensus 2027 estimates revised up by $175 billion since the start of the Q2 earnings season (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+Goldman's own baseline is $1.2 trillion for 2027 and $1.4 trillion for 2028, implying capex growth slowing from nearly 100% in 2026 to 54% in 2027 and 12% in 2028 (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+The two 2026 figures differ by about $100 billion; CNBC's is an early-2026 company announcement with a "could hit" wording, while Goldman's is a September 2026 estimate for the largest US hyperscalers, which it names as Amazon, Alphabet, Meta, Microsoft and Oracle (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?) (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+J.P. Morgan Global Research projects $900 billion of AI capex in 2026, revised up from $736 billion after mid-year earnings, and about $5 trillion of cumulative global AI capex by 2030 (jpmorgan.com: AI Capex &amp; Hyperscaler Investment Outlook I J.P. Morgan).
+PwC, using a model commissioned from Oxford Economics (article dated 2 September 2026), projects global data-centre capex of $31.6 trillion through 2050 in its central scenario, within a range of about $22 trillion to $50 trillion (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC).
+In that model annual spending rises from roughly $800 billion in 2026 to $1.1 trillion in 2030 and $1.8 trillion in 2050, and servers and GPUs are refreshed every four to six years (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC).
+PwC's figures cover buildings and ICT equipment across 46 countries and territories in five regions (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC).</p>
+<p><strong>Consumption of cash flow and financing.</strong> UBS, in a note cited by CNBC, estimates that 2026 hyperscaler capex will consume almost 100% of operating cash flow (cash generated by the core business), against a 10-year average of 40% (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).
+Goldman reports that hyperscaler capex now exceeds operating cash flow, so further growth will increasingly need debt and equity, while its credit strategists see concentration in the investment-grade bond market as the more relevant bottleneck (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+CNBC reports Oracle plans to raise $45 billion to $50 billion in 2026 and Alphabet plans a $20 billion US dollar bond sale (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).
+J.P. Morgan reports Alphabet raised $85 billion in equity in June 2026 and that operating cash flow for hyperscalers is still expected to exceed $900 billion by 2027 (jpmorgan.com: AI Capex &amp; Hyperscaler Investment Outlook I J.P. Morgan).</p>
+<p><strong>Revenue needed.</strong> Goldman estimates hyperscalers need about $300 billion of annual AI revenue to break even on 2026-27 average capex, with breakeven defined as depreciation plus operating expenses, and rising with the return on invested capital target (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+Goldman reports hyperscaler realised return on invested capital has fallen from about 40% to 25% (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+Goldman estimates the application layer (companies buying compute) would need over $1 trillion of annual revenue at a 30% margin and a 10-20% hyperscaler return, and it compares this with roughly $1.5 trillion of global software spending in 2026 (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+Goldman's reported evidence of monetisation is cloud revenue growth of 48% year on year in Q2 2026 for Amazon, Alphabet, Microsoft and Oracle, and backlogs of $1.7 trillion for three providers (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+J.P. Morgan reports AWS revenue up 37% year on year as of August 2026, with backlog of $496 billion; Azure revenue up 43% over the same period, with backlog growth expected in the mid-40% range; and Google Cloud revenue up 82%, with backlog of $514 billion (jpmorgan.com: AI Capex &amp; Hyperscaler Investment Outlook I J.P. Morgan).
+J.P. Morgan's source says it is "too early to declare victory on AI capex ROI", a view attributed to its analyst Harlan Sur, which is opinion (jpmorgan.com: AI Capex &amp; Hyperscaler Investment Outlook I J.P. Morgan).</p>
+<p><strong>Opinion.</strong> Michael Field's statement that "at a certain point this bet becomes binary: either demand and monetization follows and pays off the spend, or it doesn't and the businesses fail" is opinion (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).
+Field also says the useful life of data centres and chips "can be as low as 3-5 years", so returns would be needed before 2030 (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).</p>
+<p><strong>What the sources do not show.</strong> No source gives a total of AI revenue actually earned to date, so the gap between revenue and the roughly $300 billion breakeven cannot be measured directly from these sources.
+Goldman's breakeven is its own estimate, and the sources do not give an independent check on it.</p>
+<h2>Energy and physical constraints</h2>
+<p>The IEA estimates that data-centre electricity consumption was around 415 TWh in 2024, about 1.5% of global electricity consumption that year, and that it has grown at 12% per year over the last five years (iea.org: Energy demand from AI - Energy and AI - IEA).
+These are estimates for the present, not forecasts.
+The IEA's Base Case projects that consumption will roughly double to around 945 TWh by 2030, just under 3% of global electricity consumption that year (iea.org: Energy demand from AI - Energy and AI - IEA).
+This is a scenario result, and the IEA says there is substantial uncertainty about both current and future consumption (iea.org: Energy demand from AI - Energy and AI - IEA).
+Its sensitivity cases for 2035 range from about 700 TWh (Headwinds, a plateau) to around 970 TWh (High Efficiency) to more than 1,700 TWh (Lift-Off) (iea.org: Energy demand from AI - Energy and AI - IEA).
+The United States and China account for nearly 80% of projected global growth to 2030 in the Base Case (iea.org: Energy demand from AI - Energy and AI - IEA).</p>
+<p>PwC's model is a different kind of source: it is a capex model commissioned from Oxford Economics, and its outputs are scenarios, not electricity measurements (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC).
+PwC says power is the binding constraint in every region, and that transmission capacity, substation availability and multiyear transformer lead times are bottlenecks that determine which projects break ground and when (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC).
+It adds that chip trade flows and data-sovereignty rules decide which regions capture demand (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC).
+It warns that pre-procuring grid components without a credible demand pipeline produces stranded grid investment (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC).</p>
+<p>The sources do not give a cost per unit of AI capability, so they cannot show whether energy cost per unit of performance is falling.
+They also give no energy use per training run or per query for any named model.</p>
+<p>Epoch AI says that AI developers have not yet faced major limits beyond procuring AI chips, and that if chips are the only bottleneck, scaling would likely continue growing exponentially in compute (epoch.ai: Will we run out of data to train large language models? | Epoch AI).
+Epoch names training data as the input that could become binding, and it does not say how power or grid timelines would set the pace of chip deployment (epoch.ai: Will we run out of data to train large language models? | Epoch AI).</p>
+<h2>Are returns diminishing? Where the evidence is mixed</h2>
+<p>The question is whether each additional unit of scaling still buys enough to justify its cost.
+The sources point both ways, and none of them measures the economic return on the most recent frontier models.
+Loss and benchmark accuracy are not the same as economic value.</p>
+<p><strong>The case for diminishing returns</strong></p>
+<ul>
+<li>Kaplan et al. state that "since scalings with N, D, C_min are power-laws, there are diminishing returns with increasing scale" (Kaplan et al., 2020, p. 18).</li>
+<li>Kaplan et al. conjecture that their fitted trends intersect at a point where the laws would break, and label the reading that all reliable information is extracted as a conjecture (Kaplan et al., 2020, p. 18).</li>
+<li>Epoch AI forecasts that the effective stock of public human text, about 300 trillion tokens, would be fully used between 2026 and 2032 if trends continue, and that progress beyond 2030 would need new innovations (epoch.ai: Will we run out of data to train large language models? | Epoch AI).</li>
+<li>Snell et al. find that the benefit of test-time compute depends on prompt difficulty, and on the hardest questions they observed very little benefit (Snell et al., 2024).</li>
+<li>Goldman Sachs' baseline is that hyperscaler capex still rises in 2027, but "the rate of both capex growth and upside surprises will diminish" (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).</li>
+</ul>
+<p><strong>The case against, or mixed evidence</strong></p>
+<ul>
+<li>Epoch AI notes that "five years and four orders of magnitude of compute separate the barely coherent GPT-2 from the powerful GPT-4" (epoch.ai: Will we run out of data to train large language models? | Epoch AI); the sources do not quantify the capability gains across that span.</li>
+<li>Snell et al. report that test-time compute can outperform a model about 14 times larger on problems where the smaller base model has non-trivial success, in a FLOPs-matched comparison (Snell et al., 2024).</li>
+<li>Wikipedia, a secondary source, reports a "densing law" in which the parameter count needed for a given benchmark performance falls over time (en.wikipedia.org: Neural scaling law - Wikipedia).</li>
+<li>Weng observes that the laws are well described in the data-rich regime, which bounds how far the evidence applies when data binds (lilianweng.github.io: Scaling Laws, Carefully | Lil'Log).</li>
+</ul>
+<p><strong>Summary table</strong></p>
+<table>
+<thead>
+<tr>
+<th>Claim</th>
+<th>Evidence</th>
+<th>Type</th>
+<th>Strength</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Returns per order of magnitude of compute diminish</td>
+<td>Power-law fits (Kaplan et al., 2020, p. 18)</td>
+<td>FACT (within tested range)</td>
+<td>Strong in range tested; extrapolation uncertain</td>
+</tr>
+<tr>
+<td>Data may bind 2026 to 2032</td>
+<td>Epoch AI stock estimate (epoch.ai: Will we run out of data to train large language models?</td>
+<td>Epoch AI)</td>
+<td>FORECAST</td>
+</tr>
+<tr>
+<td>Test-time compute adds a second axis</td>
+<td>Snell et al. MATH results (Snell et al., 2024)</td>
+<td>FACT (one benchmark, one model family)</td>
+<td>Moderate; on the hardest prompts, very little benefit (Snell et al., 2024)</td>
+</tr>
+<tr>
+<td>Capex growth slows in 2027</td>
+<td>Goldman Sachs baseline (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade)</td>
+<td>FORECAST</td>
+<td>Moderate; broker-analyst view</td>
+</tr>
+<tr>
+<td>Fewer parameters needed over time</td>
+<td>Densing law (en.wikipedia.org: Neural scaling law - Wikipedia)</td>
+<td>FACT as reported by secondary source</td>
+<td>Weak to moderate; benchmark-dependent</td>
+</tr>
+</tbody>
+</table>
+<p>The sources contain no direct measure of economic returns on the most recent frontier models, so whether returns are diminishing in the sense that matters to investors remains an open question.</p>
+<h2>Do we need new theory or architectures? JEPA, world models and alternatives</h2>
+<p>This section asks whether the evidence points to a need for new theory or architectures beyond the autoregressive Transformer, using one position paper, one recent empirical system, and two alternative architectures.
+The labels are FACT (measured or reported, with date), FORECAST (named forecaster and assumptions) and OPINION (named holder).
+Sizes and scales are as reported in each source and are not directly comparable.</p>
+<p><strong>The proposal (OPINION).</strong> In a position paper dated 27 June 2022, LeCun argues that machines should learn as humans and animals do, through a configurable predictive world model, hierarchical joint-embedding architectures, self-supervised learning and intrinsic motivation (LeCun, 2022).
+He calls the paper "a position paper expressing my vision", and says that its ideas were largely formulated by others (LeCun, 2022).
+It is an opinion and a proposal, not evidence.</p>
+<p><strong>Evidence for the world-model route (FACT, June 2025).</strong> V-JEPA 2 (Assran et al., arXiv, June 2025) pretrains a video encoder on over 1 million hours of internet video (Assran et al., 2025).
+Reported results include 77.3 top-1 accuracy on Something-Something v2 and 39.7 recall-at-5 on Epic-Kitchens-100 action anticipation, a 44% relative gain over the previous best model (Assran et al., 2025) (Assran et al., 2025).
+After alignment with an 8B language model, the authors report 84.0 on PerceptionTest and 76.9 on TempCompass (Assran et al., 2025).</p>
+<p>The robot planning result uses a world model post-trained on less than 62 hours of unlabelled robot video (Assran et al., 2025).
+In closed-loop manipulation on a single NVIDIA RTX 4090 GPU, V-JEPA 2-AC is compared with Cosmos, a video-generation world model: 4 minutes per action for Cosmos versus 16 seconds for V-JEPA 2-AC (Assran et al., 2025).
+On Lab 2, box pick-and-place is 0% for Cosmos and 50% for V-JEPA 2-AC (Assran et al., 2025).
+Each skill is averaged over 10 tasks, in robot manipulation in laboratory settings with image goals (Assran et al., 2025).</p>
+<p>The authors' scaling results are modest.
+Scaling the encoder from 300 million to 1 billion parameters adds about 1.5 points on average across six understanding tasks, and data scaling from 2 to 22 million videos adds 1.0 point (Assran et al., 2025).
+Action-anticipation recall-at-5 rises from 32.7 (300M) to 38.0 (1B), which the authors describe as linear scaling with model size (Assran et al., 2025).</p>
+<p><strong>What this does and does not show.</strong> It shows that self-supervised video world models can be trained up to 1 billion parameters and support basic robot planning in two labs (Assran et al., 2025) (Assran et al., 2025).
+It does not show that such models replace LLMs, and the sources contain no comparison with frontier language models.
+It does not address the language scaling problem.</p>
+<p><strong>Alternative architectures (FACT, as reported).</strong> Mamba (Gu and Dao, arXiv, December 2023, revised May 2024) uses selective state space models whose parameters depend on the input, scaling linearly in sequence length (Gu and Dao, 2023).
+The authors report 5x generation throughput over similar-sized Transformers, and that Mamba-3B matches Transformers twice its size; language scaling laws are shown only up to 1B parameters (Gu and Dao, 2023).</p>
+<p>LLaDA (Nie et al., arXiv, February 2025, version 3 October 2025) is a masked diffusion language model trained from scratch at 8B parameters on 2.3 trillion tokens (Nie et al., 2025).
+The authors report LLaDA 8B Base as competitive with LLaMA3 8B on in-context learning, and on the reversal poem task LLaDA-8B Instruct scores 45.6 on reversal against 34.3 for GPT-4o (Nie et al., 2025) (Nie et al., 2025).
+With reinforcement learning, they say LLaDA's results are "slightly behind" LLaMA3 8B Instruct, and that its model scale and training data remain smaller than those of leading autoregressive models (Nie et al., 2025).</p>
+<p><strong>Reading the alternatives.</strong> These papers show that the autoregressive Transformer is not the only route to competitive language modelling at the scales tested (Gu and Dao, 2023) (Nie et al., 2025).
+Mamba reports efficiency gains (5x generation throughput, linear scaling) and quality gains, and calls itself the first linear-time model to truly achieve Transformer-quality performance (Gu and Dao, 2023).
+The V-JEPA 2 results here are mainly accuracy results, with planning time as one comparison (Assran et al., 2025).
+The sources give no evidence at frontier scale: Mamba's language results stop at 3B, LLaDA at 8B, and V-JEPA 2's encoder at 1B (Gu and Dao, 2023) (Nie et al., 2025) (Assran et al., 2025).</p>
+<h2>Financial risk: what would have to happen for a sharp correction within a year, and what to watch</h2>
+<p>The sources describe a mechanism, not a forecast of a crash.
+CNBC reports that hyperscaler capital expenditure (capex, meaning spending on buildings, chips and servers) could reach about $700 billion on AI in 2026, and that more than $1 trillion was wiped from Big Tech market capitalisation (the total value of listed shares) in the week before 13 February 2026 on concerns about the scale of AI spending and returns (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).
+UBS, in a note cited by CNBC in February 2026, estimates that 2026 hyperscaler capex will consume almost 100% of cash flow from operations (the cash a business generates from its trading), against a 10-year average of 40% (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).
+Goldman Sachs puts 2026 spending at about $800 billion and says consensus expects $1.1 trillion in 2027, a figure it says was revised up by $175 billion since the start of the Q2 2026 earnings season (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+J.P. Morgan projects global AI capex of $5.5 trillion by 2030 in one part of its outlook and $5 trillion in another, and $900 billion for 2026 alone (jpmorgan.com: AI Capex &amp; Hyperscaler Investment Outlook I J.P. Morgan), figures the sources do not reconcile.</p>
+<p>Morningstar's Michael Field says the bet "becomes binary: either demand and monetization follows and pays off the spend, or it doesn't and the businesses fail." This is OPINION of Field, not a measured fact (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).
+Goldman Sachs estimates that the largest US hyperscalers would need about $300 billion of annual AI revenue to break even on 2026–2027 average capex, and says hyperscaler cloud revenue annualised roughly $70 billion above its pre-AI trend in Q2 2026 (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+That is a Goldman estimate; the sources do not give a measured figure for AI revenue as a whole.</p>
+<p>Conditions under which a correction would be plausible are listed below, each tied to a reported indicator.</p>
+<ul>
+<li><strong>(a) Capex guidance cuts or downward revisions to consensus 2027 capex (about $1.1 trillion, Goldman, September 2026)</strong>; Goldman reports upward revisions instead (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).</li>
+<li><strong>(b) Revenue shortfall against required revenues</strong> (about $300 billion for hyperscalers and about $1 trillion for application users, Goldman, September 2026) (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).</li>
+<li><strong>(c) Capex-to-cash-flow ratio rising further and financing shifting to debt.</strong> CNBC reports Oracle planning to raise $45–50 billion in 2026 and Alphabet a $20 billion bond sale; BNY's Bob Savage warns that this reduces free cash flow (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?). J.P. Morgan describes the shift from free cash flow to debt and equity raises, including Alphabet's $85 billion equity raise in June 2026 (jpmorgan.com: AI Capex &amp; Hyperscaler Investment Outlook I J.P. Morgan).</li>
+<li><strong>(d) Evidence of diminishing capability returns or data limits.</strong> Epoch AI forecasts that the public text stock would be fully used between 2026 and 2032 if trends continue; this is a forecast, not an observed data wall (epoch.ai: Will we run out of data to train large language models? | Epoch AI).</li>
+<li><strong>(e) Power and grid delays.</strong> J.P. Morgan calls power availability the primary bottleneck; PwC says transformer lead times decide which projects break ground; the IEA projects data-centre demand to roughly double by 2030 in its Base Case (jpmorgan.com: AI Capex &amp; Hyperscaler Investment Outlook I J.P. Morgan) (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC) (iea.org: Energy demand from AI - Energy and AI - IEA).</li>
+<li><strong>(f) Efficiency gains that cut compute demand.</strong> The IEA's High Efficiency Case reaches about 970 TWh by 2035 against a higher Base Case, a scenario rather than a measurement (iea.org: Energy demand from AI - Energy and AI - IEA). Mamba's linear scaling is an architecture result at the scales tested (Gu and Dao, 2023).</li>
+</ul>
+<p>The counter-case is in the same sources.
+PwC argues that servers and GPUs refresh every four to six years, so data-centre investment is expected to keep rising through 2050, at about $800 billion in 2026 and $1.8 trillion in 2050 (pwc.com: Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC).
+Goldman's baseline is that capex still rises in 2027 to about $1.2 trillion, with slower growth (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).
+Goldman also notes that balance sheets do not appear to be a binding constraint and that interest coverage ratios remain healthy (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).</p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>Source</th>
+<th>Last reported value (date)</th>
+<th>Stress signal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hyperscaler capex 2026</td>
+<td>CNBC; Goldman</td>
+<td>About $700bn (Feb 2026); about $800bn (Sep 2026)</td>
+<td>Downward guidance cuts</td>
+</tr>
+<tr>
+<td>Consensus 2027 capex</td>
+<td>Goldman</td>
+<td>About $1.1tn (Sep 2026); revised up $175bn since Q2 2026 season</td>
+<td>Downward revisions</td>
+</tr>
+<tr>
+<td>Capex as % of operating cash flow</td>
+<td>UBS via CNBC; Goldman</td>
+<td>Almost 100% in 2026 (Feb 2026)</td>
+<td>Rising further</td>
+</tr>
+<tr>
+<td>AI revenue vs. required</td>
+<td>Goldman</td>
+<td>About $300bn needed; growth reported (Sep 2026)</td>
+<td>Shortfall</td>
+</tr>
+<tr>
+<td>Debt and equity issuance</td>
+<td>CNBC; J.P. Morgan</td>
+<td>Oracle $45–50bn plan; Alphabet $85bn equity (Jun 2026)</td>
+<td>Funding gap</td>
+</tr>
+<tr>
+<td>Public text data stock</td>
+<td>Epoch AI</td>
+<td>About 300 trillion tokens (Jun 2024)</td>
+<td>Binding before 2032</td>
+</tr>
+<tr>
+<td>Data-centre electricity</td>
+<td>IEA</td>
+<td>About 415 TWh in 2024; about 945 TWh by 2030 (Base Case)</td>
+<td>Grid delays</td>
+</tr>
+</tbody>
+</table>
+<p>The sources do not give a probability of a correction, and none is offered here.</p>
+<h2>What is known, what is uncertain, what to watch</h2>
+<h3>Known</h3>
+<ul>
+<li><strong>FACT—2020:</strong> Kaplan et al. observed power-law loss scaling within tested ranges (Kaplan et al., 2020, p. 3).</li>
+<li><strong>FACT—June 2024:</strong> Epoch reports a four-order-of-magnitude training-compute increase from GPT-2 to GPT-4 over five years (epoch.ai: Will we run out of data to train large language models? | Epoch AI).</li>
+<li><strong>FACT—June 2025:</strong> V-JEPA 2 reports 77.3 top-1 accuracy on Something-Something v2 and 39.7 recall-at-5 on Epic-Kitchens-100 (Assran et al., 2025, p. 1).</li>
+<li><strong>FACT—13 February 2026:</strong> CNBC reports over $1 trillion lost from Big Tech market value the preceding week (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?).</li>
+</ul>
+<h3>Uncertain</h3>
+<ul>
+<li><strong>FORECAST:</strong> 2026 capital spending estimates span $700–800 billion across February CNBC reporting and September Goldman Sachs research (cnbc.com: The Tech Download: Can hyperscalers justify their huge AI capex?) (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).</li>
+<li><strong>FORECAST—Epoch, June 2024:</strong> Public text becomes fully utilised in 2026–2032 if trends continue, potentially earlier with intensive overtraining (epoch.ai: Will we run out of data to train large language models? | Epoch AI).</li>
+<li><strong>FORECAST:</strong> Goldman's September 2026 breakeven estimate requires roughly $300 billion annual AI revenue; IEA's 2025 scenarios put 2035 data-centre demand around 700–1,700-plus TWh (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade) (iea.org: Energy demand from AI - Energy and AI - IEA).</li>
+</ul>
+<h3>Watch</h3>
+<ul>
+<li>Track spending revisions, monetisation, financing and power bottlenecks (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).</li>
+<li>Kaplan et al. fit trends only within their tested ranges (Kaplan et al., 2020, p. 3).</li>
+<li>Snell et al. report that test-time compute benefit varies with prompt difficulty (Snell et al., 2024, p. 1).</li>
+</ul>
+<p><strong>Limits—FACT:</strong> Kaplan et al. report no deviation from power-law trends on the upper end of their tested range, but state that performance must flatten out eventually before reaching zero loss (Kaplan et al., 2020, p. 3).
+Goldman Sachs says uncertainty about the capex cycle will likely persist (gspublishing.com: AI capex, required revenues, and what's priced in the AI trade).</p>
+<h2>References</h2>
+<ul>
+<li>Assran, M., Bardes, A., Fan, D., Garrido, Q., Howes, R., Mojtaba, Komeili, Muckley, M., Rizvi, A., Roberts, C., et al. (2025). <em>V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning</em>. arXiv preprint 2506.09985.</li>
+<li>cnbc.com (2026). <a href="https://www.cnbc.com/2026/02/13/tech-download-newsletter-ai-capex-hyperscalers.html"><em>The Tech Download: Can hyperscalers justify their huge AI capex?</em></a>. cnbc.com (press).</li>
+<li>en.wikipedia.org (2026). <a href="https://en.wikipedia.org/wiki/Neural_scaling_law"><em>Neural scaling law - Wikipedia</em></a>. en.wikipedia.org (reference).</li>
+<li>epoch.ai (2026). <a href="https://epoch.ai/publications/will-we-run-out-of-data-limits-of-llm-scaling-based-on-human-generated-data"><em>Will we run out of data to train large language models? | Epoch AI</em></a>. epoch.ai (institutional).</li>
+<li>gspublishing.com (2026). <a href="https://www.gspublishing.com/content/research/en/reports/2026/09/24/17991761-4354-496a-bf3a-26b281c829fc.pdf"><em>AI capex, required revenues, and what's priced in the AI trade</em></a>. gspublishing.com (commercial).</li>
+<li>Gu, A., Dao, T. (2023). <em>Mamba: Linear-Time Sequence Modeling with Selective State Spaces</em>. arXiv preprint 2312.00752.</li>
+<li>iea.org (2026). <a href="https://www.iea.org/reports/energy-and-ai/energy-demand-from-ai"><em>Energy demand from AI - Energy and AI - IEA</em></a>. iea.org (official).</li>
+<li>jpmorgan.com (2026). <a href="https://www.jpmorgan.com/insights/global-research/artificial-intelligence/ai-capex"><em>AI Capex &amp; Hyperscaler Investment Outlook I J.P. Morgan</em></a>. jpmorgan.com (commercial).</li>
+<li>Kaplan, J., McCandlish, S., Henighan, T., Brown, T. B., Chess, B., Child, R., Gray, S., Radford, A., Wu, J., Amodei, D. (2020). <em>Scaling Laws for Neural Language Models</em>. arXiv preprint 2001.08361.</li>
+<li>LeCun, Y. (2022). <a href="https://openreview.net/forum?id=BZ5a1r-kVsf"><em>A Path Towards Autonomous Machine Intelligence</em></a>. OpenReview.</li>
+<li>lilianweng.github.io (2026). <a href="https://lilianweng.github.io/posts/2026-06-24-scaling-laws"><em>Scaling Laws, Carefully | Lil'Log</em></a>. lilianweng.github.io (blog).</li>
+<li>Nie, S., Zhu, F., You, Z., Zhang, X., Ou, J., Hu, J., Zhou, J., Lin, Y., Wen, J., Li, C. (2025). <em>Large Language Diffusion Models</em>. arXiv preprint 2502.09992.</li>
+<li>pwc.com (2026). <a href="https://www.pwc.com/gx/en/1/services/consulting/technology/data-centre-outlook.html"><em>Where $31.6 trillion of capex flows in the era-defining AI build-out | PwC</em></a>. pwc.com (commercial).</li>
+<li>Snell, C., Lee, J., Xu, K., Kumar, A. (2024). <em>Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters</em>. arXiv preprint 2408.03314.</li>
+</ul>
+</body></html>

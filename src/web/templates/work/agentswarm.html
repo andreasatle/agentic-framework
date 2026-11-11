@@ -431,6 +431,11 @@
 <p>What changed, latest first: the problem that called for it, what was built, and what it brought.</p>
 <div class="timeline changelog">
   <details class="tl cl tl--now" name="changelog" open>
+    <summary><span class="tl__when">2026-11-10</span><span class="cl__title">Sources from the open web</span></summary>
+    <p><strong>Problem:</strong> Sources came only from papers and Wikipedia, so a topic like the economics of AI, where the evidence is in reports by agencies, banks and research groups, couldn't be covered. <strong>Solution:</strong> Web search as a source: the request's threads are listed as the reader's questions, queries are written for each, and the picker must cover every thread, labels each page's publisher (official, institutional, scholarly, press and so on) and prefers the stronger ones. Pages arrive as clean text, and an arXiv paper found on the web is fetched as its PDF.
+      <strong>Result:</strong> <a href="/static/agentswarm/llm-scaling-analysis.html">An analysis of the scaling problem for large language models</a>, about 6,700 words from 14 sources, with 80% of audited citations fully supported after two rounds of claims review, for $3.31.</p>
+  </details>
+  <details class="tl cl" name="changelog">
     <summary><span class="tl__when">2026-11-10</span><span class="cl__title">Every citation checked, one statement at a time</span></summary>
     <p><strong>Problem:</strong> In the first real run, too many cited statements said more than their source, and the fact reviewer, one expensive call per section, found only a few of them. <strong>Solution:</strong> A claim-by-claim review: a small model checks every cited statement against the part of the source it cites, a referee of another model family confirms each flagged one against the same text, and the writer revises each section once for all of them, in two rounds. The source text many statements share is cached, and hybrid keyword and vector search is ready for larger source collections.
       <strong>Result:</strong> 19 of 23 problems caught where the fact reviewer caught 5, for less; one round took the sleep tutorial's first sections from 76% to 86% fully supported citations, at about $0.11 a section.</p>

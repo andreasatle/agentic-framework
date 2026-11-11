@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/llm-scaling-analysis.html",
+  "title": "The Scaling Problem for Large Language Models: What the Evidence Shows, What It Costs, and What to Watch",
+  "date": "2026-11-10",
+  "summary": "Scaling laws, data, compute and energy costs, alternatives such as JEPA, diffusion and state-space models, and the odds of a crash, from 14 sources found on the open web; every cited statement checked against its source in two rounds."
+ },
+ {
   "href": "/static/agentswarm/sleep-memory-tutorial.html",
   "title": "How Sleep Shapes Memory: A Tutorial on Replay, Chemistry, Emotion and Synapses",
   "date": "2026-11-10",
