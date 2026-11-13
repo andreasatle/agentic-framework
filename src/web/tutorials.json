@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/ai-in-software-engineering.html",
+  "title": "What the Documented Cases Show: AI in Software Engineering and IT Operations, Measured and Unmeasured",
+  "date": "2026-11-13",
+  "summary": "Copilot experiments and field studies, Google's and Cloudflare's AI code review, Amazon's Java upgrades, incident root-causing at Microsoft, and a trial where experienced developers were slower with AI, from 8 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/ai-in-finance-back-office.html",
   "title": "What AI Has Actually Done for Finance Back Offices: Documented Cases, Failures and Lessons",
   "date": "2026-11-13",
