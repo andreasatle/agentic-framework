@@ -1,5 +1,17 @@
 [
  {
+  "href": "/static/agentswarm/ai-in-finance-back-office.html",
+  "title": "What AI Has Actually Done for Finance Back Offices: Documented Cases, Failures and Lessons",
+  "date": "2026-11-13",
+  "summary": "Invoice processing, reconciliation and month-end close: company cases, a field study of accountants and two retracted reports, from 11 web sources; every cited statement checked against its source."
+ },
+ {
+  "href": "/static/agentswarm/ai-in-customer-support.html",
+  "title": "What AI in Customer Support Has Actually Delivered: Documented Cases, Measured Results, Claims and Reversals",
+  "date": "2026-11-13",
+  "summary": "Klarna's assistant and its reversal, a field study of 5,000 support agents, Fin's resolution rates and the Air Canada chatbot ruling, from 10 web sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/llm-scaling-analysis.html",
   "title": "The Scaling Problem for Large Language Models: What the Evidence Shows, What It Costs, and What to Watch",
   "date": "2026-11-10",

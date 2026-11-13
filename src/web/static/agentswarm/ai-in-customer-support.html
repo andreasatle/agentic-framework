@@ -1,0 +1,128 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>What AI in customer support has actually delivered: documented cases, measured results, claims and reversals</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false})"></script>
+<style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
+:root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
+body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style",serif;max-width:46rem;margin:0 auto;padding:2.5rem 16px 4rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
+p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}p,li{overflow-wrap:break-word}
+.note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto;position:relative}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}</style></head><body><h1>What AI in customer support has actually delivered: documented cases, measured results, claims and reversals</h1>
+<p class="note">Written by AgentSwarm on 13 November 2026 for Hiring managers and engineers judging what someone understands about agentic AI automation in practice; technical, but not specialists in customer support, from sources it found and the user approved (listed under References). After 1 round of fact review, a sampled audit found 100% of cited statements fully supported by their source. Not reviewed by an expert: read it as a guide to its sources, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
+<h2>Why separate measured results from claims</h2>
+<p>This post covers four uses of AI in customer support: ticket triage and routing, answering customers, agent assist, and after-call work.
+Each figure is labelled Measured (independent or peer-style study), Company claim or Vendor claim (with the company named), or Survey (with who ran it and how many were asked).
+Most sources are press releases, vendor pages and news reports, so most figures are claims.
+For Fin, Intercom's AI agent, involvement rate is the share of all conversations Fin was involved in, and resolution rate is the share of those conversations Fin resolved.
+Automation rate is the share of all conversations resolved by Fin without a human teammate, and it equals involvement rate multiplied by resolution rate: \(\text{Automation} = \text{Involvement} \times \text{Resolution}\) (Perrott, n.d.).
+The sources say little or nothing about after-call work.</p>
+<h2>Klarna: fast claimed gains, then a partial reversal</h2>
+<p>Klarna's February 27, 2024 press release announced its AI assistant, powered by OpenAI, after one month live globally (Klarna, 2024).
+Every figure in that release is Klarna's own company claim, not an independent measurement (Klarna, 2024).
+It claims 2.3 million conversations in the first month, two-thirds of Klarna's customer service chats, and "the equivalent work of 700 full-time agents" (Klarna, 2024).
+It also claims satisfaction "on par with human agents," a 25% drop in repeat inquiries, and resolution in "less than 2 mins compared to 11 mins previously" (Klarna, 2024).
+It adds availability in 23 markets, in more than 35 languages, and an estimated $40 million profit improvement for 2024 (Klarna, 2024).
+The release does not say how satisfaction, repeat inquiries or handle time were measured, or over what sample (Klarna, 2024).
+Live agents remained available: customers "can still choose to interact with live agents" (Klarna, 2024).</p>
+<p>Later reporting changed the picture.
+Yahoo Finance Australia, reprinting The Independent's Rachel Dobkin, reported that CEO Sebastian Siemiatkowski said AI job cuts had led to "lower quality" customer service (Dobkin, n.d.).
+He said: "what you end up having is lower quality," because cost "seems to have been a too predominant evaluation factor" (Dobkin, n.d.).
+The same article links the cuts to a valuation drop to $6.7 billion, from a 2021 peak of $45.6 billion (Dobkin, n.d.).
+It reports a hiring pilot with workers in "an Uber type of setup," with only two pilot workers started so far (Dobkin, n.d.).
+CX Dive, syndicated by Yahoo Finance, reports that Klarna now wants customers to "always have the option to speak with a human" (Yahoo Finance, n.d.).
+A Klarna spokesperson told CX Dive that the chatbot still handles two-thirds of inquiries and that repeat issues fell 25% (Yahoo Finance, n.d.).</p>
+<p>Not shown: no source independently measures the quality decline; the CEO's statement is the only quality evidence (Dobkin, n.d.) (Yahoo Finance, n.d.).
+Still unproven: whether the 25% repeat-inquiry drop and the 700-agent equivalence held after the first month, and what the $40 million estimate rested on (Klarna, 2024).</p>
+<h2>Lightspeed: Fin for customers and Copilot for agents</h2>
+<p>Lightspeed Commerce's account is a vendor-published customer story on Fin's website, with Angelo Livanos, Vice President of Global Support, as the interviewee (Fin, n.d.).
+All figures below are vendor-published and customer-reported, not independent measurement.</p>
+<p><strong>Company and goal.</strong> Lightspeed runs a contact center of hundreds of agents across several regions and languages, and the interview names change management as its biggest implementation challenge (Fin, n.d.).</p>
+<p><strong>What was automated and where humans stay in.</strong> Fin, which the page calls an AI customer agent, is reported to be involved in 99% of conversations and to resolve up to 65% of them (Fin, n.d.).
+Agents still handle what Fin does not resolve, and Fin's triage lets them reach the substance of a case faster (Fin, n.d.).
+Copilot, the agent-assist product, is reported to let agents close 31% more conversations daily (Fin, n.d.).</p>
+<p><strong>How it was measured.</strong> Involvement and resolution rates are Intercom's metrics, and Intercom defines the automation rate as involvement rate multiplied by resolution rate (Perrott, n.d.).
+At 99% involvement and 65% resolution, the automation rate would be about 64% of all conversations, if both figures applied to the same base; the page does not confirm this (Fin, n.d.).
+Rollout lessons from the interview include training before go-live, a hypercare period with dedicated Slack channels, and A/B testing across products with separate Intercom workspaces (Fin, n.d.).</p>
+<p><strong>Results and dates.</strong> The page gives no dates for the figures and no start date for the rollout (Fin, n.d.).
+The interview says CSAT "has remained stable since our rollout," with no scores, survey size or method given (Fin, n.d.).</p>
+<p><strong>Caveats.</strong> The page does not show the time period, the counting method, or full satisfaction data (Fin, n.d.).
+A separate Lightspeed story on the same site reports 88% involvement and 43k Fin resolutions per month, so the company's own figures vary by page and period (Fin, n.d.).</p>
+<h2>The one controlled study: AI assistance for support agents</h2>
+<p>The only measured case in this post is an NBER working paper by Brynjolfsson, Li and Raymond, "Generative AI at Work," issued in April 2023 and revised in November 2023 (Brynjolfsson et al., 2023).
+It has not been peer-reviewed (Brynjolfsson et al., 2023).
+The setting was a Fortune 500 enterprise software firm selling business process software to small and medium-sized US businesses, and the study uses data from 5,179 chat support agents, 89% of them outside the US, mainly in the Philippines (Brynjolfsson et al., 2023).
+The tool is a GPT-based assistant that monitors chats and gives agents real-time response suggestions and links to internal documentation (Brynjolfsson et al., 2023).
+Agents stayed responsible for the conversation and could ignore the suggestions (Brynjolfsson et al., 2023).
+Access was rolled out gradually after a seven-week randomized pilot with 50 agents, with most adoption between November 2020 and February 2021 (Brynjolfsson et al., 2023).</p>
+<p>The main measure was resolutions per hour (RPH), the number of chats an agent successfully resolves per hour (Brynjolfsson et al., 2023).
+The authors used a difference-in-differences design with agent and time fixed effects (Brynjolfsson et al., 2023).</p>
+<p>Access to the tool raised RPH by 14% on average and by 34% for the least-skilled and least-experienced agents, with minimal impact on experienced and highly skilled agents (Brynjolfsson et al., 2023).
+Average handle time was about 40 minutes for never-treated and pre-treatment agents and 35 minutes for post-treatment agents in the raw data, before the authors' regression adjustments (Brynjolfsson et al., 2023).
+The resolution rate rose by a small amount, which the authors describe as a small increase in the share of chats successfully resolved, and treated agents showed no discernible differences in surveyed customer satisfaction (Brynjolfsson et al., 2023).
+Customers were less likely to ask to speak to a supervisor, and the authors say access to AI assistance markedly improves how customers treat agents, as measured by the sentiment of their chat messages (Brynjolfsson et al., 2023).
+Attrition fell substantially, and the authors say the decrease is driven by the retention of newer workers (Brynjolfsson et al., 2023).</p>
+<p>The authors note that their data cover one firm and its subcontractors, and that their paper is not designed to shed light on the aggregate employment or wage effects of generative AI tools (Brynjolfsson et al., 2023).
+The authors also say that the effects may not generalize across all firms and production processes (Brynjolfsson et al., 2023).
+The authors also say that top workers are generally not paid for their contributions to the training data that AI systems use, which raises questions about compensation (Brynjolfsson et al., 2023).</p>
+<p>These are measured results from a study, not vendor claims (Brynjolfsson et al., 2023).</p>
+<h2>Air Canada: when the chatbot was wrong and the company paid</h2>
+<p>The case is Moffatt v. Air Canada, in which the British Columbia Civil Resolution Tribunal found Air Canada liable for misinformation its website chatbot gave a customer (Lifshitz &amp; Hung, 2024).
+The chatbot said a bereavement discount applied and that the ticket could be submitted within ninety days for the lower fare; the airline's policy did not cover requests made after travel was completed (Lifshitz &amp; Hung, 2024).
+When Moffatt applied for a partial refund, Air Canada refused (Lifshitz &amp; Hung, 2024).
+Air Canada argued that the chatbot was a separate legal entity responsible for its own actions; the Tribunal rejected this and held the airline responsible for all information on its website, whether from a static page or a chatbot (Lifshitz &amp; Hung, 2024).
+The Tribunal found negligent misrepresentation on February 14, 2024 (Lifshitz &amp; Hung, 2024).
+The MIT incident entry says the airline was reportedly ordered to pay $812.02 in damages and court fees (MIT AI Risk Repository, n.d.).
+This is a tribunal decision, not a court ruling, as the authors themselves note (Lifshitz &amp; Hung, 2024).</p>
+<p><strong>Engineering implication.</strong> Treat every answer a support bot gives about policy, prices or deadlines as a statement by the company (Lifshitz &amp; Hung, 2024).
+The incident record says the chatbot was not synced with the static policy page and had no validation of its output or human check on policy advice (MIT AI Risk Repository, n.d.).
+The same record says the chatbot was deployed as an experiment without rigorous accuracy testing (MIT AI Risk Repository, n.d.).
+Read as causal factors, these gaps point toward grounding such answers in the same source of truth as the published policy, testing them against it before release, and giving users a human path to verify a policy claim; the record itself does not state these as advice (MIT AI Risk Repository, n.d.).
+The sources do not say what accuracy testing Air Canada used afterwards.</p>
+<h2>Ticket triage and routing: a vendor's claims</h2>
+<p>IrisAgent's guide to AI ticket automation, last updated September 5, 2026, describes tagging, routing, prioritizing, escalating and triaging tickets as an overlay on helpdesks such as Zendesk, Salesforce, Intercom and Freshworks (IrisAgent, 2026).
+Every figure below is an IrisAgent marketing claim, not a measurement by an independent party (IrisAgent, 2026) (IrisAgent, 2026).</p>
+<p><strong>Claimed accuracy.</strong> The guide says AI triage reaches 85% to 95% accuracy on mature deployments, against a 40% to 50% ceiling for rules-based systems (IrisAgent marketing claim) (IrisAgent, 2026).
+Its headline figures are 60%+ auto-resolved, 10x faster responses, $2.4M+ customer savings and a 95% accuracy rate (IrisAgent, 2026).</p>
+<p><strong>What the page does not show.</strong> It names customers only in logos and a "Trusted by Fortune 500 companies" line, and gives no method, sample size or time period for the accuracy figures (IrisAgent, 2026) (IrisAgent, 2026).
+It does not define the "95% accuracy rate" (IrisAgent, 2026).</p>
+<p><strong>How a team could check accuracy.</strong> The guide suggests running AI in suggestion mode to measure agreement with existing decisions before letting it act, and tracking per-intent accuracy alongside overall accuracy (IrisAgent, 2026).
+It also advises asking vendors for live-deployment benchmarks rather than lab test-set numbers (IrisAgent, 2026).</p>
+<h2>Managing the AI itself: Fin Operator</h2>
+<p>VentureBeat reports that Intercom, now called Fin, launched Fin Operator, an AI agent for the support-operations staff who configure, monitor and improve Fin (VentureBeat, n.d.).
+It automates knowledge-base updates, debugging of failed conversations and reading performance dashboards (VentureBeat, n.d.).
+Humans stay in the loop: Fin cannot change the system without approval, and VP of Product Brian Donohue says "Nothing goes live until a human clicks apply" (VentureBeat, n.d.).
+The article reports Fin's growth without a measured outcome for Operator: it says Fin "recently crossed $100 million in annual recurring revenue and is growing at 3.5x" (VentureBeat, n.d.).
+The lesson: running an AI support agent creates ongoing operations work (VentureBeat, n.d.).</p>
+<h2>What the cases share and what to take from them</h2>
+<p>Klarna's 2024 volume, speed and savings figures were company claims (Klarna, 2024).
+Lightspeed's 99% involvement, 65% resolution and 31% more daily closed conversations are vendor-published, without a stated period or method (Fin, n.d.).
+NBER measured a 14% rise in resolutions per hour, without significant average customer-satisfaction change (Brynjolfsson et al., 2023).
+Air Canada's wrong chatbot advice led to $812.02 in damages and fees (Lifshitz &amp; Hung, 2024).</p>
+<p>Fin's automation rate is involvement multiplied by resolution (Perrott, n.d.).
+NBER used handle time, chats per hour, resolution rate and net promoter score; subcontractors kept the latter two, observed for only some agents (Brynjolfsson et al., 2023).
+Klarna's release gives no after-call-work results, and later reporting gives no independent quality measurement (Klarna, 2024) (Yahoo Finance, n.d.).
+Lightspeed's satisfaction statement gives no survey count or date (Fin, n.d.).</p>
+<p>Lessons and case evidence for engineers:
+- Define metrics and denominators, as Fin's automation rate does (Perrott, n.d.).
+- Klarna's CEO said cost was "too predominant an evaluation factor" and the result was "lower quality" (Yahoo Finance, n.d.).
+- Keep humans and escalation paths, as Klarna now offers (Yahoo Finance, n.d.).
+- The Air Canada incident entry lists a chatbot not synced with the website policy database among potential causes (MIT AI Risk Repository, n.d.).
+- Fin's VP of Product describes support ops as managing an agent that manages the customer-facing agent (VentureBeat, n.d.).
+- NBER reconstructed handle time and chats per hour from chat-level data (Brynjolfsson et al., 2023).</p>
+<h2>References</h2>
+<ul>
+<li>Brynjolfsson, E., Li, D., &amp; Raymond, L. R. (2023). <em>Generative AI at Work</em>. NBER Working Paper 31161 (April 2023, revised November 2023).</li>
+<li>Dobkin, R. (n.d.). <em>Klarna's AI replaced 700 workers. It now wants some of them back to improve customer service</em>. Yahoo Finance Australia (The Independent).</li>
+<li>Fin (Intercom) (n.d.). <em>How Lightspeed achieves up to 65% resolution rate with Fin</em>. Fin customer story, fin.ai.</li>
+<li>IrisAgent team (2026). <em>AI Ticket Automation: Triage, Routing &amp; Resolution</em>. IrisAgent (web guide, last updated September 5, 2026).</li>
+<li>Klarna (2024). <em>Klarna AI assistant handles two-thirds of customer service chats in its first month</em>. Klarna International press release, February 27, 2024.</li>
+<li>Lifshitz, L. R., &amp; Hung, R. (2024). <em>BC Tribunal Confirms Companies Remain Liable for Information Provided by AI Chatbot</em>. Business Law Today, American Bar Association, February 2024.</li>
+<li>MIT AI Risk Repository (source: AI Incident Database) (n.d.). <em>Air Canada Chatbot Reportedly Provides Inaccurate Bereavement Fare Information, Leading to Customer Overpayment (AI Incident 639)</em>. MIT AI Risk Repository, AI Incident Tracker.</li>
+<li>Perrott, D. (n.d.). <em>Fin AI Agent Automation Rate</em>. Intercom Help.</li>
+<li>VentureBeat (n.d.). <em>Intercom, now called Fin, launches an AI agent whose only job is managing another AI agent</em>.</li>
+<li>Yahoo Finance (n.d.). <em>Klarna changes its AI tune and again recruits humans for customer service</em>.</li>
+</ul>
+</body></html>
