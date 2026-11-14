@@ -3,9 +3,9 @@
 {% block body %}
 <figure class="figure">
   <div class="figure__frame">
-    <img src="/static/img/work/video-jepa-planning.gif" alt="One Push-T puzzle in three panels: the goal, the frozen video encoder's planner barely moving the T in 50 steps, and the image world model reaching the goal in 27" loading="lazy">
+    <img src="/static/img/work/video-jepa-pusht.gif" alt="One Push-T puzzle, the same start for two planners, the goal drawn as an outline: the frozen video encoder's planner pushes the T next to the goal but not into it; the image world model lands it" loading="lazy">
   </div>
-  <figcaption>One test puzzle, the same start for both planners. The goal (left) is where the expert had moved the T 25 steps later; the green T is only the game's usual target. Middle: planning with the frozen video encoder, which barely moves the T in 50 steps. Right: the image world model, trained with the actions, reaches the goal in 27.</figcaption>
+  <figcaption>One test puzzle, the same start for both planners. The outline is the goal: where the expert had moved the T 25 steps later. Left: planning with the frozen video encoder pushes the T a long way, but ends beside the goal. Right: the image world model, trained with the actions, lands it within the tolerance in 48 steps.</figcaption>
 </figure>
 
 <h2>The question</h2>

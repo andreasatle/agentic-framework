@@ -71,7 +71,7 @@ PROJECTS: tuple[Project, ...] = (
         tags=("V-JEPA", "LeJEPA", "SIGReg", "video", "world models", "CEM"),
         stat="0.22 → 0.5",
         stat_label="velocity R², learned from video alone (an image world model trained with actions: 0.75)",
-        media="img:/static/img/work/video-jepa-card.gif",
+        media="img:/static/img/work/video-jepa-pusht.gif",
     ),
     Project(
         slug="jepa-ball-in-cup",
