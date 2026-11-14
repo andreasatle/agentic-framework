@@ -2,8 +2,10 @@
 
 {% block body %}
 <figure class="figure">
-  <div class="figure__frame"><img src="/static/img/work/video-jepa-clip.jpg" alt="Eight frames of a Push-T clip at 64 by 64 pixels: the blue pusher moves along the grey T and turns it toward the green goal" loading="lazy"></div>
-  <figcaption>Half the frames of one clip as the encoders see it: 16 frames, 2 simulator steps apart, 3 seconds in all, at 64×64 pixels. The pusher's speed and whether it touches the T can only be read from several frames together.</figcaption>
+  <div class="figure__frame">
+    <video src="/static/img/work/video-jepa-planning.mp4" poster="/static/img/work/video-jepa-planning-poster.jpg" muted loop playsinline controls preload="metadata" data-autoplay></video>
+  </div>
+  <figcaption>One test puzzle, the same start for both planners. The goal (left) is where the expert had moved the T 25 steps later; the green T is only the game's usual target. Middle: planning with the frozen video encoder, which barely moves the T in 50 steps. Right: the image world model, trained with the actions, reaches the goal in 27.</figcaption>
 </figure>
 
 <h2>The question</h2>
@@ -19,6 +21,10 @@
   Both encoders are the same small Vision Transformer (2.7 M parameters) over the clip's patches in space and time,
   trained from scratch on the 18,685 Push-T demonstrations, about two hours each on a Mac.
 </p>
+<figure class="figure">
+  <div class="figure__frame"><img src="/static/img/work/video-jepa-clip.jpg" alt="Eight frames of a Push-T clip at 64 by 64 pixels: the blue pusher moves along the grey T and turns it" loading="lazy"></div>
+  <figcaption>Half the frames of one clip as the encoders see it: 16 frames, 2 simulator steps apart, 3 seconds in all, at 64×64 pixels. The pusher's speed and whether it touches the T can only be read from several frames together.</figcaption>
+</figure>
 <ul>
   <li><strong>V-JEPA</strong> hides most of a clip (blocks of the frame, through every frame, so nothing can be copied from a neighbouring frame) and predicts the <em>features</em> of the hidden part from the visible part. A slowly moving copy of the encoder supplies the targets, which keeps the features from collapsing.</li>
   <li><strong>LeVJEPA</strong> is LeJEPA's recipe on video, as in my <a href="/work/i-jepa-pathology">pathology work</a>: crops of the same clip must embed close to the whole clip, and SIGReg keeps the batch of embeddings Gaussian, so collapse is ruled out by the objective itself. No masking, no predictor, no moving teacher.</li>
