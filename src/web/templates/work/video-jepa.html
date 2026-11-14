@@ -1,0 +1,97 @@
+{% extends "work/_project.html" %}
+
+{% block body %}
+<figure class="figure">
+  <div class="figure__frame"><img src="/static/img/work/video-jepa-clip.jpg" alt="Eight frames of a Push-T clip at 64 by 64 pixels: the blue pusher moves along the grey T and turns it toward the green goal" loading="lazy"></div>
+  <figcaption>Half the frames of one clip as the encoders see it: 16 frames, 2 simulator steps apart, 3 seconds in all, at 64×64 pixels. The pusher's speed and whether it touches the T can only be read from several frames together.</figcaption>
+</figure>
+
+<h2>The question</h2>
+<p>
+  My <a href="/work/jepa-ball-in-cup">world model on Push-T</a> learns from single frames and the actions taken
+  between them. Video models such as Meta's V-JEPA learn from video alone: no labels, no actions. I wanted to know
+  what that buys on the same task. Does an encoder trained only on clips learn motion, which a single image can't
+  show? And can a planner use what it learns?
+</p>
+
+<h2>Two ways to learn from video</h2>
+<p>
+  Both encoders are the same small Vision Transformer (2.7 M parameters) over the clip's patches in space and time,
+  trained from scratch on the 18,685 Push-T demonstrations, about two hours each on a Mac.
+</p>
+<ul>
+  <li><strong>V-JEPA</strong> hides most of a clip (blocks of the frame, through every frame, so nothing can be copied from a neighbouring frame) and predicts the <em>features</em> of the hidden part from the visible part. A slowly moving copy of the encoder supplies the targets, which keeps the features from collapsing.</li>
+  <li><strong>LeVJEPA</strong> is LeJEPA's recipe on video, as in my <a href="/work/i-jepa-pathology">pathology work</a>: crops of the same clip must embed close to the whole clip, and SIGReg keeps the batch of embeddings Gaussian, so collapse is ruled out by the objective itself. No masking, no predictor, no moving teacher.</li>
+</ul>
+
+<h2>What they learned</h2>
+<p>
+  To see what a frozen encoder knows, small probes are trained on top of it to read off the true state at the
+  clip's last frame: where things are, how fast they move, whether the pusher touches the T. The score is R²: 1 is
+  perfect, 0 is no better than guessing the average. Each figure is the range over three probe seeds; a random,
+  untrained encoder sets the floor.
+</p>
+<table>
+  <thead><tr><th>Encoder</th><th>Position</th><th>Velocity</th><th>Contact</th></tr></thead>
+  <tbody>
+    <tr><td>Random, untrained (floor)</td><td>0.56–0.60</td><td>0.22–0.25</td><td>71–73%</td></tr>
+    <tr><td>V-JEPA</td><td>0.71–0.75</td><td>0.43–0.54</td><td>83–86%</td></tr>
+    <tr><td>LeVJEPA</td><td>0.84–0.87</td><td>0.40–0.48</td><td>78–84%</td></tr>
+    <tr><td>The world model's image encoder, frame by frame</td><td>0.84</td><td>0.75–0.77</td><td>91–92%</td></tr>
+  </tbody>
+</table>
+<p>
+  Both video methods learn motion from video alone: velocity roughly doubles over the floor, without a label or an
+  action in sight. LeVJEPA learns positions better; on motion the two are within the probes' noise. Neither
+  reaches the image world model's encoder, a strong baseline: it was trained with the actions. The hardest part for both is the pusher's own speed: a 4-pixel dot inside an 8-pixel patch.
+</p>
+
+<h2>Planning with a frozen video encoder</h2>
+<p>
+  The probes ask whether information is there. Planning asks whether it is usable. Following Meta's V-JEPA 2-AC, I
+  kept the video encoder frozen and trained only a predictor of how the actions change its embedding, then searched
+  for actions whose predicted outcome lands closest to the goal's embedding, with the same planner and the same 50
+  puzzles as the world model:
+</p>
+<table>
+  <thead><tr><th>Planner</th><th>Puzzles solved, of 50</th></tr></thead>
+  <tbody>
+    <tr><td>Random actions</td><td>1</td></tr>
+    <tr><td>LeVJEPA, the clip's summary vector</td><td>4–5</td></tr>
+    <tr><td>LeVJEPA, a 4×4 grid of patch tokens (as V-JEPA 2-AC plans)</td><td>6</td></tr>
+    <tr><td>The image world model, trained with the actions</td><td>35</td></tr>
+  </tbody>
+</table>
+<p>
+  The reason shows in the embedding's distances. Across pairs of held-out states, LeVJEPA's distances follow the
+  true distances between states fairly well overall (rank correlation 0.5–0.6), but poorly among states that are
+  already close (0.34–0.37). The world model's encoder is the other way round: weak overall (0.18), better close up
+  (0.49). Landing a T on a goal about two pixels wide needs exactly the close-up distinctions.
+</p>
+
+<h2>What I take from it</h2>
+<ul>
+  <li><strong>Video alone teaches motion.</strong> Two quite different objectives both learned speed and contact without labels or actions.</li>
+  <li><strong>What a representation is trained for decides what it keeps.</strong> Matching crops of a clip keeps the coarse layout; predicting the effect of each push keeps the small differences a push makes.</li>
+  <li><strong>A probe and a planner measure different things.</strong> LeVJEPA matched the world model's encoder on probed position, yet plans far worse: a planner needs distances that are precise near the goal, not only information a probe can extract.</li>
+</ul>
+<p>
+  At Meta's scale V-JEPA 2 plans well from video pretraining plus a little robot data, so the lesson here is about
+  the objective and the scale, not a verdict on video pretraining. The natural next experiment trains the video
+  encoder together with an action-conditioned predictor, which is where the image world model's strength comes from.
+</p>
+{% endblock %}
+
+{% block aside %}
+<div class="aside__box">
+  <h4>Built from scratch</h4>
+  <ul>
+    <li>Video ViT over space and time</li>
+    <li>V-JEPA: block masks, EMA target</li>
+    <li>LeVJEPA: crop views, SIGReg</li>
+    <li>Linear and attentive probes</li>
+    <li>Action-conditioned predictor, CEM planning</li>
+    <li>Trained locally on a Mac</li>
+  </ul>
+</div>
+{% endblock %}

@@ -58,6 +58,22 @@ PROJECTS: tuple[Project, ...] = (
         media="img:/static/img/work/lejepa-views.jpg",
     ),
     Project(
+        slug="video-jepa",
+        title="Learning motion from video alone: V-JEPA and LeVJEPA on Push-T",
+        summary=(
+            "Two video encoders trained from scratch on Push-T clips, with no labels and no "
+            "actions: V-JEPA predicts the hidden parts of a clip, LeVJEPA makes crops agree "
+            "under SIGReg. Both learn motion; planning with them frozen shows what they don't "
+            "keep."
+        ),
+        period="Nov 2026",
+        status="complete",
+        tags=("V-JEPA", "LeJEPA", "SIGReg", "video", "world models", "CEM"),
+        stat="0.22 → 0.5",
+        stat_label="velocity R², learned from video alone (an image world model trained with actions: 0.75)",
+        media="img:/static/img/work/video-jepa-clip.jpg",
+    ),
+    Project(
         slug="jepa-ball-in-cup",
         title="Planning through a learned world model",
         summary=(
