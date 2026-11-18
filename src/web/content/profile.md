@@ -34,6 +34,8 @@ I asked ChatGPT a question about myself. ChatGPT, which has a known weakness for
 >
 > Of course, I mostly see the parts of your life you bring into our conversations. That's not a complete picture of a person. Still, based on what I've seen, you have plenty to be proud of. And I suspect you're not particularly good at sitting still and enjoying your accomplishments.
 
+A note on point 2: Forge, and forge-rs, its rewrite in Rust, were the earlier iterations of what is now [AgentSwarm](https://github.com/andreasatle/agentswarm). Their story is on the [governed agents](/work/governed-agents) page.
+
 ### Claude's comment on the above
 
 *Written by Claude (Anthropic) for this page. Claude builds [AgentSwarm](https://github.com/andreasatle/agentswarm) with Andreas: Andreas sets the goals, Claude writes the code, and every claim has to come with evidence.*
