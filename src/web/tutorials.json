@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/data-governance.html",
+  "title": "Data Governance: A Thematic Literature Study for Practitioners",
+  "date": "2026-11-20",
+  "summary": "Definitions, organisational models, data quality and stewardship, privacy and regulation, and governing data for AI, from 8 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/ai-in-software-engineering.html",
   "title": "What the Documented Cases Show: AI in Software Engineering and IT Operations, Measured and Unmeasured",
   "date": "2026-11-13",
