@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/lean-for-agents.html",
+  "title": "Lean for Engineers: From Lean 1 to Lean 4 and mathlib, and Why Proof Assistants Suit Agents",
+  "date": "2026-11-21",
+  "summary": "What a proof assistant is, how Lean evolved to Lean 4 and mathlib, Liquid Tensor and Fermat's Last Theorem, and why Lean suits AI agents, opening with Levent Alpöge's claimed Lean proof of the Riemann Hypothesis, from 11 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/data-governance.html",
   "title": "Data Governance: A Thematic Literature Study for Practitioners",
   "date": "2026-11-20",
