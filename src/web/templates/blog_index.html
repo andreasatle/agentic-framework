@@ -13,20 +13,18 @@
 
 <section class="section" style="padding-top:40px">
   <div class="wrap narrow">
-    {% if posts %}
-      <h2>Posts</h2>
-      <p class="muted">Written with an earlier agent framework of mine, the first attempt at what became AgentSwarm.</p>
+    {% if tutorials %}
+      <h2>Tutorials and guides written by AgentSwarm</h2>
+      <p class="muted">Written by the agent swarm from research papers, encyclopedia articles and web pages, citing them; not reviewed by an expert. Each page says how it was made and checked.</p>
       <div class="post-list">
-        {% for p in posts %}
-          <a class="post-row reveal" href="/blog/{{ p.post_id }}">
-            <time>{{ (p.created_at | string)[:10] }}</time>
-            <h3>{{ p.title or '(untitled)' }}</h3>
+        {% for t in tutorials %}
+          <a class="post-row reveal" href="{{ t.href }}">
+            <time>{{ t.date }}</time>
+            <h3>{{ t.title }}</h3>
             <span class="arrow">→</span>
           </a>
         {% endfor %}
       </div>
-    {% else %}
-      <p class="muted">No posts yet.</p>
     {% endif %}
     {% if essays %}
       <h2 style="margin-top:48px">Essays</h2>
@@ -41,18 +39,20 @@
         {% endfor %}
       </div>
     {% endif %}
-    {% if tutorials %}
-      <h2 style="margin-top:48px">Tutorials and guides written by AgentSwarm</h2>
-      <p class="muted">Written by the agent swarm from research papers, encyclopedia articles and web pages, citing them; not reviewed by an expert. Each page says how it was made and checked.</p>
+    {% if posts %}
+      <h2 style="margin-top:48px">Posts</h2>
+      <p class="muted">Written with an earlier agent framework of mine, the first attempt at what became AgentSwarm.</p>
       <div class="post-list">
-        {% for t in tutorials %}
-          <a class="post-row reveal" href="{{ t.href }}">
-            <time>{{ t.date }}</time>
-            <h3>{{ t.title }}</h3>
+        {% for p in posts %}
+          <a class="post-row reveal" href="/blog/{{ p.post_id }}">
+            <time>{{ (p.created_at | string)[:10] }}</time>
+            <h3>{{ p.title or '(untitled)' }}</h3>
             <span class="arrow">→</span>
           </a>
         {% endfor %}
       </div>
+    {% else %}
+      <p class="muted">No posts yet.</p>
     {% endif %}
   </div>
 </section>
