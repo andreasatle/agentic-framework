@@ -4,7 +4,7 @@ import logging
 import os
 from io import BytesIO
 from fastapi import FastAPI, HTTPException, Request, Depends
-from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import markdown
@@ -45,6 +45,7 @@ from web.schemas import (
 from web.security import require_admin, security
 from web.projects import PROJECTS, get_project
 from web.tutorials import ESSAYS, TUTORIALS
+from web import seo
 from document_writer.domain.intent.types import IntentEnvelope
 
 
@@ -56,6 +57,21 @@ templates_dir = os.path.join(BASE_DIR, "templates")
 BLOG_MARKDOWN_EXTENSIONS = ["fenced_code", "tables"]
 
 app = FastAPI()
+LISTED = {entry.href: entry for entry in (*TUTORIALS, *ESSAYS)}
+
+
+# Before the static mount, which would otherwise serve these pages first: the AgentSwarm pages get their
+# description and link-preview tags from their listing entry (the files themselves stay as written).
+@app.get("/static/agentswarm/{name}.html", response_class=HTMLResponse)
+def read_agentswarm_page(name: str):
+    path = os.path.join(static_dir, "agentswarm", f"{name}.html")
+    if "/" in name or not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Page not found")
+    href = f"/static/agentswarm/{name}.html"
+    with open(path, encoding="utf-8") as page:
+        return HTMLResponse(seo.with_head_tags(page.read(), href, LISTED.get(href)))
+
+
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 templates = Jinja2Templates(directory=templates_dir)
 logger = logging.getLogger(__name__)
@@ -934,6 +950,7 @@ async def get_blog_post(request: Request, post_id: str, format: str = "html"):
             {
                 "request": request,
                 "meta": meta,
+                "description": seo.excerpt(content),
                 "content_html": content_html,
                 "intent": intent,
                 "include_drafts": False,
@@ -977,3 +994,17 @@ def read_dogma(request: Request):
         "dogma.html",
         {"request": request},
     )
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def read_robots():
+    return seo.robots()
+
+
+@app.get("/sitemap.xml")
+def read_sitemap():
+    pages: list[tuple[str, str | None]] = [("/", None), ("/work", None), ("/blog", None), ("/me", None)]
+    pages += [(f"/work/{project.slug}", None) for project in PROJECTS]
+    pages += [(entry.href, entry.date) for entry in (*TUTORIALS, *ESSAYS)]
+    pages += [(f"/blog/{post.post_id}", seo.day(post.created_at)) for post in list_posts(visibility="public")]
+    return Response(seo.sitemap(pages), media_type="application/xml")
