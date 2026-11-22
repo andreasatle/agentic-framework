@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/lean-why-agents.html",
+  "title": "Why Lean Makes AI Agents Effective at Mathematics, and What Other Fields Would Need to Match It",
+  "date": "2026-11-21",
+  "summary": "Why a cheap, trustworthy checker makes AI agents so effective in mathematics: verifiable rewards, search against a verifier, discovery systems such as FunSearch and AlphaEvolve, reward hacking, and what software, science, engineering and law would need to make the same progress, from 14 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/lean-for-agents.html",
   "title": "Lean for Engineers: From Lean 1 to Lean 4 and mathlib, and Why Proof Assistants Suit Agents",
   "date": "2026-11-21",
