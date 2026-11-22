@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/principia-to-lean.html",
+  "title": "From Principia Mathematica to Lean: How a Century of Logic Led to Machine-Checked Mathematics",
+  "date": "2026-11-22",
+  "summary": "The road from Russell's paradox and Principia Mathematica through Hilbert's programme, Gödel's incompleteness theorems, Church and Turing on decidability and the Curry-Howard correspondence to Automath, Coq and Lean, from 12 sources found by web search; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/lean-why-agents.html",
   "title": "Why Lean Makes AI Agents Effective at Mathematics, and What Other Fields Would Need to Match It",
   "date": "2026-11-21",
