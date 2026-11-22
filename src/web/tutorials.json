@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/moe-systems.html",
+  "title": "Mixture of Experts as a Systems Problem: Routing, Expert Parallelism, and Why Experts Cannot Be Pooled",
+  "date": "2026-11-22",
+  "summary": "How mixture-of-experts models run across GPUs (routing, load balancing and capacity, all-to-all dispatch and combine), why they trade memory for compute, why experts can't be pooled across models, and three decouplings that work: LoRA adapters on a shared base, routing between whole models, and agents cooperating through text, from 11 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/principia-to-lean.html",
   "title": "From Principia Mathematica to Lean: How a Century of Logic Led to Machine-Checked Mathematics",
   "date": "2026-11-22",
