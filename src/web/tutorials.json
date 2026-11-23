@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/moe-serving.html",
+  "title": "Serving One Mixture-of-Experts Model to Many Users: Batching, Expert Utilization, Prefill/Decode, Expert Layouts and Single-Machine Offloading",
+  "date": "2026-11-23",
+  "summary": "How one copy of a mixture-of-experts model serves many users: how many experts a batch touches and why memory sits idle at low load but is shared at high load, prefill versus decode, DeepSeek-V3's serving layout and its open reproduction, and offloading experts to CPU memory on a single machine, from 6 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/principia-to-lean.html",
   "title": "From Principia Mathematica to Lean: How a Century of Logic Led to Machine-Checked Mathematics",
   "date": "2026-11-22",

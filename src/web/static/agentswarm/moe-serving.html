@@ -1,0 +1,287 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Serving One Mixture-of-Experts Model to Many Users: Batching, Expert Utilization, Prefill/Decode, Expert Layouts and Single-Machine Offloading</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false})"></script>
+<style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
+:root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
+body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style",serif;max-width:46rem;margin:0 auto;padding:2.5rem 16px 4rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
+p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}p,li{overflow-wrap:break-word}
+.note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto;position:relative}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}
+sup{line-height:0}.footnote-ref{text-decoration:none;font-size:.8em}.footnote-ref::before{content:"["}.footnote-ref::after{content:"]"}.footnote hr{display:none}.footnote{font-size:.93rem}.footnote li:target{background:var(--rule)}.footnote-backref{text-decoration:none;margin-left:.3em}.footnote-backref~.footnote-backref{display:none}</style></head><body><h1>Serving One Mixture-of-Experts Model to Many Users: Batching, Expert Utilization, Prefill/Decode, Expert Layouts and Single-Machine Offloading</h1>
+<p class="note">Written by AgentSwarm on 22 November 2026 for Engineers with a background in HPC and parallel computing who know in outline what a transformer and a mixture-of-experts layer are, but not how MoE models are served to many users, from sources it found and the user approved (listed under References). After 1 round of fact review, a sampled audit found 80% of cited statements fully supported by their source. Not reviewed by an expert: read it as a guide to its sources, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
+<h2>The serving problem: why MoE changes the memory/compute balance</h2>
+<p>A mixture-of-experts (MoE) model replaces the feed-forward block of each transformer layer with a sparse MoE layer made of a router, also called a gate network, and a set of experts, each of which is a neural network<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The router is a learned network that scores the experts for each token, and only a selected subset of them runs on that token<sup id="fnref2:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Alongside these routed experts, DeepSeek-V3 has shared experts, which are applied to every token regardless of what the router selects<sup id="fnref:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+In DeepSeek-V3, each token is sent to the top \(K_r\) routed experts, so a token passes through the shared experts and a small set of routed ones<sup id="fnref2:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Total parameters are everything stored in the model, and active parameters are those used to process one token<sup id="fnref:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+DeepSeek-V3 has 671B total parameters with 37B activated for each token<sup id="fnref3:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Nemotron 3.5 Lightning activates 3B of its 30B total parameters per token<sup id="fnref2:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Memory cost follows total parameters, because all experts must be loaded into VRAM, while compute per token follows active parameters<sup id="fnref3:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Mixtral 8x7B, for example, needs enough VRAM to hold a dense 47B-parameter model, yet with two experts per token its inference speed is like that of a 12B model<sup id="fnref3:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>Serving an MoE model therefore raises two questions.
+The first is who pays for the memory: every expert must be resident, so the memory cost is paid whether or not a given expert is used<sup id="fnref4:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The second is how to keep the compute units busy, since each token touches only a few experts and a small batch can leave most stored experts idle<sup id="fnref4:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+This tutorial asks how many experts a batch touches, how that changes the cost per user, when load imbalance hurts, and which technique fits a given load and memory budget.</p>
+<p>The sources differ in what they establish, and the tutorial keeps that difference visible.
+The DeepSeek-V3 report is a primary source that states its own architecture and parameter counts<sup id="fnref4:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The NVIDIA post is a vendor blog whose throughput and latency comparisons depend on hardware, precision, framework, and model design, so they are observations rather than general laws<sup id="fnref5:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Its advice that deployment choice depends on memory budget, concurrency, fine-tuning, and quantization rather than parameter count alone is the author's opinion, not a measured result<sup id="fnref6:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<h2>How batching shares one copy of the experts</h2>
+<p>A decode step produces one token per request, and every step must stream the weights of the layers it touches from GPU memory<sup id="fnref7:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+For one token that step does little arithmetic per byte streamed, so the step waits on memory bandwidth rather than on compute.
+At batch size 1 decoding is therefore bound by available memory rather than compute, which is why MoE helps here because it reads fewer weight bytes per token<sup id="fnref8:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Batching changes this balance, because one weight read can be applied to many tokens at once, so arithmetic per byte loaded, the arithmetic intensity, grows with batch size.</p>
+<p>An MoE layer changes what a batch shares: a router sends each token to the top k of E experts, and all experts must be held in memory at once<sup id="fnref5:1"><a class="footnote-ref" href="#fn:1">1</a></sup><sup id="fnref9:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Because every user's tokens read the same stored copy of each expert, a batch from many users shares one set of expert weights instead of each user holding a private model.
+The Hugging Face explainer warns, however, that batch sizes inside an MoE are effectively reduced as tokens scatter to different experts, leaving uneven batches and underutilization<sup id="fnref6:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>To estimate how many experts a batch touches, the tutorial uses its own illustrative model, which is not from any source: each token picks k of E experts uniformly at random, independently of other tokens.
+Under this assumption one token misses a given expert with probability \(1-k/E\), so a batch of \(B\) tokens misses it with probability \((1-k/E)^B\).
+The expected number of distinct experts touched is E minus the expected number missed, which gives the formula below.</p>
+<p>$$
+\mathbb{E}[N_{\text{touched}}(B)] = E\left[1-\left(1-\frac{k}{E}\right)^{B}\right]
+$$</p>
+<p>Here \(E\) is the number of routed experts in a layer, \(k\) is the number of experts each token activates, \(B\) is the batch size in tokens, and \(N_{\text{touched}}\) is the count of distinct experts that receive at least one token.
+Each touched expert receives on average \(Bk/E\) tokens, since the batch sends \(Bk\) token-expert pairs across \(E\) experts, and this count sets how much arithmetic each loaded weight byte supports.
+Take \(E=256\) and \(k=8\) as an illustrative configuration for the arithmetic below, a choice of this tutorial rather than a value stated in the cited passage.
+At \(B=1\) the formula gives exactly \(k=8\) experts touched, each receiving \(0.03\) tokens on average, so one token loads 8 expert weight sets to serve itself.
+At \(B=16\) about \(256[1-(31/32)^{16}] \approx 103\) experts are touched, with about \(0.5\) tokens per expert.
+At \(B=256\) about \(256[1-(31/32)^{256}] \approx 256\) experts are touched, nearly all of them, with an average of \(8\) tokens per expert.
+At \(B=4096\) each expert receives on average \(128\) tokens, so each expert's weights are read once and reused across many tokens.</p>
+<p>At small \(B\) few experts are used and each loaded expert serves very few tokens, so bytes moved per token stay high; at large \(B\) nearly every expert is loaded once and applied to many tokens, raising arithmetic intensity much as batching does for dense layers.
+The NVIDIA post describes the same trend in practice: as the batch grows, tokens collectively use most experts, the throughput advantage persists, but the latency margin over a well-optimized dense model narrows at high concurrency<sup id="fnref10:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+A per-user replica would pay the full memory of all experts and read them alone, whereas a shared deployment reads each expert once per step for the whole batch.
+The cost of sharing is memory: all experts must sit in GPU memory at once, which leaves less room for the KV cache than a dense model of comparable size would leave<sup id="fnref11:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>The uniform model is a simplification, and real routers are skewed, so some experts receive far more tokens than the average \(Bk/E\).
+The SC '25 benchmark reports that MolmoE-1B concentrates activations on certain experts far more than DeepSeek-VL2 models, which were trained with an auxiliary balancing loss; this is an observation on the task dataset, not a proof for all workloads<sup id="fnref:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<p>The same benchmark reports that throughput consistently decreases as the number of active experts per token increases, with a drop of roughly 15-20% for batches of 64 and 128 and 5-8% for batches of 1 and 16 when DeepSeek-V2-Lite goes from 1 to 32 active experts<sup id="fnref2:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+This is an experiment on NVIDIA H100 GPUs for specific models, so it shows a trend for those settings rather than a general proof.
+The benchmark also reports that moving from batch size 1 to 128 increases throughput by roughly two orders of magnitude<sup id="fnref3:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<h2>Expert utilization versus traffic and batch size</h2>
+<p>The utilization question has two regimes, and the same stored experts behave very differently in each.
+At low load, the memory that holds the experts is paid for whether or not those experts receive tokens, since idle experts still pay the memory required to store them<sup id="fnref12:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+NVIDIA notes that at batch size 1, decoding is bound by available memory rather than compute, and MoE performs well because it reads fewer weight bytes per token<sup id="fnref13:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>MoE-Infinity, a system for personal machines that run at batch size one, reports that during decoding a small set of experts is reused frequently<sup id="fnref:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+This is experimental evidence from trace analysis, not a proof: the authors found that a consumer-grade GPU's memory is often sufficient to hold the most frequently used experts during decoding, even with long-context inputs<sup id="fnref2:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+The same authors observe that this skew exists only within a single request; after many requests, reuse counts even out and all experts tend to be activated uniformly<sup id="fnref3:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+So a cache sized to the hot set suits one user, but the batch-size-one result cannot be carried over unchanged to a busy server.</p>
+<p>At high load, many experts are active, and MoE holds a throughput advantage across batch sizes<sup id="fnref14:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+NVIDIA states that as batch size grows, tokens collectively use most of the experts, and the MoE latency margin compresses at high concurrency<sup id="fnref15:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+All experts must live in GPU memory at once, which leaves less room for the KV cache than a dense model of comparable size would typically have<sup id="fnref16:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>At scale, the main threat to utilization is load imbalance among experts, the MoE analogue of stragglers in an HPC job.
+In a synchronous step, the most loaded expert finishes last, so the step time is set by the hottest expert rather than by the average; this is the tutorial's own illustrative derivation.
+The DeepSeek-V3 report states that for MoE models an unbalanced expert load leads to routing collapse and diminishes computational efficiency in scenarios with expert parallelism<sup id="fnref5:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>The first remedy is applied during training: DeepSeek-V3 adds a bias term \(b_i\) to each expert's affinity score \(s_{i,t}\) when selecting the top-K experts, while the gating value still uses the original score<sup id="fnref6:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+After each training step, the bias of an overloaded expert is decreased by \(\gamma\) and that of an underloaded expert is increased by \(\gamma\), where \(\gamma\) is the bias update speed<sup id="fnref7:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+In the report's ablations, removing auxiliary losses and adding this strategy consistently achieved better performance on most benchmarks, an experimental result on the stated setup rather than a proof<sup id="fnref8:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The report observes that the auxiliary-loss-free model demonstrates greater expert specialization patterns, based on expert-load records across three domains of the Pile test set<sup id="fnref9:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>The second remedy acts at serving time, where the expert layout can change without retraining.
+DeepSeek-V3's inference framework deploys redundant copies of heavily loaded experts to address domain-shift imbalance<sup id="fnref10:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The rebalancing policy, called EPLB (the serving-time expert load balancer that replicates hot experts and rearranges placement from load statistics), is treated in the section on large-scale expert layouts.
+Redundancy has a cost: each extra copy uses GPU memory that could otherwise hold KV cache.</p>
+<p>The MoE inference benchmark, run mainly on H100 GPUs with models from 2B to 70B parameters, reports several findings<sup id="fnref4:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Throughput generally decreases as the number of active experts per token increases, and single-expert configurations delivered 50 to 80 percent higher throughput than eight-expert ones<sup id="fnref5:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+On H100 GPUs, imbalanced token-to-expert routing makes some experts bottlenecks and reduces parallel efficiency even when compute is available<sup id="fnref6:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<ul>
+<li>Proven: the bottleneck argument above follows from the synchronous structure of a step, and is the tutorial's own derivation rather than a result any source proves for every system.</li>
+<li>Experiment: MoE-Infinity's trace analysis at batch size one, DeepSeek-V3's ablations on auxiliary-loss-free balancing, and the MoE-Inference-Bench throughput results<sup id="fnref25:5"><a class="footnote-ref" href="#fn:5">5</a></sup><sup id="fnref28:2"><a class="footnote-ref" href="#fn:2">2</a></sup><sup id="fnref8:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</li>
+<li>Hypothesis: the authors' explanation that balancing yields expert specialization, supported by expert-load records but not proven<sup id="fnref29:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</li>
+</ul>
+<h2>Prefill versus decode: two workloads in one service</h2>
+<p>Serving a model to many users involves two different kinds of work, and the SGLang team treats them as separate phases of every request<sup id="fnref:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Prefill processes the whole input prompt, and the team describes it as computation-intensive because it handles the entire input sequence at once<sup id="fnref2:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Decode is memory-intensive because it manages the key-value (KV) cache for token generation<sup id="fnref3:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+During prefill, the DeepSeek-V3 deployment uses 32-way expert parallelism (EP32), which ensures that each expert processes a sufficiently large batch size, thereby enhancing computational efficiency<sup id="fnref11:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+During decode, the batch size per expert is relatively small (usually within 256 tokens), and the bottleneck is memory access rather than computation<sup id="fnref12:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>Decode is also where users feel latency, and a common measure is time per output token (TPOT)<sup id="fnref4:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+The SGLang report also uses time to first token (TTFT) and inter-token latency (ITL), and reports TTFT of 2 to 5 seconds and ITL of about 100 ms for its throughput-focused setup<sup id="fnref4:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>A conventional unified engine runs prefill and decode batches in one scheduler, and the SGLang team reports three problems with that design<sup id="fnref5:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+First, incoming prefill batches frequently interrupt ongoing decode batches, which causes substantial delays in token generation<sup id="fnref6:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Second, under data-parallel attention one worker may process a prefill batch while another handles a decode batch, which increases decode latency<sup id="fnref7:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Third, DeepEP uses different dispatch modes for prefill and decode, and its auto mode cannot support normal dispatch for prefill and low-latency dispatch for decode in the same communication group, so unified scheduling is incompatible with it<sup id="fnref8:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+The two phases also differ in expert use: the team's case study found that prefill and decode distributions share similarities but have notable differences, which supports distinct expert placements for each phase<sup id="fnref9:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>Prefill-decode (PD) disaggregation addresses this by running the two phases on separate servers, a Prefill Server and a Decode Server<sup id="fnref10:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+In the SGLang design, the two servers first pair through a handshake, the Decode Server pre-allocates the KV cache, the Prefill Server computes the KV caches, and the data then transfers to the Decode Server, which runs the iterative token generation<sup id="fnref11:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+The transfer runs in a background thread so the scheduler's event loop is not interrupted, and it uses RDMA, a direct memory-to-memory transfer over the network<sup id="fnref12:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Prefill can then use normal dispatch and decode can use low-latency dispatch, both under DP attention, so each phase gets a dispatch mode suited to it<sup id="fnref13:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>As a worked example, suppose a service is decoding 64 requests and a user submits a prompt of 8,000 tokens.
+In a unified engine, that prefill can be scheduled between decode steps, which delays the next token for the decoding users, the interruption the SGLang team describes<sup id="fnref14:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+With PD disaggregation, the long prompt is prefilled on the Prefill Server while the Decode Server keeps emitting tokens for the active requests, and the KV cache is handed over once it is ready<sup id="fnref15:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+The 8,000-token prompt and the 64 requests are illustrative numbers of the tutorial, not measurements from the sources.</p>
+<p>DeepSeek-V3 also uses multi-token prediction (MTP), an objective that extends prediction to multiple future tokens at each position<sup id="fnref13:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The report notes that the MTP modules can be discarded at inference or reused for speculative decoding to improve generation latency<sup id="fnref14:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The SGLang team reports that its MTP support lacks full integration with DP attention, which reduces efficiency in mixed parallelism configurations<sup id="fnref16:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<h2>How large providers lay out experts: DeepSeek-V3 and large-scale expert parallelism</h2>
+<p>Expert parallelism (EP) splits the experts of an MoE layer across GPUs, so each GPU holds only a share of them<sup id="fnref15:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+DeepSeek-V3's deployment uses 32-way EP for the MoE part in prefill and 320-way EP in decode, and in decode each GPU hosts one expert<sup id="fnref16:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The report says 32-way EP ensures that each expert processes a sufficiently large batch size, thereby enhancing computational efficiency<sup id="fnref17:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+This is the high-load regime from the utilization discussion, made a deliberate design choice, because pooling many users' tokens across GPUs gives each expert enough tokens per step.
+Because each GPU holds only a slice of the experts, more of its memory remains free for the KV cache, the per-request store of attention keys and values that decoding reads at every step.</p>
+<p>Large layouts combine several kinds of parallelism, so the terms need defining: tensor parallelism splits one layer's matrices across GPUs, data parallelism replicates a layer and splits the requests, sequence parallelism splits the tokens of one sequence, and expert parallelism splits the experts.
+In the notation below, TP4 is 4-way tensor parallelism, DP8 is 8-way data parallelism, and EP32 is 32-way expert parallelism.
+DeepSeek-V3 runs prefill and decode on separate units, each with its own layout<sup id="fnref18:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The prefill unit has a minimum deployment of 4 nodes with 32 GPUs, using TP4 with sequence parallelism and DP8 for attention, and EP32 for the MoE part<sup id="fnref19:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The decode unit has a minimum deployment of 40 nodes with 320 GPUs, using EP320 for the MoE part, and 64 of those GPUs host redundant and shared experts<sup id="fnref20:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Dispatch and combine in decode use direct point-to-point transfers over InfiniBand to achieve low latency, and the report further leverages IBGDA (NVIDIA, 2022) to minimize latency<sup id="fnref21:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>Imbalance is handled by redundant experts: the report duplicates high-load experts, detects them from online statistics, and adjusts the set periodically, for example every 10 minutes<sup id="fnref22:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+In prefill, 32 redundant experts are added so each GPU hosts one extra expert beyond its original 8, and experts are rearranged within a node without increasing cross-node traffic<sup id="fnref23:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+To hide communication latency, prefill processes two micro-batches with similar workloads at once, overlapping the attention and MoE of one with the dispatch and combine of the other<sup id="fnref24:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+While one micro-batch waits on all-to-all communication, the GPU computes the other, so communication time is overlapped with computation.
+In decode, the report notes that per-expert batches are usually within 256 tokens and the bottleneck is memory access rather than computation, so it can give few SMs to communication, a claim the report presents as reasoning rather than measurement<sup id="fnref25:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>SGLang reproduced this kind of system on 96 H100 GPUs, 12 nodes with 8 GPUs each, and reported nearly on-par performance with DeepSeek's profile<sup id="fnref17:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+It reported 52.3k input tokens and 22.3k output tokens per second per node for 2000-token inputs, measured on its own setup<sup id="fnref18:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+SGLang gives attention, dense feed-forward layers, and sparse expert layers separate parallelism schemes, and it moves the LM head to data parallelism to reduce memory overhead<sup id="fnref19:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+DeepEP's normal dispatch suits long prefill inputs but cannot be captured by CUDA Graph, while its low-latency dispatch supports CUDA Graph at the cost of preallocated memory<sup id="fnref20:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+SGLang also includes two-batch overlap (TBO), which overlaps computation (e.g., attention and MLP phases) with DeepEP Combine and Dispatch communication<sup id="fnref21:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Its expert load balancer, EPLB, takes expert statistics and arranges experts to minimize imbalance; adding 32 redundant experts to the original 256 gives a pool of 288, which allows parallelism sizes such as 12 or 72<sup id="fnref22:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>The TBO ablation gave a 27% to 35% throughput increase over the vanilla setup at the same token count per device, and allowed batches of 16,384 tokens per device where the vanilla setup ran out of memory beyond 8,192<sup id="fnref23:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+EPLB gave speedups of 1.49x in prefill and 2.54x in decode at large scale, which the authors attribute to reduced imbalance across GPUs as the number of ranks grows<sup id="fnref24:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Against DeepSeek's profile, SGLang with default imbalance was 20% slower, and simulated perfect EPLB narrowed the gap to 6%<sup id="fnref25:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+The authors also report that most experts are rarely used while a small subset is heavily used, and that prefill and decode distributions differ, which they cite as support for PD disaggregation with phase-specific placements<sup id="fnref26:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>The SGLang authors list their own limitations: time to first token is 2 to 5 seconds and inter-token latency about 100 ms, the 96-GPU setup limits sequence length, EPLB was tested only on in-distribution data, and flexible tensor parallelism sizes for dense layers are not supported<sup id="fnref27:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+DeepSeek's report is the source of the layouts and minimum deployment units, while SGLang's numbers come from its own reproduction<sup id="fnref26:2"><a class="footnote-ref" href="#fn:2">2</a></sup><sup id="fnref28:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<h2>What a single machine can do: offloading experts to CPU memory</h2>
+<p>The personal machine is the opposite of the cloud server: it usually has a single consumer-grade GPU with limited memory, typically 24 to 48 GB, and it serves one user at a time<sup id="fnref5:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Some MoE models exceed 100 GB, so they cannot fit on such a GPU, and the common answer is offloading: the full model stays in host memory, and only the activated experts, those that receive tokens for processing, are fetched into the GPU when needed<sup id="fnref6:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+The MoE-Infinity authors argue that the single-user setting makes this workable, because with a batch size of one an MoE model activates only a small subset of experts per token<sup id="fnref7:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Hugging Face's introduction makes the memory point directly: all parameters must be loaded in RAM, so memory requirements are high, even though inference is much faster than for a dense model with the same number of parameters<sup id="fnref7:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>The bottleneck in this regime is the PCIe link between host memory and the GPU, not the arithmetic.
+The MoE-Infinity evaluation uses a single NVIDIA A5000 with 24 GB, connected through PCIe 4.0 at 24 GB/s, and it reports time-per-output-token (TPOT) in its latency table<sup id="fnref8:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+In its table for DeepSeek-V2-Lite, MoE-Infinity reaches a TPOT of 51 ms, against 254 ms for vLLM and 754 ms for Mixtral-Offloading, which the authors summarise as a 3.1 to 16.7 times latency reduction<sup id="fnref9:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+These numbers are experimental evidence for one model, one GPU and one PCIe generation, and they should not be read as a general speedup.
+The authors attribute the poor baselines to high-volume but inaccurate prefetching, which blocks GPU fetches when they are needed, and to a low GPU cache hit rate<sup id="fnref10:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Blocking matters because a cache miss stalls the decode step until the expert arrives over PCIe.
+BrainStorm, a system for dynamic neural networks, illustrates inaccurate prediction: the authors say it handles control-flow patterns in classification rather than MoE routers during autoregressive decoding, and its TPOT of 934 ms was worse than the 485 ms of on-demand vLLM<sup id="fnref11:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+vLLM also moves KV-cache data over the same link, so long contexts make expert fetches contend with KV traffic, in the authors' account<sup id="fnref12:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<p>MoE-Infinity's idea is to decide what to fetch and what to keep by tracing expert activity<sup id="fnref13:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+For each request, it records an expert activation matrix (EAM), which the sources show as a per-layer, per-expert count of activations, as in the Figure 6 example<sup id="fnref14:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+For the current request, the system finds the most similar historical EAM, on the reasoning that a matching trace has a similar overall activation pattern<sup id="fnref15:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+The matched trace then drives eviction: when the cache is full, the expert with the lowest priority, computed from the predicted likelihood of reuse with a layer decay, is replaced by the expert fetched on demand<sup id="fnref16:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<p>The design rests on an observed property: with a batch size of one, GPU memory is often sufficient to hold the most frequently used experts during decoding, even with long-context inputs<sup id="fnref17:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Experts also show skewed reuse within a single request, and after processing multiple requests the skew disappears and experts are activated uniformly<sup id="fnref18:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+The authors' explanation, that experts with similar expertise are reactivated within the same context, is a hypothesis they state rather than a proven result<sup id="fnref19:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<p>The bandwidth arithmetic below is the tutorial's own illustrative model, not a figure from the sources.
+If an expert occupies \(S\) bytes and the PCIe link delivers \(B_{\text{PCIe}}\) bytes per second, a cache miss costs about \(t_{\text{miss}} = S / B_{\text{PCIe}}\) seconds.</p>
+<p>$$
+\mathbb{E}[t_{\text{stall}}] \approx (1-h)\,\frac{S}{B_{\text{PCIe}}}
+$$</p>
+<p>Here \(h\) is the cache hit rate, the fraction of expert uses served from GPU memory, so the hit rate dominates TPOT once misses are frequent.
+For example, an expert of 0.5 GB over a 24 GB/s link costs about 21 ms per miss, so a decode step that misses several experts per layer is dominated by transfers rather than matrix multiplication.</p>
+<p>The approach has clear limits.
+It targets batch size one, and the authors' analysis says the cache's benefit comes from a small working set of experts during each decoding iteration<sup id="fnref20:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+As batches grow, more experts are touched per iteration, the working set grows, and a fixed GPU cache holds a smaller fraction of what is needed, so the hit rate falls and the gains shrink.
+The authors also note that an excessively large expert cache would trigger excessive I/O bandwidth usage and slow inference through frequent offloading<sup id="fnref21:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<h2>Side-by-side comparison of the approaches</h2>
+<p>The four approaches differ mainly in who holds the experts and how many users share them.</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Target traffic and batch</th>
+<th>Where experts live</th>
+<th>Dominant bottleneck</th>
+<th>What is shared across users</th>
+<th>Utilization behavior</th>
+<th>Main technique</th>
+<th>Evidence type</th>
+<th>Main limitation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dense-style, all experts resident on one GPU</td>
+<td>Single user, batch about 1</td>
+<td>All experts in GPU memory</td>
+<td>Memory paid up front</td>
+<td>One resident copy</td>
+<td>Idle experts still occupy memory</td>
+<td>Keep all experts in GPU memory</td>
+<td>Vendor blog observation</td>
+<td>Less room for KV cache<sup id="fnref22:3"><a class="footnote-ref" href="#fn:3">3</a></sup></td>
+</tr>
+<tr>
+<td>Single-machine CPU offloading with sparsity-aware cache</td>
+<td>Personal machine, batch size one</td>
+<td>Full model in CPU memory, active experts fetched over PCIe</td>
+<td>Expert fetch cost on cache misses</td>
+<td>Little, since one user</td>
+<td>Few experts reused per request</td>
+<td>Expert activation tracing and cache</td>
+<td>Single-machine experiment</td>
+<td>Designed for batch size one; no batch-size sweep reported<sup id="fnref26:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+<tr>
+<td>Batched multi-user serving on one node</td>
+<td>Moderate concurrency</td>
+<td>Resident copy on the node's GPUs</td>
+<td>Throughput falls as active experts rise</td>
+<td>One expert copy for all users' tokens</td>
+<td>Utilization rises with batch size</td>
+<td>Batching and active-expert choice</td>
+<td>Benchmark on H100 GPUs</td>
+<td>Throughput drops with more active experts<sup id="fnref9:4"><a class="footnote-ref" href="#fn:4">4</a></sup></td>
+</tr>
+<tr>
+<td>Large-scale expert parallelism with PD disaggregation</td>
+<td>Very high traffic</td>
+<td>Sharded across many GPUs and nodes</td>
+<td>Communication and load imbalance</td>
+<td>Expert batches aggregated across GPUs</td>
+<td>Large aggregate batch per expert</td>
+<td>Expert parallelism, redundant experts, PD disaggregation</td>
+<td>Authors' report; SGLang reproduction</td>
+<td>Large minimum deployment unit<sup id="fnref30:2"><a class="footnote-ref" href="#fn:2">2</a></sup><sup id="fnref32:6"><a class="footnote-ref" href="#fn:6">6</a></sup></td>
+</tr>
+</tbody>
+</table>
+<p>Start from the memory budget: the memory footprint tracks total parameters, and all experts must live in GPU memory at once, which leaves less room for the KV cache than a dense model of comparable size would have<sup id="fnref17:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+CPU offloading with an expert cache is what the single-machine experiment supports when the weights do not fit and one user runs on a personal machine<sup id="fnref22:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+After processing multiple requests, the skew in expert reuse disappears and all experts tend to be activated uniformly, which weakens the cache's ability to predict reuse<sup id="fnref23:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Throughput drops sharply as the number of active experts increases, so batched serving on one node is sensitive to the active-expert choice<sup id="fnref7:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Deployment choice depends on memory budget, concurrency needs, fine-tuning plans, and quantization behavior rather than raw parameter count alone<sup id="fnref18:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Large-scale expert parallelism with PD disaggregation suits very high traffic, and its minimum deployment unit is 4 nodes with 32 GPUs for prefilling and 40 nodes with 320 GPUs for decoding<sup id="fnref27:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<h2>Summary and check-your-understanding questions</h2>
+<p>An MoE model separates its total parameters from the parameters it activates per token, and its memory bill follows the total<sup id="fnref19:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+A 30B MoE model that activates 3B parameters per token needs roughly as much memory as a 30B dense model, while its per-token compute tracks the 3B active parameters<sup id="fnref20:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Batching lets tokens from many requests share one stored copy of the experts, so the memory is paid once.
+Utilization depends on batch size: at batch size one, decoding reads fewer weight bytes per token, and the MoE advantage narrows as tokens collectively use most experts<sup id="fnref21:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Prefill is compute-intensive and decode is memory-intensive, which is why SGLang separates the two phases<sup id="fnref29:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+On a personal machine at batch size one, experts can sit in host memory and be fetched on demand, with a sparsity-aware cache deciding what stays on the GPU<sup id="fnref24:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<ul>
+<li>Question 1: With \(E=256\) experts, \(k=8\) active experts per token, and a batch of \(B=16\) tokens under the tutorial's uniform-routing model, how many distinct experts does the batch touch, and how many tokens does each touched expert serve on average?</li>
+<li>Question 2: Why does a low-load MoE server leave much of its resident expert memory idle, and what changes as traffic grows?</li>
+<li>Question 3: Why does PD disaggregation help when a long prefill in a unified scheduler can delay decode steps<sup id="fnref30:6"><a class="footnote-ref" href="#fn:6">6</a></sup>?</li>
+<li>Question 4: Why does a redundant copy of a hot expert help load balance, and what cost limits how often the expert arrangement can be updated<sup id="fnref31:6"><a class="footnote-ref" href="#fn:6">6</a></sup>?</li>
+<li>Question 5: Why does offloading help at batch size one but lose its advantage as batches grow and touch more experts?</li>
+<li>Question 6: How would you estimate the cost of a cache miss over PCIe, given an expert's size in bytes and the link bandwidth?</li>
+</ul>
+<h2>References</h2>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>huggingface.co (2023). <a href="https://huggingface.co/blog/moe"><em>Mixture of Experts Explained</em></a>. huggingface.co (guide).&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:2">
+<p>DeepSeek-AI, Liu, A., Feng, B., Xue, B., Wang, B., Wu, B., Lu, C., Zhao, C., Deng, C., Zhang, C., et al. (2024). <a href="https://arxiv.org/pdf/2412.19437"><em>DeepSeek-V3 Technical Report</em></a>. arxiv.org (scholarly). Cited at pages 1, 9, 10, 11, 18, 19, 20, 27, 28.&#160;<a class="footnote-backref" href="#fnref:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref27:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref28:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref29:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref30:2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+<li id="fn:3">
+<p>developer.nvidia.com (2026). <a href="https://developer.nvidia.com/blog/dense-vs-moe-models-active-parameters-throughput-and-when-to-choose-each"><em>Dense vs. MoE Models: Active Parameters, Throughput, and When to Choose Each</em></a>. developer.nvidia.com (official).&#160;<a class="footnote-backref" href="#fnref:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:3" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+</li>
+<li id="fn:4">
+<p>dl.acm.org (n.d.). <a href="https://dl.acm.org/doi/10.1145/3731599.3767706"><em>MoE-Inference-Bench: Performance Evaluation of Mixture of Expert Large Language and Vision Models | Proceedings of the SC '25 Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis</em></a>. dl.acm.org (scholarly).&#160;<a class="footnote-backref" href="#fnref:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:4" title="Jump back to footnote 4 in the text">&#8617;</a></p>
+</li>
+<li id="fn:5">
+<p>Xue, L., Fu, Y., Lu, Z., Mai, L., Marina, M. (2024). <a href="https://ar5iv.labs.arxiv.org/html/2401.14361"><em>MoE-Infinity: Efficient MoE Inference on Personal Machines with Sparsity-Aware Expert Cache</em></a>. ar5iv.labs.arxiv.org (scholarly). Cited at pages 1, 2, 3, 4, 6, 8.&#160;<a class="footnote-backref" href="#fnref:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:5" title="Jump back to footnote 5 in the text">&#8617;</a></p>
+</li>
+<li id="fn:6">
+<p>lmsys.org (n.d.). <a href="https://www.lmsys.org/blog/2025-05-05-large-scale-ep"><em>Deploying DeepSeek with PD Disaggregation and Large-Scale Expert Parallelism on 96 H100 GPUs</em></a>. lmsys.org (institutional).&#160;<a class="footnote-backref" href="#fnref:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref27:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref28:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref29:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref30:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref31:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref32:6" title="Jump back to footnote 6 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+<script>document.querySelectorAll('.footnote-ref').forEach(function(a){var li=document.getElementById(a.getAttribute('href').slice(1));if(li){a.title=li.textContent.replace(/\u21a9/g,'').trim();}a.addEventListener('click',function(){window.lastRef=a.parentNode.id;});});document.querySelectorAll('.footnote-backref').forEach(function(b){b.addEventListener('click',function(e){if(window.lastRef){e.preventDefault();location.hash=window.lastRef;}});});</script>
+</body></html>
