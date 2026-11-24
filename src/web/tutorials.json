@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/llm-memory.html",
+  "title": "Shrinking the Memory Footprint of Large Language Models: A Tutorial on Quantization, KV-Cache Compression, Low-Rank Methods, Sparsity and Offloading",
+  "date": "2026-11-24",
+  "summary": "Where an LLM's memory goes and how to cut it, for a numerical analyst: weights and the KV cache, quantization from SmoothQuant to 4-bit NormalFloat, LoRA, QLoRA and low-rank experts, sparsity versus quantization, and offloading to CPU and NVMe, with a side-by-side comparison, from 9 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/moe-serving.html",
   "title": "Serving One Mixture-of-Experts Model to Many Users: Batching, Expert Utilization, Prefill/Decode, Expert Layouts and Single-Machine Offloading",
   "date": "2026-11-23",

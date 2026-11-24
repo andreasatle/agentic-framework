@@ -1,0 +1,279 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Shrinking the Memory Footprint of Large Language Models: A Tutorial on Quantization, KV-Cache Compression, Low-Rank Methods, Sparsity and Offloading</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false})"></script>
+<style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
+:root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
+body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style",serif;max-width:46rem;margin:0 auto;padding:2.5rem 16px 4rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
+p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}p,li{overflow-wrap:break-word}
+.note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto;position:relative}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}
+sup{line-height:0}.footnote-ref{text-decoration:none;font-size:.8em}.footnote-ref::before{content:"["}.footnote-ref::after{content:"]"}.footnote hr{display:none}.footnote{font-size:.93rem}.footnote li:target{background:var(--rule)}.footnote-backref{text-decoration:none;margin-left:.3em}.footnote-backref~.footnote-backref{display:none}</style></head><body><h1>Shrinking the Memory Footprint of Large Language Models: A Tutorial on Quantization, KV-Cache Compression, Low-Rank Methods, Sparsity and Offloading</h1>
+<p class="note">Written by AgentSwarm on 24 November 2026 for a numerical analyst new to LLM internals, from sources it found and the user approved (listed under References). After 1 round of fact review, a sampled audit found 90% of cited statements fully supported by their source. Not reviewed by an expert: read it as a guide to its sources, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
+<h2>Where the memory goes: a transformer for a numerical analyst</h2>
+<p>A transformer turns each token into a vector of numbers and passes these vectors through stacked layers of attention and feed-forward matrix products<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+One token is approximately four English characters<sup id="fnref2:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>A parameter is one learned number in these matrices, and nearly all parameters in a transformer block come from four linear layers with sizes \((h_d, 3h_d)\), \((h_d, h_d)\), \((h_d, 4h_d)\) and \((4h_d, h_d)\), where \(h_d\) is the hidden dimension<sup id="fnref:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Summing the four layer sizes gives \(3h_d^2 + h_d^2 + 4h_d^2 + 4h_d^2 = 12h_d^2\) per block, so for \(n_l\) transformer layers the total parameter count is approximately \(12 n_l h_d^2\)<sup id="fnref2:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>$$
+\text{parameters} \approx 12\, n_l\, h_d^2
+$$</p>
+<p>For mixed-precision training with the Adam optimizer, the parameters and gradients are stored in FP16, and the optimizer states consist of FP32 momentum, variance, parameters, and gradients<sup id="fnref3:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+In total, each parameter requires 20 bytes of memory for model states<sup id="fnref4:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Activations, the intermediate results of the forward pass kept for the backward pass, form a separate residual term that depends on batch size and sequence length<sup id="fnref5:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Regular 16-bit finetuning of a LLaMA 65B model requires more than 780 GB of GPU memory<sup id="fnref:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>At inference, the two main contributors are the model weights and the KV cache, which stores the keys and values of past tokens so they need not be recomputed<sup id="fnref3:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+A 7-billion-parameter model in 16-bit precision takes roughly 14 GB for its weights, since \(7 \times 10^9 \times 2\) bytes is about 14 GB<sup id="fnref4:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Prefill processes the input tokens in parallel as a matrix-matrix operation that saturates the GPU, while decode generates one token at a time as a matrix-vector operation that is memory-bound<sup id="fnref5:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>Model size has outgrown GPU memory: the largest dense models grew over 1000x in three years, while GPU memory grew only 5x, from 16 GB to 80 GB, which the authors call the GPU memory wall<sup id="fnref6:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The later sections follow one map: quantization stores weights in fewer bits, low-rank adapters train a small set of parameters while the full model stays fixed, and offloading moves state to CPU or NVMe memory with a bandwidth concern<sup id="fnref2:3"><a class="footnote-ref" href="#fn:3">3</a></sup><sup id="fnref7:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<h2>Quantization: trading bits for rounding error</h2>
+<p>Quantization maps a high-precision value into discrete levels<sup id="fnref:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+The integer uniform quantizer used in SmoothQuant is \(\bar{X}_{\mathrm{INT8}} = \lceil X_{\mathrm{FP16}}/\Delta \rfloor\) with \(\Delta = \max(|X|)/(2^{N-1}-1)\), where \(X\) is the floating-point tensor, \(\bar{X}\) its quantized counterpart, \(\Delta\) the step size, \(\lceil\cdot\rfloor\) the rounding function and \(N\) the number of bits<sup id="fnref2:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+For an asymmetric tensor, such as one after ReLU, a zero-point is added to shift the grid<sup id="fnref3:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Kuzmin et al. define the rounding error as \(R(w)=Q(w)-w\), and their expected quantization error splits into a rounding term plus clipping terms outside the quantization range<sup id="fnref:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<p>Weights are the easier target because they are fixed after training and their distribution is flat and uniform<sup id="fnref6:1"><a class="footnote-ref" href="#fn:1">1</a></sup><sup id="fnref4:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Activations are harder because a few fixed channels carry outliers about 100 times larger than most values, so one per-tensor scale leaves non-outlier channels only 2 to 3 effective levels<sup id="fnref5:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<p>For a linear layer \(Y = XW\), the input is \(X\in\mathbb{R}^{T\times C_i}\) with \(T\) tokens and \(C_i\) input channels, and the weight is \(W\in\mathbb{R}^{C_i\times C_o}\) with \(C_o\) output channels<sup id="fnref6:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Integer GEMM kernels need both operands in INT8 to run at hardware speed, which is why W8A8 quantizes activations as well as weights<sup id="fnref7:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<p>SmoothQuant rests on the identity \(Y = (X\,\mathrm{diag}(s)^{-1})(\mathrm{diag}(s)\,W) = \hat{X}\hat{W}\), where \(s\in\mathbb{R}^{C_i}\) is one smoothing factor per input channel, so the output is unchanged in exact arithmetic<sup id="fnref8:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+The factor is set as \(s_j = \max(|X_j|)^{\alpha}/\max(|W_j|)^{1-\alpha}\), where \(\alpha\) is the migration strength; a larger \(\alpha\) moves more difficulty to the weights<sup id="fnref9:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Shown experimentally, \(\alpha=0.5\) balanced OPT and BLOOM, \(\alpha=0.75\) suited GLM-130B, and an OPT-175B ablation found a sweet spot of about 0.4 to 0.6<sup id="fnref10:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+On PyTorch with OPT models, SmoothQuant-O3 gave up to 1.51 times speedup and 1.96 times memory saving, whereas the mixed-precision LLM.int8() baseline was usually slower than FP16<sup id="fnref11:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<p>LLM.int8() keeps outliers in FP16 and uses INT8 for the rest, which the SmoothQuant authors describe as hard to implement efficiently on hardware<sup id="fnref12:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+The sources do not describe GPTQ or AWQ in detail; SmoothQuant mentions GPTQ only as a weight-only method<sup id="fnref13:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+The step-size formula, the SmoothQuant identity and the rounding error are derived results, while the speedups and accuracy figures are experimental results on particular models and hardware.
+The SmoothQuant authors report that the approach applies to various LLM designs, with tests on OPT, BLOOM, GLM-130B, MT-NLG 530B, LLaMA and instruction-tuned OPT-IML<sup id="fnref14:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<h2>Going to 4 bits: NormalFloat, double quantization and paged optimizers</h2>
+<p>Uniform integer quantization maps values onto an evenly spaced grid scaled by the tensor's absolute maximum, so one large outlier leaves many bins unused<sup id="fnref3:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Pretrained weights are roughly zero-centred normal, so the authors rescale them into one fixed distribution and use levels that are normal quantiles, giving each bin an equal expected number of values<sup id="fnref4:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The authors call the result 4-bit NormalFloat (NF4) and argue it is information-theoretically optimal for zero-mean normal data; this is a design argument, not a measured result<sup id="fnref5:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The levels are \(q_i=\tfrac12\left(Q_X\left(\tfrac{i}{2^k+1}\right)+Q_X\left(\tfrac{i+1}{2^k+1}\right)\right)\), where \(Q_X\) is the quantile function of \(N(0,1)\) and \(k\) is the bit width<sup id="fnref6:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>Quantizing the tensor in independent blocks, each with its own quantization constant, is the common approach to prevent the outlier problem<sup id="fnref7:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+With 32-bit constants and blocksize 64, the constants cost \(32/64=0.5\) bits per parameter<sup id="fnref8:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Double quantization quantizes these constants again, using 8-bit floats with blocksize 256 plus second-level 32-bit constants, so the cost becomes \(8/64+32/(64\cdot 256)\approx 0.127\) bits per parameter, a saving of about 0.373 bits per parameter<sup id="fnref9:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The authors put this saving at about 3 GB for a 65B model<sup id="fnref10:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>Paged optimizers use NVIDIA unified memory to move optimizer states to CPU RAM when the GPU runs out of memory and back when the update needs them, targeting memory spikes on long sequences during gradient checkpointing<sup id="fnref11:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The authors did not measure paging directly; at batch size 16 on 65B models with 48GB GPUs, paged optimizers matched regular optimizer speed<sup id="fnref12:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Experimentally, NF4 with double quantization matches BFloat16 mean 5-shot MMLU accuracy for LLaMA 7B to 65B, while FP4 trails by about one percentage point<sup id="fnref13:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<h2>The KV cache: why it grows and how to shrink it</h2>
+<p>During decoding, a model produces one token at a time, and each new token depends on the keys and values of all previous tokens<sup id="fnref7:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The scaled dot-product attention operation maps query and key-value pairs to an output<sup id="fnref8:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Recomputing these keys and values at every step would be prohibitively expensive, so they are stored in a KV cache and reused<sup id="fnref:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>In the notation of the KVQuant paper, with \(n\) layers, \(h\) heads of dimension \(d\), \(e\) bytes per element, batch size \(b\) and sequence length \(l\), the cache holds \(2 \cdot n \cdot h \cdot d \cdot e \cdot b \cdot l\) bytes, where the factor 2 counts keys and values<sup id="fnref2:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Since \(h \cdot d\) is the model's hidden size, the cache grows linearly with both batch size and sequence length<sup id="fnref9:1"><a class="footnote-ref" href="#fn:1">1</a></sup><sup id="fnref3:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>$$
+M_{\mathrm{KV}} = 2 \cdot n \cdot h \cdot d \cdot e \cdot b \cdot l
+$$</p>
+<p>As a worked example, a Llama 2 7B model in 16-bit precision with batch size 1 has a cache of about 2 GB at sequence length 4096<sup id="fnref10:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Going to 128K tokens is 32 times longer, so at the same batch size the cache grows by the same factor, from about 2 GB to about 64 GB.
+The KVQuant authors report a 64.0 GB fp16 cache for LLaMA-7B at sequence length 128K, a size they estimate for their own assumptions<sup id="fnref4:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>Multi-query attention shares one set of keys and values across all heads, which reduces the cache but may cost accuracy and requires training or fine-tuning with it enabled<sup id="fnref11:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Grouped-query attention shares keys and values within groups of query heads, balancing memory and quality<sup id="fnref12:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+PagedAttention addresses waste rather than size: it stores each cache in fixed-size, non-contiguous blocks, which removes fragmentation from static over-provisioning and allows larger batches<sup id="fnref13:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>KVQuant lowers the precision of cached keys and values, since the cache dominates memory for long contexts<sup id="fnref5:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Keys have outlier channels with large average magnitude, so the authors quantize keys per channel and values per token, a 3.82 perplexity gain over per-token quantization for 3-bit LLaMA-7B<sup id="fnref6:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Rotary position embedding (RoPE) mixes channel pairs by position-dependent angles, so the authors quantize keys before RoPE and apply the rotation after dequantization, a further 0.82 perplexity gain at 3 bits<sup id="fnref7:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+These are the authors' measurements on LLaMA-family and Mistral models, not general theorems<sup id="fnref8:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>The sources do not cover eviction or token-selection methods in depth.</p>
+<h2>Low-rank methods: updating a model without storing its optimizer state</h2>
+<p>LoRA keeps the pretrained weights fixed and trains only a small set of adapter parameters, augmenting a linear projection through an additional factorized projection<sup id="fnref14:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+For a pretrained matrix \(W \in \mathbb{R}^{d\times k}\), the update is factorized as \(BA\), with \(B \in \mathbb{R}^{d\times r}\) and \(A \in \mathbb{R}^{r\times k}\), and the rank \(r\) is small relative to \(d\) and \(k\)<sup id="fnref:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+The adapter therefore has \(r(d+k)\) trainable parameters instead of \(dk\); for a \(4096\times 4096\) matrix with \(r=8\), this is about 65 thousand instead of 16.8 million, a ratio of roughly 256 to 1 (a derived calculation).
+Because the base weights are frozen, gradients and optimizer state are stored only for the adapters, and the QLoRA paper reports that for a 7B LLaMA model the LoRA parameters take 26 MB while the 4-bit base model takes 5,048 MB<sup id="fnref15:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+QLoRA keeps the base model frozen in 4-bit NormalFloat, dequantizes it to BFloat16 for each matrix multiplication, and computes weight gradients only for the 16-bit adapters<sup id="fnref16:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The authors report that this allows finetuning a 65B parameter model on a single 48GB GPU, where regular 16-bit finetuning needs more than 780 GB<sup id="fnref17:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Their finding that 4-bit QLoRA with NF4 and double quantization matches 16-bit LoRA on MMLU is a measured result, not a proof<sup id="fnref18:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>LoRAMoE treats LoRA adapters as experts in a mixture-of-experts layer, where a router weights the experts' outputs in each feed-forward layer, with the backbone frozen during training<sup id="fnref2:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+Its motivation is world-knowledge forgetting: the authors observe that large-scale instruction finetuning lowers closed-book QA performance and hypothesize that this comes from parameter changes to the pretrained model<sup id="fnref3:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+Its localized balancing constraint splits the experts into one group for downstream tasks and one for aligning world knowledge, and balances experts only within each group<sup id="fnref4:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+In the authors' experiments on one model and one data mixture, LoRAMoE avoided the closed-book QA collapse seen under plain finetuning, which is experimental evidence only<sup id="fnref5:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+Mixture of LoRA Experts (MoLE) addresses composing several separately trained LoRAs<sup id="fnref:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+Linear arithmetic composition sums the updates, and the authors observe that composing four or more LoRAs can disorder outputs, while normalizing the weights dilutes each adapter's characteristics<sup id="fnref2:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+MoLE instead treats each layer of trained LoRAs as an expert and learns a gating function per layer, with all other parameters frozen<sup id="fnref3:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+These experts mainly address composition and forgetting; their memory benefit comes from the frozen backbone and the small adapters.
+The sources do not cover gradient projection methods in depth, so this section mentions them only as a method the sources leave out.</p>
+<h2>Sparsity and pruning: removing parameters, and when quantization wins</h2>
+<p>Sparsity removes parameters by setting them to zero, and it is a different operation from quantization<sup id="fnref:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+Zeroing weights alone saves neither memory nor latency, because the dense tensor still holds the zeros and a matrix multiply computes with them<sup id="fnref2:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+Real savings therefore need a compressed storage layout and sparse kernels that skip the pruned elements<sup id="fnref3:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.</p>
+<ul>
+<li>Unstructured sparsity gives every element its own mask, the most flexible pattern, but it needs sparsity above 98% before performance benefits appear<sup id="fnref4:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.</li>
+<li>Semi-structured N:M sparsity keeps at most N nonzero values in every group of M consecutive values; 2:4 keeps two nonzero values in every group of four, fixing the level at 50%<sup id="fnref5:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.</li>
+<li>For 2:4 sparsity, the source reports matrix multiplication up to 1.7x faster with no numerical loss<sup id="fnref6:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.</li>
+</ul>
+<p>Mixture-of-experts models are a form of conditional sparsity, since a router selects only some experts for a given token, but all experts must still reside in memory.</p>
+<p>Kuzmin et al. compare the two methods analytically using the signal-to-noise ratio in decibels, \(\mathrm{SNR}_{\mathrm{dB}} = 10\log_{10}\left(E[W^2]/E[(W-F(W))^2]\right)\), where \(W\) is a weight and \(F(W)\) is the weight after quantization or pruning<sup id="fnref2:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Compression is measured against FP16, and 50% pruning is compared with INT8 and 75% pruning with INT4<sup id="fnref3:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+For a standard normal distribution the authors report 19.1 dB SNR for INT4 quantization against 5.6 dB for 75% pruning<sup id="fnref4:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Heavy tails hurt quantization, so pruning wins only at very high compression, roughly 2 to 3 bits per value<sup id="fnref5:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<p>The authors argue that unstructured pruning bounds all pruning methods, so where quantization beats unstructured pruning it also beats (semi-)structured pruning<sup id="fnref6:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+In post-training layer experiments, quantization mostly outperforms pruning at moderate compression, and the methods become more comparable at higher compression ratios<sup id="fnref7:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+An unstructured mask needs at least 1 bit per weight, a 6.25% overhead on 16-bit weights, whereas INT8 needs only a scaling factor per tensor or channel<sup id="fnref8:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<h2>Offloading to CPU and NVMe: trading bandwidth for capacity</h2>
+<p>The idea of offloading is to keep model data in CPU memory or on NVMe storage and move each piece to the GPU only when it is needed<sup id="fnref8:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The cost is bandwidth: a single GPU reaches only about 12 GB/s over PCIe to CPU or NVMe memory<sup id="fnref9:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>The authors model efficiency with arithmetic intensity \(ait\), the ratio of total computation to the data the computation requires, achievable peak compute \(peak_{tp}\), and bandwidth \(bw\), assuming no compute and communication overlap<sup id="fnref10:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Letting \(C\) be the total computation and \(D\) the data moved, compute time is \(t_c = C/peak_{tp}\) and communication time is \(t_m = D/bw\)<sup id="fnref11:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Efficiency is \(t_c/(t_c+t_m)\), which gives the following form<sup id="fnref12:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>$$
+\text{efficiency} = \frac{ait \times bw}{ait \times bw + peak_{tp}}
+$$</p>
+<p>Efficiency rises with \(ait\) and \(bw\), and a higher compute peak demands more bandwidth for the same efficiency.
+The authors use a peak of 70 TFlops per GPU, measured on a V100 DGX-2 box with non-GPU communication turned off<sup id="fnref13:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<ul>
+<li>Parameters and gradients: over 70 GB/s is needed, and at that bandwidth transfer can in theory be fully overlapped with computation<sup id="fnref21:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</li>
+<li>Optimizer states: about 4x the bandwidth of parameters and gradients is needed for 50% efficiency, and they cannot be overlapped<sup id="fnref22:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</li>
+<li>Activation checkpoints: about 2 GB/s sustains over 50% efficiency at hidden size 2K<sup id="fnref23:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</li>
+</ul>
+<p>A single PCIe link at about 12 GB/s is well below the 70 GB/s needed for parameters and gradients, so the design has to aggregate links or overlap transfers<sup id="fnref14:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Large batches hide transfer cost because they raise arithmetic intensity<sup id="fnref15:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+ZeRO-Infinity partitions parameters across all data parallel processes so that all PCIe links are active in parallel<sup id="fnref16:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+It trains models of up to 20 trillion parameters on 512 GPUs, with throughput of up to 49 TFlops/GPU<sup id="fnref17:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+These bandwidth figures come from one V100 DGX-2 configuration and are illustrations, not general laws<sup id="fnref18:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The evaluation concerns training, and the sources do not analyze offloading for inference<sup id="fnref19:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<h2>Side-by-side comparison and accuracy-versus-memory evidence</h2>
+<p>The table compares the main approaches on what they target, what they risk, and the kind of evidence behind them.</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Memory targeted</th>
+<th>Training or inference</th>
+<th>What is lost or risked</th>
+<th>Hardware needs</th>
+<th>Evidence kind</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Weight-only INT8 quantization</td>
+<td>Weights</td>
+<td>Inference</td>
+<td>Weights converted back to higher precision for matmul</td>
+<td>Dequantization support</td>
+<td>Discussed as prior work<sup id="fnref17:4"><a class="footnote-ref" href="#fn:4">4</a></sup></td>
+</tr>
+<tr>
+<td>SmoothQuant (W8A8)</td>
+<td>Weights, activations</td>
+<td>Inference</td>
+<td>Activation outliers; accuracy depends on migration strength</td>
+<td>INT8 GEMM kernels</td>
+<td>Derived identity; shown experimentally<sup id="fnref18:4"><a class="footnote-ref" href="#fn:4">4</a></sup></td>
+</tr>
+<tr>
+<td>KV-cache quantization (KVQuant)</td>
+<td>KV cache</td>
+<td>Inference</td>
+<td>Perplexity loss, under 0.1 at 3-bit</td>
+<td>Custom CUDA kernels</td>
+<td>Shown experimentally<sup id="fnref10:6"><a class="footnote-ref" href="#fn:6">6</a></sup></td>
+</tr>
+<tr>
+<td>MQA/GQA and paging</td>
+<td>KV cache</td>
+<td>Inference</td>
+<td>Possible accuracy drop with MQA</td>
+<td>Standard serving stack</td>
+<td>Sources give no measurement<sup id="fnref16:1"><a class="footnote-ref" href="#fn:1">1</a></sup></td>
+</tr>
+<tr>
+<td>LoRA / QLoRA</td>
+<td>Gradients, optimizer state, weights</td>
+<td>Training</td>
+<td>NF4 with LoRA matches 16-bit LoRA on MMLU</td>
+<td>Single 48GB GPU for 65B (authors' report)</td>
+<td>Shown experimentally<sup id="fnref21:3"><a class="footnote-ref" href="#fn:3">3</a></sup></td>
+</tr>
+<tr>
+<td>Low-rank experts (MoLE)</td>
+<td>Frozen backbone, small adapters</td>
+<td>Training and inference</td>
+<td>Normalized composition weakens each adapter's traits</td>
+<td>Frozen backbone, small gating</td>
+<td>Shown experimentally<sup id="fnref4:8"><a class="footnote-ref" href="#fn:8">8</a></sup></td>
+</tr>
+<tr>
+<td>Unstructured pruning</td>
+<td>Weights</td>
+<td>Inference</td>
+<td>Accuracy; mask storage overhead</td>
+<td>Sparse storage and kernels</td>
+<td>Derived bound; shown experimentally<sup id="fnref10:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+<tr>
+<td>Structured and N:M (2:4) sparsity</td>
+<td>Weights</td>
+<td>Inference</td>
+<td>Accuracy; speedup only for supported patterns</td>
+<td>Hardware support for the pattern</td>
+<td>Argued from unstructured bound<sup id="fnref11:5"><a class="footnote-ref" href="#fn:5">5</a></sup><sup id="fnref7:9"><a class="footnote-ref" href="#fn:9">9</a></sup></td>
+</tr>
+<tr>
+<td>Offloading (ZeRO-Infinity)</td>
+<td>Parameters, gradients, optimizer state</td>
+<td>Training</td>
+<td>Bandwidth; optimizer states need about 4x more</td>
+<td>CPU or NVMe and fast links</td>
+<td>Analytical model; throughput measured<sup id="fnref24:2"><a class="footnote-ref" href="#fn:2">2</a></sup></td>
+</tr>
+</tbody>
+</table>
+<p>QLoRA composes quantization with low rank, using a 4-bit NF4 base with 16-bit LoRA adapters, and its paged optimizers address memory spikes during gradient checkpointing<sup id="fnref19:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Weight quantization alone does not shrink optimizer state, and LoRA does not reduce the frozen base weights, which is why the two are combined.
+Paging and MQA/GQA target the KV cache and do not help weights or optimizer state<sup id="fnref14:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Quantization usually beats pruning at equal compression, except at very high compression<sup id="fnref9:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Evidence gaps remain: the sources give no measured accuracy for MQA, GQA or paging, and they do not describe GPTQ or AWQ in detail<sup id="fnref15:1"><a class="footnote-ref" href="#fn:1">1</a></sup><sup id="fnref15:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<h2>Summary and check-your-understanding questions</h2>
+<p>The central principle is to identify the dominant memory term first, because a technique helps only when it attacks the component that fills the GPU<sup id="fnref9:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Reduce precision where the error is tolerable.
+Once activation outliers are smoothed, INT8 weights and activations can nearly halve GPU memory usage compared with FP16<sup id="fnref16:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Low-rank adapters keep adapter memory small, though most finetuning memory goes to activation gradients rather than adapter parameters<sup id="fnref20:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Exploit sparsity only when the hardware can use it.
+Trade bandwidth for capacity: offloading keeps the GPU busy when each byte moved supports enough computation, or when overlap hides the transfer<sup id="fnref20:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<ul>
+<li>Why does an activation outlier ruin per-tensor INT8, and what does SmoothQuant change?</li>
+<li>For a rank-\(r\) LoRA update of a \(d \times k\) matrix, how many parameters are saved relative to full finetuning?</li>
+<li>How does the KV cache size scale with sequence length and batch size, and which methods reduce it?</li>
+<li>Why does unstructured pruning not automatically save memory?</li>
+<li>When does offloading keep the GPU busy, and what limits it?</li>
+</ul>
+<h2>References</h2>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>Verma, S. (2023). <a href="https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization"><em>Mastering LLM Techniques: Inference Optimization</em></a>. developer.nvidia.com (commercial).&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:2">
+<p>Rajbhandari, S., Ruwase, O., Rasley, J., Smith, S., He, Y. (2021). <a href="https://arxiv.org/pdf/2104.07857"><em>ZeRO-Infinity: Breaking the GPU Memory Wall for Extreme Scale Deep Learning</em></a>. arxiv.org (scholarly). Cited at pages 1, 3, 6.&#160;<a class="footnote-backref" href="#fnref:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+<li id="fn:3">
+<p>Dettmers, T., Pagnoni, A., Holtzman, A., Zettlemoyer, L. (2023). <a href="https://arxiv.org/abs/2305.14314"><em>QLoRA: Efficient Finetuning of Quantized LLMs</em></a>. arxiv.org (scholarly). Cited at pages 1, 2, 3, 4, 5, 6, 7, 8.&#160;<a class="footnote-backref" href="#fnref:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:3" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+</li>
+<li id="fn:4">
+<p>Xiao, G., Lin, J., Seznec, M., Hao, W., Demouth, J., Han, S. (2023). <a href="https://proceedings.mlr.press/v202/xiao23c/xiao23c.pdf"><em>SmoothQuant: Accurate and Efficient Post-Training Quantization for Large Language Models</em></a>. International Conference on Machine Learning. Cited at pages 1, 2, 3, 4, 6, 7, 8, 12.&#160;<a class="footnote-backref" href="#fnref:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:4" title="Jump back to footnote 4 in the text">&#8617;</a></p>
+</li>
+<li id="fn:5">
+<p>Kuzmin, A., Nagel, M., van Baalen, M., Behboodi, A., Blankevoort, T. (2023). <a href="https://ar5iv.labs.arxiv.org/html/2307.02973"><em>Pruning vs Quantization: Which is Better?</em></a>. ar5iv.labs.arxiv.org (scholarly). Cited at pages 2, 3, 6, 9.&#160;<a class="footnote-backref" href="#fnref:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:5" title="Jump back to footnote 5 in the text">&#8617;</a></p>
+</li>
+<li id="fn:6">
+<p>stat.berkeley.edu (2024). <a href="https://www.stat.berkeley.edu/~mmahoney/pubs/neurips-2024-kvquant.pdf"><em>KVQuant: Towards 10 Million Context Length LLM</em></a>. stat.berkeley.edu (scholarly).&#160;<a class="footnote-backref" href="#fnref:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:6" title="Jump back to footnote 6 in the text">&#8617;</a></p>
+</li>
+<li id="fn:7">
+<p>Dou, S., Zhou, E., Liu, Y., Gao, S., Zhao, J., Shen, W., Zhou, Y., Xi, Z., Wang, X., Fan, X., et al. (2023). <em>LoRAMoE: Alleviate World Knowledge Forgetting in Large Language Models via MoE-Style Plugin</em>. arXiv preprint 2312.09979. Cited at pages 1, 4, 10, 11.&#160;<a class="footnote-backref" href="#fnref:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:7" title="Jump back to footnote 7 in the text">&#8617;</a></p>
+</li>
+<li id="fn:8">
+<p>Wu, X., Huang, S., Wei, F. (2024). <em>Mixture of LoRA Experts</em>. arXiv preprint 2404.13628. Cited at pages 1, 2, 4.&#160;<a class="footnote-backref" href="#fnref:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:8" title="Jump back to footnote 8 in the text">&#8617;</a></p>
+</li>
+<li id="fn:9">
+<p>PyTorch Contributors (n.d.). <a href="https://docs.pytorch.org/ao/stable/contributing/sparsity.html"><em>Sparsity Overview</em></a>. docs.pytorch.org (official).&#160;<a class="footnote-backref" href="#fnref:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:9" title="Jump back to footnote 9 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+<script>document.querySelectorAll('.footnote-ref').forEach(function(a){var li=document.getElementById(a.getAttribute('href').slice(1));if(li){a.title=li.textContent.replace(/\u21a9/g,'').trim();}a.addEventListener('click',function(){window.lastRef=a.parentNode.id;});});document.querySelectorAll('.footnote-backref').forEach(function(b){b.addEventListener('click',function(e){if(window.lastRef){e.preventDefault();location.hash=window.lastRef;}});});</script>
+</body></html>
