@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/retrieval-done-well.html",
+  "title": "Retrieval Done Well: A Tutorial on Chunking, Hybrid Search, Reranking, Evaluation, and Long Context vs. Retrieval",
+  "date": "2026-11-25",
+  "summary": "How a retrieval pipeline is built and judged, for a numerical analyst who knows LLMs but hasn't built a retriever: approximate nearest-neighbour indexes, chunking, BM25 plus dense vectors fused by reciprocal rank fusion, cross-encoder, late-interaction and LLM rerankers, recall@k, MRR and nDCG with BEIR, and when a long context beats retrieval, from 14 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/llm-memory.html",
   "title": "Shrinking the Memory Footprint of Large Language Models: A Tutorial on Quantization, KV-Cache Compression, Low-Rank Methods, Sparsity and Offloading",
   "date": "2026-11-24",

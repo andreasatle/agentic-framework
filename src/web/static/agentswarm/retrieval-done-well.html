@@ -1,0 +1,305 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Retrieval Done Well: A Tutorial on Chunking, Hybrid Search, Reranking, Evaluation, and Long Context vs. Retrieval</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false})"></script>
+<style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
+:root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
+body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style",serif;max-width:46rem;margin:0 auto;padding:2.5rem 16px 4rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
+p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}p,li{overflow-wrap:break-word}
+.note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto;position:relative}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}
+sup{line-height:0}.footnote-ref{text-decoration:none;font-size:.8em}.footnote-ref::before{content:"["}.footnote-ref::after{content:"]"}.footnote hr{display:none}.footnote{font-size:.93rem}.footnote li:target{background:var(--rule)}.footnote-backref{text-decoration:none;margin-left:.3em}.footnote-backref~.footnote-backref{display:none}</style></head><body><h1>Retrieval Done Well: A Tutorial on Chunking, Hybrid Search, Reranking, Evaluation, and Long Context vs. Retrieval</h1>
+<p class="note">Written by AgentSwarm on 25 November 2026 for a numerical analyst who knows how LLMs work (embeddings, attention, the KV cache) but hasn't built a retrieval system, from sources it found and the user approved (listed under References). After 1 round of fact review, a sampled audit found 55% of cited statements fully supported by their source. Not reviewed by an expert: read it as a guide to its sources, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
+<h2>What retrieval-augmented generation is, and the shape of a retrieval pipeline</h2>
+<p>A language model's factual knowledge is thought to sit largely in the connections of its very large feedforward layers<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Simple prompting is therefore unreliable for factual answers, because a model often hallucinates and is poorly calibrated, so it can give a very wrong answer with complete certainty<sup id="fnref2:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+A model also cannot answer questions about proprietary data absent from its pretraining corpus, and because it is static it cannot reflect events after its release<sup id="fnref3:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Retrieval-augmented generation (RAG) supplies external documents, so the answer is grounded in a curated dataset and can be shown with the passage it came from<sup id="fnref4:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+In RAG, information retrieval (IR) selects documents likely to help answer the question, and a language model then generates an answer from them<sup id="fnref5:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The pipeline in this tutorial has five stages: chunk and index the corpus offline, run first-stage retrieval, fuse scores from several retrievers, rerank the top candidates, and generate from a prompt holding the chosen chunks.</p>
+<p>A bi-encoder encodes the query and each document separately into dense vectors, and scores a pair by the dot product or cosine of the two vectors<sup id="fnref6:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Because document vectors do not depend on the query, they can be computed once and stored in an index.
+Queries are encoded, and the closest stored vectors are returned<sup id="fnref:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>A retriever returns stored passages, and the generative language model produces the response from the retrieved chunks<sup id="fnref2:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Context precision and context recall are retrieval measures, while faithfulness and answer relevance are generation measures<sup id="fnref3:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Because a wrong answer may come from either stage, retrieval should be measured on its own.</p>
+<h2>Vector indexes and approximate nearest-neighbor search</h2>
+<p>Exact nearest-neighbor search over a data set \(P \subset \mathbb{R}^d\) with \(|P| = n\) is costly, because each query touches \(O(nd)\) coordinates and checking all pairs needs roughly \(n^2\) distance computations<sup id="fnref:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The key idea is precomputation: build a data structure \(D_P\) on \(P\) first, then answer queries quickly against it<sup id="fnref2:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>With Euclidean distance \(d(p,q)=\lVert p-q\rVert_2\), a range query returns \(D_P(q,r)=\{p\in P \mid d(p,q)\le r\}\) for a radius \(r\), and a nearest-neighbor query returns \(\varphi_P(q)=\arg\min_{p\in P} d(p,q)\)<sup id="fnref3:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+For \(\varepsilon\in(0,1]\), a point \(p\) is an \(\varepsilon\)-approximate nearest neighbor of \(q\) if \(d(p,q)\le(1+\varepsilon)\,d(\varphi_P(q),q)\)<sup id="fnref4:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>Random projection multiplies the vectors by a projection matrix; the more random the matrix, the better, though computing it can be costly<sup id="fnref4:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Locality-sensitive hashing (LSH) uses hash functions under which close points are more likely to collide, so a query searches only the bucket its hash returns<sup id="fnref5:3"><a class="footnote-ref" href="#fn:3">3</a></sup><sup id="fnref5:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Its query time is roughly \(O(n^\rho)\) for a \(\rho\) that depends on the approximation factor, which is not nearly logarithmic, though its guarantees are proven<sup id="fnref6:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Product quantization segments each vector, clusters each group of segments, and assigns a code to each cluster, trading memory for accuracy<sup id="fnref6:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Hierarchical clustering groups vectors by distance, identifies each group by its centroid, and searches by comparing the query with the centroids<sup id="fnref7:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Graph-based HNSW links vertices by proximity in a layered graph, starts each search at the sparse top layer, and greedily descends toward the query through finer layers<sup id="fnref7:3"><a class="footnote-ref" href="#fn:3">3</a></sup><sup id="fnref8:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>Approximate search is a trade-off: accepting that some true neighbors are missed buys lower latency and lower memory<sup id="fnref8:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+ANN recall, the fraction of true nearest neighbors the index returns, is distinct from retrieval relevance, which asks whether the returned items answer the user's need.
+Vector databases can associate stored vectors with metadata, which allows filtering<sup id="fnref9:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>The complexity bounds and LSH guarantees are analysis in the Utah notes, while the claim that graph methods beat LSH in practice is practitioner observation that the notes say lacks full mathematical explanation<sup id="fnref9:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The CERN slides give a practitioner-level description of the index families<sup id="fnref10:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<h2>Chunking: deciding what a retrievable unit is</h2>
+<p>Documents must be split because embedding models and prompts have limits, and each chunk is vectorized and stored, so the unit decides what the retriever can return, what the vector database costs, and how much context the model reads<sup id="fnref:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Chunk size pulls against retrieval quality, storage cost, latency and hallucination risk at once, and halving it doubles the vector count<sup id="fnref2:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+A reasonable starting size matches the length of a complete answer in your corpus, which you can estimate by noting how much surrounding text a person needs to justify ten real answers<sup id="fnref3:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<p>Overlap repeats a stretch of text across neighbouring chunks, so a fact cut at a boundary can still appear whole in one chunk<sup id="fnref4:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+The cost is storage, because repeated text is embedded and indexed more than once<sup id="fnref5:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Suppose a chunk ends after "The refund window is 30 days." and the next begins with "Unused items are excluded."
+Neither chunk alone answers "How long is the refund window for unused items?", but with overlap the second chunk repeats the first sentence and can answer it.</p>
+<ul>
+<li>Fixed-size splitting cuts by character count and ignores sentence ends, which suits text with no structure such as transcripts<sup id="fnref9:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</li>
+<li>Recursive splitting tries paragraph, line, space and character separators in order, so no chunk straddles a paragraph break<sup id="fnref10:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</li>
+<li>Structure-aware splitting honours the headings and paragraphs an author marked, and paragraph-group chunking roughly doubled ranking quality against fixed character chunking across 1,080 configurations<sup id="fnref11:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</li>
+<li>Semantic splitting cuts where cosine similarity between adjacent sentences drops below a threshold, yet fixed-size chunking won on three of five evidence-retrieval datasets in one study<sup id="fnref12:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</li>
+<li>Context-enriched chunking prepends an LLM-written statement to each chunk before embedding, while late chunking embeds the whole document first and applies boundaries afterwards<sup id="fnref13:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</li>
+</ul>
+<p>The practitioner benchmark advises starting with a tuned recursive splitter and adding advanced methods only when a named failure appears, since simple splitting captures most of the gain<sup id="fnref6:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+This is a benchmark blog's view rather than a controlled study, so treat it as a practical default and not a proven ranking.
+To separate a chunking failure from a generation failure, score Chunk Relevance per retrieved chunk: if no chunk is relevant, the boundaries failed rather than the prompt<sup id="fnref7:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Context Precision aggregates relevance over the retrieved set, weighted by rank, and consistently low values suggest chunks longer than they need to be<sup id="fnref8:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<h2>Hybrid search: keywords plus vectors, and how to fuse the scores</h2>
+<p>Classic retrieval scores a document by word overlap with the query, and an inverted index maps each term to the documents containing it, so only candidate documents need scoring<sup id="fnref7:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Term weights begin with tf-idf, where \(\mathrm{idf}_t=\log_{10}(N/\mathrm{df}_t)\) gives low weight to terms that occur in many of the \(N\) documents<sup id="fnref8:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+BM25 scores query \(q\) against document \(d\) as \(\sum_{t\in q}\mathrm{idf}_t \cdot \frac{\mathrm{tf}_{t,d}}{k\left(1-b+b\,|d|/|d_{avg}|\right)+\mathrm{tf}_{t,d}}\), where \(\mathrm{tf}_{t,d}\) is the log-weighted count of term \(t\) in \(d\), \(|d|\) its length and \(|d_{avg}|\) the average length<sup id="fnref9:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The parameter \(k\) controls term-frequency saturation: \(k=0\) reduces BM25 to binary term presence plus idf, while a large \(k\) approaches raw frequency plus idf<sup id="fnref10:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The parameter \(b\) ranges from 1 (full length scaling) to 0 (no length scaling), and Manning et al. suggest \(k\in[1.2,2]\) and \(b=0.75\)<sup id="fnref11:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Lexical methods fail on vocabulary mismatch, while dense embeddings can capture synonymy<sup id="fnref12:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+In the Qdrant demo, the query "a good lunch" returned zero sparse results while dense search always returned results<sup id="fnref:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+BEIR nonetheless found BM25 a robust zero-shot baseline, often outperforming more complex neural approaches out of domain<sup id="fnref:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+BM25 is unbounded while cosine lies in \([-1,1]\), so the two scores live on incompatible scales<sup id="fnref2:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+One option is score normalization, such as min-max or L2 scaling followed by a weighted sum, but min-max and L2 normalization are sensitive to outliers<sup id="fnref:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+The other is reciprocal rank fusion, \(\mathrm{RRF}(d)=\sum_r \frac{1}{k+\mathrm{rank}_r(d)}\), summed over rankers \(r\), with a default rank constant of \(k=60\)<sup id="fnref2:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+Because the formula reads only \(\mathrm{rank}_r(d)\), any monotone rescaling of a ranker's scores leaves RRF unchanged; this is a derived property, not an experimental finding.
+The constant \(k\) damps top-rank dominance: the gap between ranks 1 and 2 is \(1/(k+1)-1/(k+2)\), which shrinks as \(k\) grows<sup id="fnref3:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+In a worked example, BM25 ranks \(A\), \(B\), \(C\) first to third and dense search ranks \(B\), \(D\), \(A\) first to third, with no other documents retrieved.
+With \(k=60\), \(B\) scores \(1/62+1/61\approx0.0325\), \(A\) scores \(1/61+1/63\approx0.0322\), \(D\) scores \(1/62\approx0.0161\), and \(C\) scores \(1/63\approx0.0159\), so \(B\) leads.
+In a vector database, a hybrid query is one request with a sparse and a dense subquery, plus a fusion step<sup id="fnref3:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+The Qdrant demo prefetches the top 3 by BM25 and the top 3 by dense similarity, then applies an RRF fusion query to merge them<sup id="fnref4:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+OpenSearch reports that RRF scored 3.86% lower NDCG@10 than score-based hybrid across six BEIR datasets, a measured result on one cluster rather than a general law<sup id="fnref4:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.</p>
+<h2>Reranking: spending more compute on fewer candidates</h2>
+<p>A two-stage pipeline splits the work between a cheap first stage that favours recall and an expensive second stage that favours precision<sup id="fnref:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+The first stage retrieves a large set of candidates, such as the top 1,000 documents from BM25, and the second stage rescores them with a more computationally intensive method<sup id="fnref:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+A bi-encoder loses information because the query and document are each compressed into a single vector and never see each other<sup id="fnref:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.</p>
+<p>The first family is the cross-encoder, which feeds the query as sentence A and the passage as sentence B, and uses the [CLS] vector as input to a single-layer network that gives the probability that the passage is relevant<sup id="fnref2:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+Because query and passage are processed together, re-ranking \(k\) candidates costs \(O(k)\) forward passes per query<sup id="fnref2:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+Training minimises the cross-entropy loss below, where \(J_{pos}\) and \(J_{neg}\) are the relevant and non-relevant passages among the BM25 top 1,000 and \(s_j\) is the predicted probability for passage \(j\)<sup id="fnref3:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.</p>
+<p>$$
+L=-\sum_{j\in J_{pos}}\log(s_j)-\sum_{j\in J_{neg}}\log(1-s_j)
+$$</p>
+<p>On the MS MARCO passage task, the BERT re-ranker outperformed the previous state of the art by 27% relative in MRR@10, shown by experiment on that dataset<sup id="fnref4:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+On BEIR, the cross-encoder BM25+CE beat BM25 on 16 of 18 datasets, shown by experiment<sup id="fnref2:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>The second family is late interaction, exemplified by ColBERT, which keeps one embedding per token instead of pooling all tokens into one vector<sup id="fnref3:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+MaxSim takes, for each query token, the maximum similarity over all document tokens, and then sums these maxima over the query tokens<sup id="fnref4:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.</p>
+<p>$$
+S(q,d)=\sum_{i=1}^{|q|} \max_{j} \, E_q(q_i)^{\top} E_d(d_j)
+$$</p>
+<p>Here \(E_q(q_i)\) is the embedding of query token \(i\) and \(E_d(d_j)\) is the embedding of document token \(j\)<sup id="fnref5:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+Document token vectors are precomputed offline, but storing one vector per token needs far more space than one vector per document<sup id="fnref6:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+On BEIR, ColBERT beat BM25 on 9 of 18 datasets, and the authors suggest that cross-attention-like operations matter for out-of-distribution generalization<sup id="fnref3:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>The third family uses large language models as listwise rerankers, which output a ranked permutation of a group of passages rather than a score<sup id="fnref2:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+Because a model's context is limited, the authors slide a window over the candidates, rerank from the back of the list to the front, and report that GPT-4 with this permutation prompt beats supervised systems on nearly all datasets<sup id="fnref3:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+To check for contamination, the authors built NovelEval, a set of 21 questions about events after GPT-4's release, on which GPT-4 performed well<sup id="fnref4:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+The authors distil ChatGPT's permutations into a smaller student model with a listwise softmax cross-entropy, where \(r_i\) is the ChatGPT rank of passage \(i\) and \(s_i\) is the student score<sup id="fnref5:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.</p>
+<p>$$
+\mathcal{L}_{\text{CE}}=-\sum_{i}\mathbb{1}_{r_i=1}\log\frac{\exp(s_i)}{\sum_j \exp(s_j)}
+$$</p>
+<p>The softmax turns the student scores into a distribution over the candidates, so the loss is low when the passage ranked first by ChatGPT receives most of that mass.
+A distilled 435M DeBERTa model outperformed the 3B monoT5 on BEIR, shown by experiment, and the authors hypothesise that ChatGPT's relevance judgements are more comprehensive than MS MARCO labels<sup id="fnref6:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+On DBPedia, re-ranking the top 100 BM25 documents with a cross-encoder took over 350 ms per query, against under 20 ms for dense retrievers<sup id="fnref4:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>Reranking thus buys quality with latency and storage, and these are measured costs on specific setups rather than a general law.</p>
+<h2>Evaluating retrieval on its own</h2>
+<p>Evaluating the retriever on its own matters because a wrong RAG answer can come from retrieval or from generation, and only a separate test shows which to fix<sup id="fnref:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+Offline metrics are computed on labelled queries before deployment, while online metrics come from real user interactions such as click-through rate<sup id="fnref2:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.</p>
+<p>Take one toy ranking of eight items in which the relevant items sit at ranks 2, 4, 5 and 7, so the relevant set is \(R=\{2,4,5,7\}\) with \(|R|=4\)<sup id="fnref3:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+Let \(\text{top}_k\) be the first \(k\) returned items; precision@k is \(P@k=|R\cap\text{top}_k|/k\) and recall@k is \(R@k=|R\cap\text{top}_k|/|R|\)<sup id="fnref4:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+On this ranking recall@3 is 0.25 and recall@5 is 0.75, and recall@k ignores order, so a relevant item at rank one scores the same as one at rank four<sup id="fnref5:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.</p>
+<p>Mean reciprocal rank (MRR) averages \(1/\text{rank}_q\) over \(Q\) queries, where \(\text{rank}_q\) is the rank of the first relevant result for query \(q\)<sup id="fnref6:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+On the toy ranking the first relevant item is at rank 2, giving reciprocal rank \(1/2\), and MRR ignores the other relevant items<sup id="fnref7:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.</p>
+<p>Average precision averages \(P@k\) over the ranks where a relevant item appears, \(\text{AP}=\frac{1}{|R|}\sum_k P@k\,\text{rel}_k\), where \(\text{rel}_k\) is 1 if the item at rank \(k\) is relevant and 0 otherwise, and MAP averages AP over queries<sup id="fnref8:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+Discounted cumulative gain handles graded relevance by summing the gain \(\text{rel}_i\) at rank \(i\) with a logarithmic position discount, \(\text{DCG@}k=\sum_{i=1}^{k}\frac{\text{rel}_i}{\log_2(1+i)}\)<sup id="fnref9:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+nDCG divides DCG by the ideal DCG of the most-relevant-first ordering, so \(\text{nDCG@}k=\text{DCG@}k/\text{IDCG@}k\) reaches 1.0 for a perfect ranking<sup id="fnref10:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.</p>
+<ul>
+<li>Recall@k is order-unaware and reaches a perfect score as K approaches N, so relying on it alone can be deceptive<sup id="fnref11:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.</li>
+<li>MRR suits question answering, where the first relevant result matters, and is poor when several items must be returned<sup id="fnref12:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.</li>
+<li>Recall@k suits a first-stage retriever that must not miss candidates, while MRR and nDCG suit a reranker that orders a short list.</li>
+</ul>
+<p>BEIR evaluates retrievers zero-shot on 18 datasets from nine tasks and reports nDCG@10, because it handles both binary and graded judgements<sup id="fnref5:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+BM25 is a robust baseline, re-ranking and late-interaction models achieve the best zero-shot averages at high computational cost, and dense and sparse models are cheaper but often underperform<sup id="fnref6:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Benchmark labels can be biased: on TREC-COVID the nDCG@10 of ANCE rose from 0.654 to 0.735 once unjudged hits were annotated<sup id="fnref7:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Build a small labelled set from your own queries and documents and score candidate retrievers on it.</p>
+<h2>Long context versus retrieval</h2>
+<p>A 100K-token window can accommodate long documents, but retrieval still reduces input length and cost<sup id="fnref:12"><a class="footnote-ref" href="#fn:12">12</a></sup><sup id="fnref:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+Transformer compute and memory grow with input length, and token-based API pricing makes longer prompts more expensive per query<sup id="fnref2:12"><a class="footnote-ref" href="#fn:12">12</a></sup><sup id="fnref2:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.</p>
+<p>Shown by experiment on nine LongBench and ∞Bench datasets, long context (LC) beats RAG on average with Gemini-1.5-Pro, GPT-4O, and GPT-3.5-Turbo when sufficiently resourced<sup id="fnref3:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+SELF-ROUTE answers from RAG when the model judges retrieved chunks sufficient and falls back to LC otherwise, cutting cost by 65% for Gemini-1.5-Pro and 39% for GPT-4O while staying close to LC performance<sup id="fnref4:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+Authors’ hypothesis: RAG acts as a prior regularizing attention onto retrieved segments, avoiding irrelevant distractions<sup id="fnref5:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.</p>
+<p>Shown by experiment on NaturalQuestions-based multi-document QA and synthetic key-value retrieval, accuracy often follows a U-shaped curve over answer position: highest at the edges, lowest in the middle, even for long-context models<sup id="fnref3:12"><a class="footnote-ref" href="#fn:12">12</a></sup>.
+On NaturalQuestions-Open, moving from 20 to 50 retrieved documents improved GPT-3.5-Turbo accuracy by only about 1.5%, while retriever recall kept rising<sup id="fnref4:12"><a class="footnote-ref" href="#fn:12">12</a></sup>.</p>
+<p>Practitioner evidence from 171 questions over 30 MMLongBench-Doc PDFs with Claude Sonnet 4.5: agentic RAG, where an agent dynamically retrieves evidence, scored 53.2% at $0.0827 per question versus 59.6% at $0.1885 for premium LlamaCloud full-context processing<sup id="fnref:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.
+Agentic RAG had zero failed queries; its accuracy gap against premium full-context approaches was not significant under McNemar’s test at \(\alpha=0.05\)<sup id="fnref2:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.</p>
+<ul>
+<li>Choose LC when documents fit the window, receive few questions, and accuracy outweighs cost<sup id="fnref3:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.</li>
+<li>Choose retrieval for large corpora or high query volume, and prompt for passage citations when evidence matters<sup id="fnref4:14"><a class="footnote-ref" href="#fn:14">14</a></sup><sup id="fnref14:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</li>
+<li>Rerank relevant passages toward the prompt’s start and test answer-position sensitivity rather than assuming these model- and dataset-specific results generalize<sup id="fnref6:12"><a class="footnote-ref" href="#fn:12">12</a></sup><sup id="fnref9:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.</li>
+</ul>
+<h2>The main approaches side by side</h2>
+<p>The table compares the main approaches on what each computes, when it runs, what it costs, and the evidence behind it.</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Computes</th>
+<th>Timing</th>
+<th>Cost scaling</th>
+<th>Main strength</th>
+<th>Main failure mode</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BM25 / lexical</td>
+<td>Token matching with TF-IDF-style weights</td>
+<td>Index offline, query online</td>
+<td>About 18GB index for BioASQ (about 15M documents)</td>
+<td>Robust zero-shot baseline</td>
+<td>Misses synonyms and paraphrase</td>
+<td>Experimental (BEIR)<sup id="fnref11:6"><a class="footnote-ref" href="#fn:6">6</a></sup></td>
+</tr>
+<tr>
+<td>Dense bi-encoder with ANN</td>
+<td>Query and document vectors compared by similarity</td>
+<td>Document vectors offline, query online</td>
+<td>Under 20 ms per query on 1M DBPedia documents on GPU; about 3GB index</td>
+<td>Captures semantic matches</td>
+<td>Underperforms BM25 on large domain shifts</td>
+<td>Experimental (BEIR)<sup id="fnref12:6"><a class="footnote-ref" href="#fn:6">6</a></sup></td>
+</tr>
+<tr>
+<td>Hybrid with RRF or normalized sum</td>
+<td>Fused lexical and dense rankings or scores</td>
+<td>Online fusion of two searches</td>
+<td>One extra search per query</td>
+<td>Combines complementary signals</td>
+<td>Score scale sensitivity when summing</td>
+<td>Practitioner (OpenSearch benchmark)<sup id="fnref6:7"><a class="footnote-ref" href="#fn:7">7</a></sup></td>
+</tr>
+<tr>
+<td>Late interaction (ColBERT)</td>
+<td>Token-level MaxSim</td>
+<td>Token vectors offline, MaxSim online</td>
+<td>About 900GB for BioASQ index versus 18GB for BM25</td>
+<td>Fine-grained token matching</td>
+<td>Large index size</td>
+<td>Experimental (BEIR); practitioner (Weaviate)<sup id="fnref13:6"><a class="footnote-ref" href="#fn:6">6</a></sup><sup id="fnref8:10"><a class="footnote-ref" href="#fn:10">10</a></sup></td>
+</tr>
+<tr>
+<td>Cross-encoder reranker</td>
+<td>Joint query-passage relevance score</td>
+<td>Online over top-k candidates</td>
+<td>Above 350 ms latency on 1M DBPedia documents</td>
+<td>Accurate reranking of candidates</td>
+<td>Latency at inference</td>
+<td>Experimental (BEIR)<sup id="fnref14:6"><a class="footnote-ref" href="#fn:6">6</a></sup></td>
+</tr>
+<tr>
+<td>LLM reranker</td>
+<td>Permutation of passages</td>
+<td>Online over sliding windows</td>
+<td>Multiple API calls per query over sliding windows</td>
+<td>Zero-shot ranking</td>
+<td>Sensitivity to initial order</td>
+<td>Experimental (Sun et al<sup id="fnref8:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.)</td>
+</tr>
+<tr>
+<td>Long context</td>
+<td>Answer generated from full context</td>
+<td>Online per query</td>
+<td>Cost grows with input tokens</td>
+<td>Strong accuracy when resourced sufficiently</td>
+<td>Cost grows with input tokens</td>
+<td>Experimental (Li et al<sup id="fnref10:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.)</td>
+</tr>
+<tr>
+<td>Self-routing RAG</td>
+<td>Answerability decision with fallback to full context</td>
+<td>Online</td>
+<td>Most queries use only retrieved chunks; fallback re-pays full context</td>
+<td>Cost-accuracy balance</td>
+<td>Assumes the model is well calibrated</td>
+<td>Experimental (Li et al<sup id="fnref11:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.)</td>
+</tr>
+</tbody>
+</table>
+<p>BEIR shows that BM25 remains a robust zero-shot baseline, and that cross-attentional rerankers and late interaction generalize best on average at high computational cost<sup id="fnref8:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Self-routing keeps most of a long-context model's accuracy at lower cost, but this rests on one set of models and datasets<sup id="fnref6:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.</p>
+<p>A reasonable default pipeline chunks and indexes the corpus offline, retrieves candidates with hybrid search, reranks the top \(k\) candidates with a cross-encoder, and evaluates the retriever with recall@k and nDCG<sup id="fnref9:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+For a small or high-value corpus, the pipeline can route queries to long context instead of retrieval<sup id="fnref7:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.</p>
+<h2>Summary and check-your-understanding questions</h2>
+<p>Retrieval is a recall-then-precision cascade: a cheap first stage gathers candidates, and a costlier stage orders the top few<sup id="fnref10:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Chunk and index choices set the ceiling, because a passage that was never indexed or was cut badly cannot be recovered later.
+Hybrid fusion covers each side's blind spots by combining exact keyword matching with meaning-based vectors<sup id="fnref13:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Rerankers trade compute for accuracy, and evaluating the retriever separately keeps a retrieval miss from being mistaken for a generation error.
+Long context versus retrieval is a trade-off among cost, accuracy and answer position<sup id="fnref5:12"><a class="footnote-ref" href="#fn:12">12</a></sup><sup id="fnref8:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.</p>
+<ul>
+<li>Why does RRF not need score normalization? It uses only each document's rank in each list, so BM25 and cosine scores never need to share a scale<sup id="fnref5:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.</li>
+<li>For a toy ranking with relevant items at ranks 2 and 5, where each relevant item has gain 1 and every other item has gain 0, what are recall@3 and MRR? Recall@3 is 1/2, since one of the two relevant items appears in the top three, and MRR is 1/2, since the first relevant item sits at rank 2.</li>
+<li>Why can a cross-encoder not serve as a first stage over millions of documents? It needs a forward pass per query-document pair, so cost grows with the corpus<sup id="fnref7:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.</li>
+<li>What does MaxSim compute, and what must be stored for it? For each query token it takes the maximum similarity over document tokens and sums these, so token-level vectors must be stored for each document<sup id="fnref7:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.</li>
+<li>Why does accuracy depend on answer position in a long prompt? Performance is highest when relevant information sits at the very beginning or end of the input context, and it significantly degrades when information sits in the middle<sup id="fnref7:12"><a class="footnote-ref" href="#fn:12">12</a></sup>.</li>
+<li>When should you choose long context over RAG? For small corpora that fit the window, low query volume, and high-value queries where cost is secondary.</li>
+</ul>
+<h2>References</h2>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>web.stanford.edu (2026). <a href="https://web.stanford.edu/~jurafsky/slp3/11.pdf"><em>Speech and Language Processing. Daniel Jurafsky &amp; James H. Martin.</em></a>. web.stanford.edu (scholarly). Cited at pages 1, 2, 3.&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:2">
+<p>indico.cern.ch (n.d.). <a href="https://indico.cern.ch/event/1433679/contributions/6032028/attachments/2890543/5066702/RAG.pdf"><em>RAG</em></a>. indico.cern.ch (institutional). Cited at pages 1, 4, 5, 6, 7, 8, 17, 21, 30.&#160;<a class="footnote-backref" href="#fnref:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+<li id="fn:3">
+<p>users.cs.utah.edu (2025). <a href="https://users.cs.utah.edu/~jeffp/teaching/DM/LN/L5-ANN+HNSW.pdf"><em>5 Approximate Nearest Neighbors + HNSW</em></a>. users.cs.utah.edu (institutional).&#160;<a class="footnote-backref" href="#fnref:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:3" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+</li>
+<li id="fn:4">
+<p>Bhavsar, P. (). <em>Advanced Chunking Techniques: What The Benchmarks Actually Show</em>. Splunk blog.&#160;<a class="footnote-backref" href="#fnref:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:4" title="Jump back to footnote 4 in the text">&#8617;</a></p>
+</li>
+<li id="fn:5">
+<p>qdrant.tech (n.d.). <a href="https://qdrant.tech/course/essentials/day-3/hybrid-search-demo"><em>Demo: Implementing a Hybrid Search System</em></a>. qdrant.tech (commercial).&#160;<a class="footnote-backref" href="#fnref:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:5" title="Jump back to footnote 5 in the text">&#8617;</a></p>
+</li>
+<li id="fn:6">
+<p>Thakur, N., Reimers, N., Rücklé, A., Srivastava, A., Gurevych, I. (2021). <em>BEIR: A Heterogenous Benchmark for Zero-shot Evaluation of Information Retrieval Models</em>. arXiv preprint 2104.08663. Cited at pages 1, 5, 6, 7, 8.&#160;<a class="footnote-backref" href="#fnref:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:6" title="Jump back to footnote 6 in the text">&#8617;</a></p>
+</li>
+<li id="fn:7">
+<p>Kolchina, R. B. M. G. M. S. F. (2025). <a href="https://opensearch.org/blog/introducing-reciprocal-rank-fusion-hybrid-search"><em>Introducing reciprocal rank fusion for hybrid search</em></a>. opensearch.org (official).&#160;<a class="footnote-backref" href="#fnref:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:7" title="Jump back to footnote 7 in the text">&#8617;</a></p>
+</li>
+<li id="fn:8">
+<p>Sun, W., Yan, L., Ma, X., Wang, S., Ren, P., Chen, Z., Yin, D., Ren, Z. (2023). <em>Is ChatGPT Good at Search? Investigating Large Language Models as Re-Ranking Agents</em>. arXiv preprint 2304.09542. Cited at pages 1, 3, 4, 5, 7, 8, 17.&#160;<a class="footnote-backref" href="#fnref:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:8" title="Jump back to footnote 8 in the text">&#8617;</a></p>
+</li>
+<li id="fn:9">
+<p>Nogueira, R., Cho, K. (2019). <em>Passage Re-ranking with BERT</em>. arXiv preprint 1901.04085.&#160;<a class="footnote-backref" href="#fnref:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:9" title="Jump back to footnote 9 in the text">&#8617;</a></p>
+</li>
+<li id="fn:10">
+<p>Monigatti, L., Williams, D., Slocum, V. (2025). <a href="https://weaviate.io/blog/late-interaction-overview"><em>An Overview of Late Interaction Retrieval Models: ColBERT, ColPali, and ColQwen</em></a>. weaviate.io (commercial).&#160;<a class="footnote-backref" href="#fnref:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:10" title="Jump back to footnote 10 in the text">&#8617;</a></p>
+</li>
+<li id="fn:11">
+<p>Carnevali, L. (2023). <a href="https://www.pinecone.io/learn/offline-evaluation"><em>Evaluation Measures in Information Retrieval</em></a>. pinecone.io (commercial).&#160;<a class="footnote-backref" href="#fnref:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:11" title="Jump back to footnote 11 in the text">&#8617;</a></p>
+</li>
+<li id="fn:12">
+<p>Liu, N. F., Lin, K., Hewitt, J., Paranjape, A., Bevilacqua, M., Petroni, F., Liang, P. (2023). <em>Lost in the Middle: How Language Models Use Long Contexts</em>. arXiv preprint 2307.03172. Cited at pages 1, 2, 3, 10.&#160;<a class="footnote-backref" href="#fnref:12" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:12" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:12" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:12" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:12" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:12" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:12" title="Jump back to footnote 12 in the text">&#8617;</a></p>
+</li>
+<li id="fn:13">
+<p>Li, Z., Li, C., Zhang, M., Mei, Q., Bendersky, M. (2024). <em>Retrieval Augmented Generation or Long-Context LLMs? A Comprehensive Study and Hybrid Approach</em>. arXiv preprint 2407.16833. Cited at pages 1, 2, 3, 4.&#160;<a class="footnote-backref" href="#fnref:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:13" title="Jump back to footnote 13 in the text">&#8617;</a></p>
+</li>
+<li id="fn:14">
+<p>Team, S. (2026). <a href="https://www.surfsense.com/blog/agentic-rag-vs-long-context-llms-benchmark"><em>Agentic RAG vs Long-Context LLMs: A 171-Question Benchmark on 30 Long PDFs</em></a>. surfsense.com (commercial).&#160;<a class="footnote-backref" href="#fnref:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:14" title="Jump back to footnote 14 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+<script>document.querySelectorAll('.footnote-ref').forEach(function(a){var li=document.getElementById(a.getAttribute('href').slice(1));if(li){a.title=li.textContent.replace(/\u21a9/g,'').trim();}a.addEventListener('click',function(){window.lastRef=a.parentNode.id;});});document.querySelectorAll('.footnote-backref').forEach(function(b){b.addEventListener('click',function(e){if(window.lastRef){e.preventDefault();location.hash=window.lastRef;}});});</script>
+</body></html>
