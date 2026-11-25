@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/evaluating-llm-systems.html",
+  "title": "Evaluating LLM Systems: A Tutorial on Test Sets, Judges, Calibration, Regression Tests and Score Noise",
+  "date": "2026-11-25",
+  "summary": "How to measure an LLM system and know how far to trust the number, for a numerical analyst: golden sets and held-out checks, detecting contamination, LLM-as-judge and its position, length and self-preference biases, calibration and prediction-powered inference, regression tests for prompts, standard errors and paired comparisons for eval scores, and evaluating RAG with Ragas and ARES, from 11 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/retrieval-done-well.html",
   "title": "Retrieval Done Well: A Tutorial on Chunking, Hybrid Search, Reranking, Evaluation, and Long Context vs. Retrieval",
   "date": "2026-11-25",
