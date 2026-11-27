@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/speculative-decoding.html",
+  "title": "Speculative decoding: how a small draft model makes a large model faster with identical output",
+  "date": "2026-11-26",
+  "summary": "How speculative decoding speeds up LLM inference without changing its output, for a numerical analyst who knows LLMs but hasn't worked on inference: why decoding is memory-bound, the draft-then-verify algorithm and the proof that the output distribution is unchanged, separate draft models and distillation, Medusa heads and tree attention, EAGLE, lookahead decoding and prompt lookup, when the speed-up disappears, and how vLLM and TensorRT-LLM use it, from 16 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/evaluating-llm-systems.html",
   "title": "Evaluating LLM Systems: A Tutorial on Test Sets, Judges, Calibration, Regression Tests and Score Noise",
   "date": "2026-11-25",
