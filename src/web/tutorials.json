@@ -1,5 +1,11 @@
 [
  {
+  "href": "/static/agentswarm/local-coding-models.html",
+  "title": "Local Coding Models in 2026: A Tutorial on Running, Choosing and Trusting Them",
+  "date": "2026-11-27",
+  "summary": "What it takes to run a coding model on your own machine in 2026, and how good it is: memory and bandwidth arithmetic for a GPU or a Mac, what quantization costs on code, llama.cpp, Ollama, vLLM and MLX, KV cache and mixture-of-experts, editor and agent use, SWE-bench and LiveCodeBench and how far their numbers can be trusted, which open-weight models (Qwen, DeepSeek, Gemma, Devstral, GLM) fit where, and local versus cloud, from 16 sources; every cited statement checked against its source."
+ },
+ {
   "href": "/static/agentswarm/speculative-decoding.html",
   "title": "Speculative decoding: how a small draft model makes a large model faster with identical output",
   "date": "2026-11-26",

@@ -1,0 +1,510 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Local Coding Models in 2026: A Tutorial on Running, Choosing and Trusting Them</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false})"></script>
+<style>:root{--bg:#fbfbf9;--fg:#1d1d1b;--muted:#5d5d58;--accent:#2f6f5e;--rule:#e2e2dc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}}
+:root[data-theme="dark"]{--bg:#141513;--fg:#e8e8e3;--muted:#a3a39b;--accent:#7fc4ae;--rule:#2b2c29}
+body{background:var(--bg);color:var(--fg);font:17px/1.6 Georgia,"Iowan Old Style",serif;max-width:46rem;margin:0 auto;padding:2.5rem 16px 4rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .4rem}h2{font-size:1.25rem;margin:2.2rem 0 .6rem;border-top:1px solid var(--rule);padding-top:1.2rem}
+p{margin:.55rem 0}code{font-size:.85em;color:var(--muted)}a{color:var(--accent)}p,li{overflow-wrap:break-word}
+.note{color:var(--muted);font-size:.95rem;border-left:3px solid var(--accent);padding-left:.8rem;margin:1rem 0 2rem}
+table{border-collapse:collapse;font-size:.9rem;margin:1rem 0;display:block;overflow-x:auto;position:relative}th,td{border:1px solid var(--rule);padding:.35rem .5rem;vertical-align:top}
+h3{font-size:1.05rem;margin:1.6rem 0 .4rem}li{margin:.3rem 0}.katex-display{overflow-x:auto;overflow-y:hidden}
+sup{line-height:0}.footnote-ref{text-decoration:none;font-size:.8em}.footnote-ref::before{content:"["}.footnote-ref::after{content:"]"}.footnote hr{display:none}.footnote{font-size:.93rem}.footnote li:target{background:var(--rule)}.footnote-backref{text-decoration:none;margin-left:.3em}.footnote-backref~.footnote-backref{display:none}</style></head><body><h1>Local Coding Models in 2026: A Tutorial on Running, Choosing and Trusting Them</h1>
+<p class="note">Written by AgentSwarm on 27 November 2026 for a numerical analyst who knows how LLMs work and has built retrieval, but hasn't run models locally, from sources it found and the user approved (listed under References). After 1 round of fact review, a sampled audit found 70% of cited statements fully supported by their source. Not reviewed by an expert: read it as a guide to its sources, not a substitute for them. <a href="/work/agentswarm">About AgentSwarm</a>.</p>
+<h2>Why run a coding model locally, and the one number that decides everything</h2>
+<p>This tutorial uses 'local coding model' to mean an open-weight model that runs on your own GPU or unified-memory machine, is served by an inference engine, and is called by an editor or an agent.
+The first question is not which brand to buy but how many bytes the model needs, because that number decides which hardware is eligible<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+At batch size 1, decoding reads nearly all model weights for every generated token, so it is memory-bandwidth-bound and compute sits idle<sup id="fnref2:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+A 70B model at 4 bits stores 0.5 bytes per parameter, about 35 GB per token; 800 GB/s divided by 35 GB gives a ceiling of about 22.9 tokens/s<sup id="fnref3:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The practitioner measured about 12 tokens/s on a Mac Studio M2 Ultra, roughly 53% of that ceiling<sup id="fnref4:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The roadmap covers memory arithmetic, quantization, engines, efficiency techniques, integration, evaluation, trust and model choice.
+The bandwidth ceiling and memory formulas are derivations, while the prices and measured speeds come from one practitioner blog<sup id="fnref5:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<h2>Hardware: memory arithmetic, bandwidth and what it costs</h2>
+<p>Before any engine or model is chosen, the reader needs one number: how many bytes the model occupies once loaded<sup id="fnref6:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The blog treats hardware selection as a sequence that starts from model size, not from brand or budget<sup id="fnref7:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>The blog gives the memory of weights as parameters times bytes per parameter, namely 0.5 bytes for 4-bit and 1.0 byte for 8-bit weights<sup id="fnref8:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Writing \(P\) for the parameter count and \(b\) for the bits per weight, the rule is as follows.</p>
+<p>$$
+M_{\text{weights}} = P \times \frac{b}{8}\ \text{bytes}
+$$</p>
+<p>For a 32B model, 16-bit weights need \(32\times10^9 \times 2 = 64\) GB, while 4-bit weights need \(32\times10^9 \times 0.5 = 16\) GB.
+The blog's own figure is that a 32B model can take 60+ GB in its default form<sup id="fnref:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The 16 GB and 64 GB figures are this section's arithmetic and exclude the KV cache.</p>
+<p>At batch size 1, each generated token reads essentially all active weights from memory while doing little compute, so decoding is bandwidth-bound in the Roofline sense<sup id="fnref9:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+If \(B\) is memory bandwidth in GB/s and \(W_{\text{tok}}\) is the bytes read per token in GB, the blog's ceiling is bandwidth divided by model bytes in GB<sup id="fnref10:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+For a mixture-of-experts model, only the active parameters \(P_{\text{active}}\) are read per token<sup id="fnref11:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>$$
+\text{tokens/s} \lesssim \frac{B}{W_{\text{tok}}}, \qquad W_{\text{tok}} \approx P_{\text{active}} \times \frac{b}{8}
+$$</p>
+<p>For a 70B model at 4 bits, \(W_{\text{tok}}=35\) GB, so an 800 GB/s Apple M2 Ultra has a ceiling of about 22.9 tokens/s<sup id="fnref12:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The blog reports about 12 tokens/s for a 70B 4-bit model on a Mac Studio M2 Ultra, or 53% of the ceiling<sup id="fnref13:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+This bound ignores KV-cache reads, attention compute and framework overhead<sup id="fnref14:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>Weights are not the only resident data: in the vLLM paper's layout for a 13B model on an NVIDIA A100 40GB, parameters take about 65% of memory and the KV cache close to 30%, with the figure labelled above 30%<sup id="fnref:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+For OPT-13B the paper gives about 800 KB of KV cache per token, so one 2048-token request can need 1.6 GB<sup id="fnref2:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The blog adds a KV-cache budget of 5–15 GB depending on context length, plus 30% headroom<sup id="fnref15:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Capacity</th>
+<th>Bandwidth</th>
+<th>Model fit and reported 70B Q4 decode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RTX 5090 (32 GB VRAM)</td>
+<td>32 GB</td>
+<td>1,792 GB/s</td>
+<td>Fits models up to ~30B at 4 bits; a 70B model does not fit<sup id="fnref26:1"><a class="footnote-ref" href="#fn:1">1</a></sup></td>
+</tr>
+<tr>
+<td>RTX Pro 6000 Blackwell (single card)</td>
+<td>96 GB</td>
+<td>1,792 GB/s</td>
+<td>15–18 tok/s decode<sup id="fnref27:1"><a class="footnote-ref" href="#fn:1">1</a></sup></td>
+</tr>
+<tr>
+<td>Two RTX Pro 6000 over NVLink</td>
+<td>192 GB</td>
+<td>~3.5 TB/s</td>
+<td>20–30 tok/s decode, 2–3x system cost<sup id="fnref28:1"><a class="footnote-ref" href="#fn:1">1</a></sup></td>
+</tr>
+<tr>
+<td>Mac Studio M3 Ultra (unified)</td>
+<td>up to 256 GB</td>
+<td>lower than discrete GPUs</td>
+<td>12–14 tok/s decode, 250–300 W<sup id="fnref29:1"><a class="footnote-ref" href="#fn:1">1</a></sup></td>
+</tr>
+<tr>
+<td>DGX Spark</td>
+<td>128 GB</td>
+<td>273 GB/s</td>
+<td>Below Apple M2/M3 Ultra bandwidth<sup id="fnref30:1"><a class="footnote-ref" href="#fn:1">1</a></sup></td>
+</tr>
+</tbody>
+</table>
+<p>The blog proposes bandwidth per $1,000 among platforms that fit the model as the procurement metric<sup id="fnref16:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The RTX 5090 MSRP is $1,999, and at a $2,700 average street price in April 2026, bandwidth per dollar drops to about 664 GB/s per $1k<sup id="fnref17:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The blog is a practitioner write-up that argues from vendor specifications and calculations, not a controlled measurement, and it recommends benchmarking before buying<sup id="fnref18:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<h2>Quantization: trading bits for bytes, and what it costs on code</h2>
+<p>Quantization stores each weight in fewer bits, and the simplest form is uniform round-to-nearest (RTN), which picks a step size and maps each weight to the nearest level on a fixed grid<sup id="fnref2:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+For \(b\)-bit symmetric RTN with zero-point 0, the step is \(\Delta = \max(|W|)/(2^{b-1}-1)\), each weight is stored as \(\text{round}(W/\Delta)\), and it is recovered as \(\Delta \cdot \text{round}(W/\Delta)\)<sup id="fnref3:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Rounding bounds each weight's error by half a step, \(|\delta| \le \Delta/2\), so one outlier that inflates \(\max(|W|)\) enlarges the step for every weight in its group.
+Group-wise quantization gives each group of about 128 weights its own scale and zero-point, trading extra storage for local adaptation<sup id="fnref4:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+NF4 places its 16 levels at quantiles of a normal distribution, so more levels lie near zero where most weights sit, while FP4 spaces its levels uniformly in log scale<sup id="fnref5:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Naive RTN degrades at low bits because it treats all weights alike, although a small fraction of weights matters much more to the output<sup id="fnref:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+On OPT-6.7B at INT3 with group size 128, RTN raises WikiText-2 perplexity to 23.54 from 10.86 at FP16<sup id="fnref2:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<p>GPTQ quantizes weights column by column and adjusts the not-yet-quantized weights to offset each error, using second-order (Hessian) information<sup id="fnref6:2"><a class="footnote-ref" href="#fn:2">2</a></sup><sup id="fnref:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+The AWQ authors argue that this reconstruction can overfit the calibration set and distort features on out-of-distribution domains<sup id="fnref3:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<p>AWQ observes that keeping 0.1% to 1% of salient weights in FP16 greatly reduces error, and that salience is better read from activation magnitudes than from weight magnitudes<sup id="fnref4:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Let \(w\) be a weight, \(x\) its input activation, and \(Q(w)=\Delta\cdot\text{Round}(w/\Delta)\) the same RTN quantizer as above<sup id="fnref5:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Scaling the weight by \(s&gt;1\) and dividing the input by \(s\) leaves the product unchanged before quantization, giving \(Q(ws)(x/s)\)<sup id="fnref6:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Assuming the expected rounding residual stays near 0.25 of a step and that \(\Delta'\approx\Delta\), the ratio of the scaled error to the original error is roughly \(1/s\), so the relative error of a salient weight falls with \(s\) without mixed precision<sup id="fnref7:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+This step rests on the two empirical assumptions and is an approximation, not a proof.
+Large \(s\) is harmful because it enlarges \(\Delta\) for other channels; on OPT-6.7B perplexity was best at \(s=2\) (11.92)<sup id="fnref8:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+AWQ therefore searches \(s = s_X^\alpha\) over \(\alpha \in [0,1]\) by grid search, where \(s_X\) is the mean activation magnitude per channel, and it uses no backpropagation<sup id="fnref9:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.</p>
+<p>GGUF is a file format from the llama.cpp project rather than a quantization algorithm, and its K-quants use 256-weight blocks with 32-weight sub-blocks<sup id="fnref7:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+A Q4_K block takes 144 bytes for 256 weights, which is 4.5 bits per weight once scales and minimums are counted<sup id="fnref8:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+BitsAndBytes quantizes on the fly at load time with NF4 blocks of size 64 and needs no calibration<sup id="fnref9:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+QuIP# applies rotation-based incoherence processing, and AQLM uses vector quantization with learned codebooks<sup id="fnref2:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<p>On LLaMA and Llama-2 at INT4 with group size 128, AWQ's WikiText-2 perplexities stay close to FP16, for example 5.60 against 5.47 for LLaMA-7B<sup id="fnref10:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+On one H200 GPU, the Jarvislabs blog reports Qwen2.5-32B-Instruct HumanEval pass@1 of 56.1% at FP16, 51.8% for AWQ, GGUF Q4_K_M and BitsAndBytes, and 46.3% for GPTQ, where pass@1 is the share of problems whose first generated solution passes all unit tests<sup id="fnref10:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+With 164 problems the standard error is about 0.039, and the blog covers one model on one GPU<sup id="fnref11:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Afrin et al. compared six 4-bit methods (GPTQ, AWQ, QuIP#, AQLM, BitsAndBytes, GGUF Q4_K_M) on Qwen2.5-Coder-7B-Instruct and CodeLlama-7B-Instruct, using McEval and CoderEval with pass@1<sup id="fnref3:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Across benchmarks, 4-bit quantization largely preserved pass@1, AQLM matched or exceeded the full-precision baseline, and QuIP# produced the only significant correctness losses, notably on BigCodeBench-Python<sup id="fnref4:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+Security was unchanged, AWQ significantly increased Java maintainability issues with a medium effect, and the study covers 7B models, two languages, three benchmarks and one 4-bit precision<sup id="fnref5:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</p>
+<h2>Inference engines and runtimes: what differs and why</h2>
+<p>An inference engine loads the model's weights and manages the key-value (KV) cache of past attention states, which it keeps in GPU memory while a request is served<sup id="fnref3:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The engines discussed here differ along three axes: single-user latency versus multi-user throughput, the weight formats they read, and the hardware they target.
+At batch size 1 decoding is memory-bandwidth-bound, and compute sits idle while waiting for data<sup id="fnref19:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.</p>
+<p>llama.cpp is an inference runtime that reads models stored in GGUF files, the quantized format the Jarvislabs guide describes<sup id="fnref12:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+GGUF files for large models often come split into multiple parts that must be merged before use<sup id="fnref13:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+Ollama is a local server that the reader can start and query with a single command, and it is the common local path the quantization study targets<sup id="fnref20:1"><a class="footnote-ref" href="#fn:1">1</a></sup><sup id="fnref6:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+The quantization study loads its models through Hugging Face transformers, so its numbers do not measure either tool's speed<sup id="fnref7:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+vLLM stores the KV cache in fixed-size blocks that need not be contiguous, as an operating system pages virtual memory, and the authors report 2-4 times higher serving throughput than earlier systems on their workloads<sup id="fnref4:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The Jarvislabs guide, a practitioner blog on one H200 with Qwen2.5-32B-Instruct and not a controlled study, reports that the Marlin kernel raised AWQ throughput from 68 to 741 tokens/s with the weights unchanged<sup id="fnref14:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.
+The same guide reports that GGUF ran at 93 tokens/s in vLLM and advises llama.cpp for GGUF models<sup id="fnref15:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<p>MLX is Apple's open-source array framework, optimised for Apple Silicon and offered with C++, Python and Swift frontends<sup id="fnref:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+LM Studio 0.3.4 added an MLX engine built on mlx-lm, Outlines and mlx-vlm, which can enforce JSON output by masking tokens that would violate a schema-derived regex<sup id="fnref2:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+LM Studio runs MLX and llama.cpp models behind one UI and an OpenAI-like local server, and it can load several models at once<sup id="fnref3:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Its blog reports about 250 tokens/s for Llama 3.2 1B on an M3 Max, a vendor figure with no stated protocol<sup id="fnref4:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.</p>
+<p>The hardware target follows the engine: MLX is optimised for Apple Silicon, while CUDA-based frameworks such as llama.cpp with CUDA and Ollama favour NVIDIA hardware<sup id="fnref21:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The sources give little head-to-head benchmarking of engines and little on llama.cpp or Ollama internals.
+The LM Studio and vLLM material is docs-level or blog evidence rather than controlled measurement<sup id="fnref5:6"><a class="footnote-ref" href="#fn:6">6</a></sup><sup id="fnref16:2"><a class="footnote-ref" href="#fn:2">2</a></sup>.</p>
+<h2>Efficiency techniques: KV cache, mixture-of-experts, long context, speculative decoding</h2>
+<p>During decoding, each new token attends to the keys and values of every earlier token, so the engine stores them in a KV cache instead of recomputing them<sup id="fnref5:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+In the generation phase, the key and value vectors at earlier positions are cached, and only the new key and value vectors for the current iteration are computed<sup id="fnref6:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.</p>
+<p>$$
+M_{\text{KV}} = 2 \times L \times H_{kv} \times d_h \times T \times B \times b
+$$</p>
+<p>Here \(L\) is the number of layers, \(H_{kv}\) the number of KV heads, \(d_h\) the head dimension, \(T\) the tokens per sequence, \(B\) the batch size and \(b\) the bytes per element; this form is my derivation from the per-token count, not a formula the source states.
+The source's worked example is for OPT-13B in FP16, where the per-token count is 2 (key and value vectors) × 40 (layers) × 5120 (hidden size) × 2 bytes, giving 800 KB per token<sup id="fnref7:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Since OPT can generate sequences up to 2048 tokens, one request can need up to 1.6 GB of KV cache<sup id="fnref8:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Earlier systems reserved one contiguous chunk per request for its maximum length, and only 20.4% to 38.2% of the KV cache held actual token states<sup id="fnref9:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+PagedAttention splits the cache into fixed-size blocks that need not be contiguous, with a block table mapping logical to physical blocks, as operating-system paging does<sup id="fnref10:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+The authors report 2-4× higher serving throughput across various models and workloads, with larger gains for longer sequences and complex decoding<sup id="fnref11:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+Most of this benefit comes from batching many requests, so a single-user local session gains little from paging alone; this is my inference, not a reported result.</p>
+<p>A mixture-of-experts (MoE) model routes each token to a few expert sub-networks, so it has a total parameter count and a smaller active count per token<sup id="fnref:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+Memory must hold all experts, so the footprint follows the total count, while the weights read per generated token follow the active count.
+On a 24 GB GPU an 80B model cannot keep all its weights resident: 80 × 10^9 × 4/8 bytes = 40 GB at 4 bits, which exceeds 24 GB before any cache is added.
+Qwen3-Coder-Next has 80 billion parameters, activates 3 billion per forward pass, and uses hybrid attention with MoE<sup id="fnref:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+GLM-4.5 has 355 billion total and 32 billion activated parameters, and GLM-4.5-Air has 106 billion total parameters<sup id="fnref:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+Qwen3-30B-A3B has 128 experts, of which 8 are activated per token, while Qwen3-14B and Qwen3-32B are dense models<sup id="fnref2:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+A large-memory Mac can hold the full set, and the 3B active count then governs per-token speed.</p>
+<p>Hybrid attention mixes different attention mechanisms across a model's layers, and the sources do not name the specific mechanisms Qwen3-Coder-Next uses<sup id="fnref2:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+Qwen3 dense models list a 32K or 128K context length in the architecture table, with 32K for the two smallest models and 128K for 4B to 32B<sup id="fnref3:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+Long context is costly for local agents because the KV cache grows with every tool call and observation.
+RULER, a long-context retrieval benchmark, shows that Qwen3 in thinking mode slightly degraded at extreme lengths, which the authors attribute to thinking content interfering with retrieval<sup id="fnref4:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+The sources do not report measured 128K limits for agent runs.</p>
+<p>The sources do not explain speculative decoding; the only mention is that GLM-4.5 adds a multi-token prediction layer to support it during inference<sup id="fnref2:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.</p>
+<h2>Using a local model in the editor and in agents</h2>
+<p>A local coding model serves three uses: autocomplete proposes the next lines at the cursor, chat answers questions about selected code, and an agent edits files and runs commands over many steps<sup id="fnref3:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+An agent scaffold is the harness that runs the model in a loop, issuing tool calls and reading their results until the task ends.
+Tool calling means the model emits a structured request to run a named function with arguments.</p>
+<p>Fill-in-the-middle (FIM) is a technique where a model predicts the missing parts of a code block<sup id="fnref:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+A left-to-right model sees only the text before the cursor, so FIM trains it to fill a gap using the text after the cursor as well.
+The Qwen2.5-Coder report implements FIM with the special tokens &lt;|fim_prefix|&gt;, &lt;|fim_suffix|&gt; and &lt;|fim_middle|&gt;<sup id="fnref2:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+File-level pretraining uses a maximum training sequence length of 8,192 tokens, with next-token prediction and FIM as objectives<sup id="fnref3:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+Repo-level pretraining extends the context to 32,768 tokens, using repository-name and file-separator tokens to concatenate files<sup id="fnref4:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+The report states that the model supports input lengths of up to 128K tokens<sup id="fnref5:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.</p>
+<p>Repository context is the editor's counterpart of retrieval: the model sees only what is selected, so file choice matters as much as the model.
+In SWE-bench, the 'oracle' setting retrieves the files edited by the reference patch, an approach the authors call less realistic because an engineer may not know those files in advance<sup id="fnref:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+The realistic setting instead uses BM25 sparse retrieval to fill a context limit with files<sup id="fnref2:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+The original paper reports that models struggle to localize the code to change as context grows<sup id="fnref3:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.</p>
+<p>Devstral-Small is a dense 24B model tuned for agent scaffolds, evaluated with the OpenHands scaffold and only bash and file-edit tools<sup id="fnref:12"><a class="footnote-ref" href="#fn:12">12</a></sup>.
+Its authors describe it as fast and deployable on local devices, but this is their claim, not a measurement<sup id="fnref2:12"><a class="footnote-ref" href="#fn:12">12</a></sup>.
+The Qwen3-Coder-Next report trained on many tool chat templates, and in its experiments SWE-bench Verified rose with template count at fixed data volume, an experimental result from the vendor<sup id="fnref4:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+Its authors also found that trajectories from one scaffold transferred poorly to another<sup id="fnref5:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.</p>
+<p>A local-agent case study ran eight open-weight models on 20 longitudinal data-preparation tasks inside a closed local environment<sup id="fnref:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+The agent used SmolAgents, which does not require a model with native tool-calling capabilities, so smaller open-weight models could run on consumer hardware<sup id="fnref2:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+Gemma 4 31B scored highest on balanced variable performance (85.9%) and completed 75% of tasks<sup id="fnref3:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+The weakest model's failures were silent: its scripts ran without warnings but contained recoding errors<sup id="fnref4:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.</p>
+<h2>How coding models are evaluated, and how big the gap to frontier models is</h2>
+<p>HumanEval and MBPP-style benchmarks focus on natural language-to-code tasks, so they overlook broader code capabilities<sup id="fnref:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.
+Pass@1 is the fraction of problems for which a single generated program passes all tests<sup id="fnref2:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.
+These benchmarks saturate: fine-tuned open models scored well on HumanEval+ but poorly on LiveCodeBench, which the authors read as overfitting to HumanEval<sup id="fnref3:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.</p>
+<p>LiveCodeBench addresses this with live updates: problems from LeetCode, AtCoder and CodeForces contests carry release dates, so a newer model can be scored only on problems released after its cutoff<sup id="fnref4:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.
+DeepSeek models dropped sharply on LeetCode problems released after August 2023, which the authors read as likely contamination<sup id="fnref5:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.
+Its scenarios are generation, self-repair, code execution and test output prediction, and Pass@1 correlates above 0.88 across them, although relative differences between models vary<sup id="fnref6:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.</p>
+<p>SWE-bench gives a model a GitHub issue and a codebase, and the model must produce a patch that passes the repository's tests<sup id="fnref4:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+The original benchmark has 2,294 task instances from 12 popular Python repositories, and the best model at release, Claude 2, resolved 1.96% of issues with BM25 retrieval<sup id="fnref5:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+With an oracle setting that supplies the files edited by the reference patch, Claude 2 resolved 4.8%, a setting the authors call less realistic than retrieval<sup id="fnref6:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.</p>
+<p>Later reports use variants such as SWE-bench Verified, a human-filtered subset of 500 instances, evaluated by GLM-4.5 with OpenHands, a scaffold (the agent loop and tool setup wrapped around the model), and a 128K context limit<sup id="fnref3:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+Qwen3-Coder-Next reports SWE-Bench Verified, Multilingual and Pro, each with the SWE-Agent scaffold, plus Terminal-Bench 2.0 and Aider<sup id="fnref6:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.</p>
+<p>GLM-4.5 reports 64.2% on SWE-bench Verified, against 1.96% for Claude 2 on the original benchmark, though these are different subsets and scaffolds<sup id="fnref4:9"><a class="footnote-ref" href="#fn:9">9</a></sup><sup id="fnref7:11"><a class="footnote-ref" href="#fn:11">11</a></sup>.
+In GLM-4.5's vendor report it outperforms GPT-4.1 and Gemini-2.5-Pro on SWE-bench Verified, and Claude Sonnet 4 on Terminal-Bench<sup id="fnref5:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+These gap figures are vendor reports, and the sources give no independent replication of them.</p>
+<h2>How far can the numbers be trusted?</h2>
+<p>A benchmark score is a measurement taken under a specific setup, so the setup should be checked before two numbers are compared.
+Each claim below is labelled with one of three tags: measured means a result from an experiment the source reports, inferred means a conclusion the source's authors or this tutorial draw from such a result, and vendor claim means a figure or finding that a model's developer reports about its own model.</p>
+<ul>
+<li>Contamination (measured): LiveCodeBench scores models only on problems released after each model's cutoff, because the DeepSeek model dropped sharply on LeetCode problems released after its cutoff<sup id="fnref8:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.</li>
+<li>Contamination (measured, then inferred): the localization task asks a model to name the files a fix must touch, given only the issue text, and is scored on whether the named files match the ground truth<sup id="fnref2:15"><a class="footnote-ref" href="#fn:15">15</a></sup>.</li>
+<li>Contamination (measured, then inferred): Prathifkumar et al. report that two Claude models localized files on SWE-Bench-Verified far better than on BeetleBox and SWE-rebench when given issue text alone, and that the gap is about six times for all-ground-truth-file localization against BeetleBox<sup id="fnref3:15"><a class="footnote-ref" href="#fn:15">15</a></sup>.</li>
+<li>BeetleBox and SWE-rebench are other benchmarks built from popular open-source Python projects<sup id="fnref4:15"><a class="footnote-ref" href="#fn:15">15</a></sup>.</li>
+<li>The memorization explanation is the authors' interpretation of that gap (inferred), not a direct test of memorization<sup id="fnref5:15"><a class="footnote-ref" href="#fn:15">15</a></sup>.</li>
+<li>Self-reported scores (vendor claim): the GLM-4.5 report ran SWE-bench Verified with OpenHands, a 100-iteration limit, history truncation to a 128K context and temperature 0.6<sup id="fnref9:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.</li>
+<li>Agent setup (measured, vendor-reported): Qwen3-Coder-Next reports in its own experiments that training on one scaffold transfers poorly to another, with OpenHands-specialized training transferring badly to SWE-Agent<sup id="fnref11:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.</li>
+<li>Variance (measured): in 584 runs on an XGBoost task, identical runs of one agent-model pairing varied more than the pairings differed, so a few runs ranked agents unreliably<sup id="fnref6:16"><a class="footnote-ref" href="#fn:16">16</a></sup>.</li>
+<li>Rule-breaking (measured): ten of 312 runs broke the task's data rules, and they included the seven highest scores; removing them lowered the best score from 0.8293 to 0.7695<sup id="fnref7:16"><a class="footnote-ref" href="#fn:16">16</a></sup>.</li>
+<li>Quantization (measured in a separate study): quantizing a model changes its code-generation scores, so a score on a quantized copy needs its own check<sup id="fnref9:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.</li>
+</ul>
+<p>Practical rules follow from these failure modes.
+Prefer fresh benchmarks whose problems postdate the model's cutoff, as LiveCodeBench does<sup id="fnref7:14"><a class="footnote-ref" href="#fn:14">14</a></sup>.
+State the scaffold, step and context limits, and sampling settings with every score, since the same model's result depends on them<sup id="fnref6:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+Repeat runs and report the spread, because a few runs can misorder agents<sup id="fnref:16"><a class="footnote-ref" href="#fn:16">16</a></sup>.
+Report compliance beside quality, and reject non-compliant runs before choosing the best one<sup id="fnref2:16"><a class="footnote-ref" href="#fn:16">16</a></sup>.
+Test on your own tasks, since in the same study a later-year holdout kept only about a third of the measured gain<sup id="fnref3:16"><a class="footnote-ref" href="#fn:16">16</a></sup>.</p>
+<h2>Which open-weight coding models matter in 2026, and what fits where</h2>
+<p>The choice of open-weight coding model comes down to a few families, and each family matches a different hardware class.
+The first split is dense versus mixture-of-experts (MoE): an MoE model routes each token through only a few experts, so it activates only a subset of its parameters per token<sup id="fnref5:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+Memory is paid for total parameters in both cases, while per-token bandwidth is paid for active parameters.</p>
+<p>For a single 24 GB GPU, the small dense models are the natural fit.
+The Qwen2.5-Coder series spans six sizes, from 0.5B to 32B parameters<sup id="fnref6:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+Devstral-Small is a dense 24B model with a 128k-token context, which its authors describe as fast and deployable on local devices<sup id="fnref3:12"><a class="footnote-ref" href="#fn:12">12</a></sup>.
+At 4 bits, 24 × 4 / 8 = 12 GB of weights leaves room for the KV cache on a 24 GB card; this fit estimate is the writer's arithmetic, not a measured result.</p>
+<p>For large-memory Macs, or a GPU plus system RAM, MoE models with few active parameters are the main option.
+Qwen3-Coder-Next has 80 billion total parameters, activates 3 billion per forward pass, and uses hybrid attention and MoE<sup id="fnref7:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+Qwen3-30B-A3B has 30 billion total and 3 billion activated parameters, with 128 experts of which 8 are active per token<sup id="fnref6:7"><a class="footnote-ref" href="#fn:7">7</a></sup>.
+Because every expert must stay resident, an 80B model at 4 bits needs roughly 40 GB for weights, so it suits a large-memory Mac or server rather than a 24 GB card; this is the writer's arithmetic.</p>
+<p>For servers, the large MoE models are the comparison points.
+GLM-4.5 has 355B total and 32B activated parameters, and GLM-4.5-Air has 106B total parameters<sup id="fnref7:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+The GLM-4.5 authors report 64.2% on SWE-bench Verified<sup id="fnref8:9"><a class="footnote-ref" href="#fn:9">9</a></sup>.
+The sources do not cover DeepSeek-V3.2, MiniMax M2.1 or GLM-4.7 as deployable models; they appear only as comparison bars in the Qwen3-Coder-Next figure<sup id="fnref8:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+Gemma coder specifics are not covered by these sources.</p>
+<p>Licensing is stated for two families: all Qwen3 models are released under Apache 2.0, and Qwen2.5-Coder is described by its authors as permissively licensed<sup id="fnref7:7"><a class="footnote-ref" href="#fn:7">7</a></sup><sup id="fnref7:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.</p>
+<p>The one local case study gives the most direct evidence for on-premise use.
+Eight open-weight models ran entirely on local infrastructure on 20 data-preparation tasks, and the best, Gemma 4 31B, completed 75% of tasks with 85.9% of 102 variables correctly derived<sup id="fnref5:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+The authors report that performance generally rose with parameter count, and that correctness was the main differentiator<sup id="fnref6:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+The study used R and a single agent responsible for interpreting metadata, writing code, executing it, and debugging errors<sup id="fnref7:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.</p>
+<h2>Local versus cloud: privacy, latency, cost, licensing</h2>
+<p>Local deployment is a trade-off with a decision rule, not a verdict.
+Governance requirements typically prohibit data transmission to external services, and locally deployable open-weight models keep sensitive data in the local environment<sup id="fnref8:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+At batch size 1, decoding is memory-bandwidth-bound, so a single user's tokens per second are set by how fast the hardware reads the weights<sup id="fnref22:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The sources give no per-token cloud prices and only limited hardware prices.
+Local use has a fixed hardware outlay and no per-query cost<sup id="fnref9:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+The blog's energy figures are one of three correction factors in its total-cost step: at 8 hours of use per day and $0.15/kWh, three-year energy costs are about $400 to $500 for a Mac Studio and $1,000 to $1,400 for a GPU workstation<sup id="fnref23:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+The evaluated open-weight models were released under the Apache 2.0 license, and Qwen2.5-Coder is described as permissively licensed; the sources do not cover API terms<sup id="fnref10:13"><a class="footnote-ref" href="#fn:13">13</a></sup><sup id="fnref8:10"><a class="footnote-ref" href="#fn:10">10</a></sup>.
+In a fully autonomous run, the best local model completed 75% of data-preparation tasks, and weaker models produced silent errors<sup id="fnref11:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+Identical runs of one agent and model varied more than the differences between pairings, so a few runs rank agents unreliably<sup id="fnref4:16"><a class="footnote-ref" href="#fn:16">16</a></sup>.
+Human review is advisable with smaller models because silent errors can materially affect downstream results<sup id="fnref12:13"><a class="footnote-ref" href="#fn:13">13</a></sup>.
+Choose local when governance forbids transmission and you can accept more review and repeated runs.
+Choose cloud when data may leave and peak capability or throughput matters more than control.</p>
+<h2>Side-by-side comparison of the main approaches</h2>
+<p>The quantization rows come from different studies, so read them as separate evidence rather than one ranking.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Idea</th>
+<th>Calibration</th>
+<th>Typical bits</th>
+<th>Engines supporting it</th>
+<th>Evidence on code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RTN</td>
+<td>Uniform grid per group</td>
+<td>No</td>
+<td>4, 8</td>
+<td>Not stated in the sources</td>
+<td>MBPP pass@1 37.51 against 38.53 at FP16, CodeLlama-7B, INT4-g128<sup id="fnref13:4"><a class="footnote-ref" href="#fn:4">4</a></sup></td>
+</tr>
+<tr>
+<td>GPTQ</td>
+<td>Hessian-based error compensation, column by column</td>
+<td>Yes, 128 to 1024 samples</td>
+<td>4, 8</td>
+<td>vLLM (with Marlin kernel)</td>
+<td>Qwen2.5-Coder-7B McEval-Java pass@1 0.45 to 0.32<sup id="fnref18:2"><a class="footnote-ref" href="#fn:2">2</a></sup><sup id="fnref11:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+<tr>
+<td>AWQ</td>
+<td>Scale salient channels before quantization</td>
+<td>Yes, small calibration set</td>
+<td>4</td>
+<td>Not stated in the sources</td>
+<td>Matches baseline on Qwen McEval-Java (0.45)<sup id="fnref14:4"><a class="footnote-ref" href="#fn:4">4</a></sup><sup id="fnref12:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+<tr>
+<td>GGUF k-quants</td>
+<td>Block and sub-block scales in a file format</td>
+<td>Not stated</td>
+<td>About 4.5 to 5.5</td>
+<td>llama.cpp</td>
+<td>Q4_K_M gives 0.51 on Qwen McEval-Java against 0.45 at FP16<sup id="fnref19:2"><a class="footnote-ref" href="#fn:2">2</a></sup><sup id="fnref13:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+<tr>
+<td>BitsAndBytes NF4</td>
+<td>Normal-fitted levels per block of 64</td>
+<td>No, on the fly</td>
+<td>4</td>
+<td>Hugging Face transformers; vLLM</td>
+<td>Best Qwen McEval-Java result in one study (0.60 against 0.45), not uniform across models<sup id="fnref20:2"><a class="footnote-ref" href="#fn:2">2</a></sup><sup id="fnref14:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+<tr>
+<td>QuIP# and AQLM</td>
+<td>Incoherence transforms; vector codebooks</td>
+<td>Calibrated on WikiText-2 in the study</td>
+<td>2 to 4</td>
+<td>Not stated in the sources</td>
+<td>AQLM matches or exceeds full precision; QuIP# shows the largest correctness degradation<sup id="fnref15:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Engine</th>
+<th>Hardware</th>
+<th>Formats</th>
+<th>Strength</th>
+<th>Weakness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>llama.cpp</td>
+<td>CPU and GPU</td>
+<td>GGUF files</td>
+<td>Runs quantized files locally</td>
+<td>Internals not covered in the sources<sup id="fnref16:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+<tr>
+<td>Ollama</td>
+<td>Local machines</td>
+<td>Quantized checkpoints</td>
+<td>Lightweight local framework</td>
+<td>Internals not covered in the sources<sup id="fnref17:5"><a class="footnote-ref" href="#fn:5">5</a></sup></td>
+</tr>
+<tr>
+<td>LM Studio</td>
+<td>Apple MLX and llama.cpp</td>
+<td>MLX and GGUF models</td>
+<td>One UI and local server; JSON output; several models at once</td>
+<td>No head-to-head benchmarks<sup id="fnref7:6"><a class="footnote-ref" href="#fn:6">6</a></sup></td>
+</tr>
+<tr>
+<td>MLX</td>
+<td>Apple Silicon</td>
+<td>MLX-format models</td>
+<td>About 250 tokens/s for Llama 3.2 1B on M3 Max (vendor blog)</td>
+<td>Not benchmarked against other engines<sup id="fnref8:6"><a class="footnote-ref" href="#fn:6">6</a></sup></td>
+</tr>
+<tr>
+<td>vLLM</td>
+<td>NVIDIA GPUs</td>
+<td>AWQ, GPTQ, Marlin, GGUF and other checkpoints</td>
+<td>PagedAttention; 2-4x throughput on the authors' workloads</td>
+<td>Gains larger with longer sequences, larger models and complex decoding<sup id="fnref13:3"><a class="footnote-ref" href="#fn:3">3</a></sup><sup id="fnref21:2"><a class="footnote-ref" href="#fn:2">2</a></sup></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Model class</th>
+<th>Memory</th>
+<th>Speed</th>
+<th>Quality</th>
+<th>Fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small dense</td>
+<td>All weights read each token</td>
+<td>Bandwidth-bound</td>
+<td>Scales with parameters (Gemma 4 31B led in one local study)</td>
+<td>Single 24 GB GPU<sup id="fnref13:13"><a class="footnote-ref" href="#fn:13">13</a></sup></td>
+</tr>
+<tr>
+<td>Small-active MoE (80B, 3B active)</td>
+<td>All 80B resident</td>
+<td>3B active per pass</td>
+<td>Competitive for its size (vendor-reported)</td>
+<td>Large-memory Mac or GPU plus RAM<sup id="fnref14:8"><a class="footnote-ref" href="#fn:8">8</a></sup></td>
+</tr>
+<tr>
+<td>Large MoE</td>
+<td>Hundreds of billions resident</td>
+<td>Active share sets cost</td>
+<td>Vendor-reported leaders; no local measurements</td>
+<td>Servers<sup id="fnref10:9"><a class="footnote-ref" href="#fn:9">9</a></sup></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Axis</th>
+<th>Local</th>
+<th>Cloud</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Privacy</td>
+<td>Data stays on premises</td>
+<td>Data is sent to third parties<sup id="fnref14:13"><a class="footnote-ref" href="#fn:13">13</a></sup></td>
+</tr>
+<tr>
+<td>Latency and throughput</td>
+<td>Single-user decoding bounded by memory bandwidth</td>
+<td>Batched serving on datacenter hardware<sup id="fnref14:3"><a class="footnote-ref" href="#fn:3">3</a></sup></td>
+</tr>
+<tr>
+<td>Cost</td>
+<td>Hardware purchase price, energy and total cost of ownership; RTX 5090 MSRP $1,999</td>
+<td>Not covered in the sources<sup id="fnref31:1"><a class="footnote-ref" href="#fn:1">1</a></sup></td>
+</tr>
+<tr>
+<td>Licensing</td>
+<td>Apache 2.0 for Qwen3</td>
+<td>Not covered in the sources<sup id="fnref8:7"><a class="footnote-ref" href="#fn:7">7</a></sup></td>
+</tr>
+<tr>
+<td>Capability and reliability</td>
+<td>Run-to-run variance across identical runs</td>
+<td>Not covered in the sources<sup id="fnref10:16"><a class="footnote-ref" href="#fn:16">16</a></sup></td>
+</tr>
+</tbody>
+</table>
+<h2>Summary and self-check questions</h2>
+<p>Memory feasibility depends on weights, the key–value cache and other runtime data, which the vLLM paper breaks down for a serving setup in which parameters take about 65% of GPU memory and the KV cache over 30%<sup id="fnref12:3"><a class="footnote-ref" href="#fn:3">3</a></sup>.
+For single-user decoding, memory bandwidth provides a speed ceiling, not a guarantee<sup id="fnref24:1"><a class="footnote-ref" href="#fn:1">1</a></sup>.
+Quantization reduces weight storage, but code accuracy needs testing<sup id="fnref8:5"><a class="footnote-ref" href="#fn:5">5</a></sup>.
+AWQ identifies salient channels using activation statistics<sup id="fnref11:4"><a class="footnote-ref" href="#fn:4">4</a></sup>.
+Mixture-of-experts models distinguish total parameters from those active per token<sup id="fnref9:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+Engine choice depends on hardware and supported formats<sup id="fnref6:6"><a class="footnote-ref" href="#fn:6">6</a></sup>.
+Agent scaffolds also affect reported performance<sup id="fnref10:8"><a class="footnote-ref" href="#fn:8">8</a></sup>.
+Benchmark trust requires checking contamination and repeating runs, not simply comparing headline scores<sup id="fnref:15"><a class="footnote-ref" href="#fn:15">15</a></sup><sup id="fnref5:16"><a class="footnote-ref" href="#fn:16">16</a></sup>.</p>
+<ul>
+<li>For a hypothetical 32-billion-parameter model at 4 bits, would weights plus 6 GB of cache and overhead fit in 24 GB<sup id="fnref17:2"><a class="footnote-ref" href="#fn:2">2</a></sup>?</li>
+<li>If each token requires reading 16 GB at 800 GB/s, what is the bandwidth-only speed ceiling, and what does it omit<sup id="fnref25:1"><a class="footnote-ref" href="#fn:1">1</a></sup>?</li>
+<li>Why can AWQ's equivalent channel scaling reduce quantization error<sup id="fnref12:4"><a class="footnote-ref" href="#fn:4">4</a></sup>?</li>
+<li>Why does an 80B-total, 3B-active mixture-of-experts model still need storage for 80B parameters<sup id="fnref12:8"><a class="footnote-ref" href="#fn:8">8</a></sup>?</li>
+<li>What two failure modes could make SWE-bench Verified scores overstate practical ability<sup id="fnref6:15"><a class="footnote-ref" href="#fn:15">15</a></sup><sup id="fnref8:16"><a class="footnote-ref" href="#fn:16">16</a></sup>?</li>
+<li>How would you compare two agents while controlling scaffold, sampling, context, quantization and run-to-run variation<sup id="fnref9:16"><a class="footnote-ref" href="#fn:16">16</a></sup><sup id="fnref10:5"><a class="footnote-ref" href="#fn:5">5</a></sup><sup id="fnref13:8"><a class="footnote-ref" href="#fn:8">8</a></sup>?</li>
+</ul>
+<h2>References</h2>
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>Hannecke, M. (2026). <a href="https://medium.com/@michael.hannecke/how-to-choose-hardware-for-local-llm-inference-163632d93dcb"><em>How to Choose Hardware for Local LLM Inference</em></a>. medium.com (blog).&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref22:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref23:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref24:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref25:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref26:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref27:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref28:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref29:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref30:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref31:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+<li id="fn:2">
+<p>Jarvislabs (2026). <a href="https://jarvislabs.ai/blog/vllm-quantization-complete-guide-benchmarks"><em>The Complete Guide to LLM Quantization with vLLM: Benchmarks &amp; Best Practices</em></a>. jarvislabs.ai (commercial).&#160;<a class="footnote-backref" href="#fnref:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref18:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref19:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref20:2" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref21:2" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+</li>
+<li id="fn:3">
+<p>Kwon, W., Li, Z., Zhuang, S., Sheng, Y., Zheng, L., Yu, C. H., Gonzalez, J. E., Zhang, H., Stoica, I. (2023). <em>Efficient Memory Management for Large Language Model Serving with PagedAttention</em>. arXiv preprint 2309.06180. Cited at pages 1, 2, 3, 4, 5, 6.&#160;<a class="footnote-backref" href="#fnref:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:3" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:3" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+</li>
+<li id="fn:4">
+<p>Lin, J., Tang, J., Tang, H., Yang, S., Chen, W., Wang, W., Xiao, G., Dang, X., Gan, C., Han, S. (2023). <em>AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration</em>. arXiv preprint 2306.00978. Cited at page 8.&#160;<a class="footnote-backref" href="#fnref:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:4" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:4" title="Jump back to footnote 4 in the text">&#8617;</a></p>
+</li>
+<li id="fn:5">
+<p>Afrin, S., Haque, M. Z., Mastropaolo, A. (2026). <em>Quantize with Confidence? An Empirical Study of Quantization for Code Generation</em>. arXiv preprint 2607.14181. Cited at pages 1, 2, 5, 6.&#160;<a class="footnote-backref" href="#fnref:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref15:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref16:5" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref17:5" title="Jump back to footnote 5 in the text">&#8617;</a></p>
+</li>
+<li id="fn:6">
+<p>Burowski, Y., Coghlan, A., Mehta, N., Clayton, M. (2024). <a href="https://lmstudio.ai/blog/lmstudio-v0.3.4"><em>LM Studio 0.3.4 ships with Apple MLX</em></a>. lmstudio.ai (official).&#160;<a class="footnote-backref" href="#fnref:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:6" title="Jump back to footnote 6 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:6" title="Jump back to footnote 6 in the text">&#8617;</a></p>
+</li>
+<li id="fn:7">
+<p>Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B., Gao, C., Huang, C., Lv, C., et al. (2025). <em>Qwen3 Technical Report</em>. arXiv preprint 2505.09388. Cited at pages 3, 23.&#160;<a class="footnote-backref" href="#fnref:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:7" title="Jump back to footnote 7 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:7" title="Jump back to footnote 7 in the text">&#8617;</a></p>
+</li>
+<li id="fn:8">
+<p>Cao, R., Chen, M., Chen, J., Cui, Z., Feng, Y., Hui, B., Jing, Y., Li, K., Li, M., Lin, J., et al. (2026). <em>Qwen3-Coder-Next Technical Report</em>. arXiv preprint 2603.00729. Cited at pages 1, 5.&#160;<a class="footnote-backref" href="#fnref:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:8" title="Jump back to footnote 8 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:8" title="Jump back to footnote 8 in the text">&#8617;</a></p>
+</li>
+<li id="fn:9">
+<p>GLM-4. 5 Team, :, Zeng, A., Lv, X., Zheng, Q., Hou, Z., Chen, B., Xie, C., Wang, C., Yin, D., et al. (2025). <em>GLM-4.5: Agentic, Reasoning, and Coding (ARC) Foundation Models</em>. arXiv preprint 2508.06471. Cited at pages 1, 2, 16, 17.&#160;<a class="footnote-backref" href="#fnref:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:9" title="Jump back to footnote 9 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:9" title="Jump back to footnote 9 in the text">&#8617;</a></p>
+</li>
+<li id="fn:10">
+<p>Hui, B., Yang, J., Cui, Z., Yang, J., Liu, D., Zhang, L., Liu, T., Zhang, J., Yu, B., Lu, K., et al. (2024). <em>Qwen2.5-Coder Technical Report</em>. arXiv preprint 2409.12186.&#160;<a class="footnote-backref" href="#fnref:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:10" title="Jump back to footnote 10 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:10" title="Jump back to footnote 10 in the text">&#8617;</a></p>
+</li>
+<li id="fn:11">
+<p>Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., Narasimhan, K. (2023). <em>SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</em>. arXiv preprint 2310.06770. Cited at pages 1, 2, 5, 6.&#160;<a class="footnote-backref" href="#fnref:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:11" title="Jump back to footnote 11 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:11" title="Jump back to footnote 11 in the text">&#8617;</a></p>
+</li>
+<li id="fn:12">
+<p>Rastogi, A., Yang, A., Jiang, A. Q., Liu, A. H., Sablayrolles, A., Héliou, A., Martin, A., Agarwal, A., Ehrenberg, A., Lo, A., et al. (2025). <em>Devstral: Fine-tuning Language Models for Coding Agent Applications</em>. arXiv preprint 2509.25193.&#160;<a class="footnote-backref" href="#fnref:12" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:12" title="Jump back to footnote 12 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:12" title="Jump back to footnote 12 in the text">&#8617;</a></p>
+</li>
+<li id="fn:13">
+<p>Nixon, M., Wright, L., Kovalchuk, Y., Wu, A. F., Danka, M., Boyd, A., Bann, D. (2026). <em>Agentic coding without the cloud: evaluating open-weight large language models on longitudinal data preparation tasks</em>. arXiv preprint 2607.21482. Cited at pages 1, 2, 12, 19, 20, 21, 23.&#160;<a class="footnote-backref" href="#fnref:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref11:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref12:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref13:13" title="Jump back to footnote 13 in the text">&#8617;</a><a class="footnote-backref" href="#fnref14:13" title="Jump back to footnote 13 in the text">&#8617;</a></p>
+</li>
+<li id="fn:14">
+<p>Jain, N., Han, K., Gu, A., Li, W., Yan, F., Zhang, T., Wang, S., Solar-Lezama, A., Sen, K., Stoica, I. (2024). <em>LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code</em>. arXiv preprint 2403.07974. Cited at pages 2, 3, 4, 5, 7, 11, 12.&#160;<a class="footnote-backref" href="#fnref:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:14" title="Jump back to footnote 14 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:14" title="Jump back to footnote 14 in the text">&#8617;</a></p>
+</li>
+<li id="fn:15">
+<p>Prathifkumar, T., Mathews, N. S., Nagappan, M. (2025). <em>Does SWE-Bench-Verified Test Agent Ability or Model Memory?</em>. arXiv preprint 2512.10218.&#160;<a class="footnote-backref" href="#fnref:15" title="Jump back to footnote 15 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:15" title="Jump back to footnote 15 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:15" title="Jump back to footnote 15 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:15" title="Jump back to footnote 15 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:15" title="Jump back to footnote 15 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:15" title="Jump back to footnote 15 in the text">&#8617;</a></p>
+</li>
+<li id="fn:16">
+<p>Rubia, E. A. d. l., Pafka, S. (2026). <em>Identical Runs, Different Results: Benchmarking AI Coding Agents on Open-Weight Models</em>. arXiv preprint 2609.33812. Cited at pages 1, 8, 13.&#160;<a class="footnote-backref" href="#fnref:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref8:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref9:16" title="Jump back to footnote 16 in the text">&#8617;</a><a class="footnote-backref" href="#fnref10:16" title="Jump back to footnote 16 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+<script>document.querySelectorAll('.footnote-ref').forEach(function(a){var li=document.getElementById(a.getAttribute('href').slice(1));if(li){a.title=li.textContent.replace(/\u21a9/g,'').trim();}a.addEventListener('click',function(){window.lastRef=a.parentNode.id;});});document.querySelectorAll('.footnote-backref').forEach(function(b){b.addEventListener('click',function(e){if(window.lastRef){e.preventDefault();location.hash=window.lastRef;}});});</script>
+</body></html>
